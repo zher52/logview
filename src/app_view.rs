@@ -3771,12 +3771,21 @@ impl AppView {
         }
         self.cred_notice = Some(if accept {
             if remember {
-                format!("已信任并记住 {host}:{port} 的主机密钥")
+                i18n::tf(
+                    "已信任并记住 {host}:{port} 的主机密钥",
+                    &[("host", host.clone()), ("port", port.to_string())],
+                )
             } else {
-                format!("已信任 {host}:{port} 的主机密钥(仅本次)")
+                i18n::tf(
+                    "已信任 {host}:{port} 的主机密钥(仅本次)",
+                    &[("host", host.clone()), ("port", port.to_string())],
+                )
             }
         } else {
-            format!("已取消连接 {host}:{port}")
+            i18n::tf(
+                "已取消连接 {host}:{port}",
+                &[("host", host.clone()), ("port", port.to_string())],
+            )
         });
         self.dialog = Dialog::None;
         self.show_next_host_key();
@@ -6013,10 +6022,17 @@ impl AppView {
                     Msg::NoFollow => tab.no_follow = true,
                     Msg::Exited { code, retry_in } => {
                         let note = match (code, retry_in) {
-                            (Some(c), Some(s)) => format!("命令退出(code={c}),{s}s 后重试"),
-                            (Some(c), None) => format!("命令已退出(code={c})"),
-                            (None, Some(s)) => format!("命令结束,{s}s 后重试"),
-                            (None, None) => "命令已退出".to_string(),
+                            (Some(c), Some(s)) => i18n::tf(
+                                "命令退出(code={code}),{secs}s 后重试",
+                                &[("code", c.to_string()), ("secs", s.to_string())],
+                            ),
+                            (Some(c), None) => {
+                                i18n::tf("命令已退出(code={code})", &[("code", c.to_string())])
+                            }
+                            (None, Some(s)) => {
+                                i18n::tf("命令结束,{secs}s 后重试", &[("secs", s.to_string())])
+                            }
+                            (None, None) => i18n::t("命令已退出").to_string(),
                         };
                         let bad = code.map_or(false, |c| c != 0) || retry_in.is_some();
                         tab.exit_note = Some((note, bad));

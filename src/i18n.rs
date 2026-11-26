@@ -68,6 +68,15 @@ fn lookup(key: &str) -> Option<&'static str> {
     EN.iter().find(|(zh, _)| *zh == key).map(|(_, en)| *en)
 }
 
+/// 带 `{name}` 占位符的模板翻译:先查表,再替换占位符
+pub fn tf(template: &'static str, args: &[(&str, String)]) -> String {
+    let mut out = t(template).to_string();
+    for (k, v) in args {
+        out = out.replace(&format!("{{{k}}}"), v);
+    }
+    out
+}
+
 /// 中文原文 → 英文;逐步补齐,未收录的条目自动回退中文
 const EN: &[(&str, &str)] = &[
     ("取消", "Cancel"),
@@ -255,6 +264,19 @@ const EN: &[(&str, &str)] = &[
         "记住连接(系统钥匙串不可用,仅本次会话有效)",
         "Remember connection (system keychain unavailable; valid for this session only)",
     ),
+    ("命令退出(code={code}),{secs}s 后重试", "Command exited (code={code}); retrying in {secs}s"),
+    ("命令已退出(code={code})", "Command exited (code={code})"),
+    ("命令结束,{secs}s 后重试", "Command ended; retrying in {secs}s"),
+    ("命令已退出", "Command exited"),
+    (
+        "已信任并记住 {host}:{port} 的主机密钥",
+        "Trusted and saved the host key for {host}:{port}",
+    ),
+    (
+        "已信任 {host}:{port} 的主机密钥(仅本次)",
+        "Trusted the host key for {host}:{port} (this session only)",
+    ),
+    ("已取消连接 {host}:{port}", "Cancelled connection to {host}:{port}"),
 ];
 
 #[cfg(test)]
@@ -270,6 +292,13 @@ mod tests {
         assert_eq!(t("尚未收录的文案"), "尚未收录的文案");
         assert_eq!(td("尚未收录的文案"), "尚未收录的文案");
         assert_eq!(td("取消"), "Cancel");
+        assert_eq!(
+            tf(
+                "命令退出(code={code}),{secs}s 后重试",
+                &[("code", "1".into()), ("secs", "3".into())]
+            ),
+            "Command exited (code=1); retrying in 3s"
+        );
         set(Lang::Zh);
         assert_eq!(t("取消"), "取消");
     }

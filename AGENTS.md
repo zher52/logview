@@ -31,7 +31,7 @@
 ```bash
 cargo build                      # 调试构建(依赖按 opt-level=2 编译)
 cargo run -- sample/app.log      # 打开示例日志
-cargo test --locked              # 69 项单元测试
+cargo test --locked              # 71 项单元测试
 cargo fmt --all                  # CI 会检查
 cargo clippy --all-targets --locked
 
@@ -142,6 +142,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
   // Copyright (C) 2026 zher52
   ```
 - 提交前：`cargo fmt --all`、`cargo build`、`cargo test --locked`。
+- i18n：静态 UI 文案用 `i18n::t("...")`，带插值用 `i18n::tf("...{name}...", args)`，运行时错误/提示用 `i18n::td(&msg)`；英文未收录时回退中文。
 
 ## 已知限制（勿当 bug 修）
 
