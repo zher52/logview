@@ -1,13 +1,20 @@
 # LogView
 
 A native desktop log viewer built with **Rust + GPUI** (self-drawn UI, no WebView), inspired by the
-Chrome DevTools console. The interface is currently **Chinese-only**; the primary documentation is
+Chrome DevTools console. The interface supports **Chinese and English**; the primary documentation is
 [README.md](README.md) (Chinese).
+
+## Screenshots
+
+![Main window](docs/screenshots/main.png)
+
+![Auto-follow](docs/screenshots/follow.gif)
 
 ## Features
 
-- **Three log sources** — local files (stat polling + seek), SSH/SFTP (password, key file, key text or
-  ssh-agent), and HTTP(S) with `Range` requests and built-in SSRF protection.
+- **Four log sources** — local files (stat polling + seek), SSH/SFTP (password, key file, key text or
+  ssh-agent), HTTP(S) with `Range` requests and built-in SSRF protection, and commands (local `spawn` or
+  remote SSH `exec`, with stdout/stderr merged into the tab).
 - **Level detection** — regex-based profiles (5 built-ins + unlimited custom profiles, import/export as JSON),
   per-level coloring and filter chips with live counts.
 - **Search** — highlight or filter mode, plain text or regex, case sensitivity, match counter and jump.
@@ -22,6 +29,10 @@ Chrome DevTools console. The interface is currently **Chinese-only**; the primar
   and family.
 - **Credentials** — stored in the OS keychain (macOS Keychain, Windows Credential Manager,
   Linux Secret Service); settings files never contain secrets.
+- **SSH host keys** — TOFU confirmation with the SHA256 fingerprint; unknown hosts can be trusted once
+  or written to `known_hosts`, while changed keys are rejected.
+- **Bilingual UI** — switch between Chinese and English in Settings; untranslated entries fall back to
+  Chinese.
 
 ## Requirements
 
@@ -57,15 +68,15 @@ macOS app bundle (document types, Finder "Open With"):
   is pinned to the validated IP, and redirects are re-checked hop by hop.
 - Credentials are kept in memory unless you explicitly choose to remember them (OS keychain).
 - No telemetry.
-- Known limitation: SSH host keys are **not** verified against `known_hosts` yet — see
-  [SECURITY.md](SECURITY.md).
+- SSH host keys are verified against `~/.ssh/known_hosts`; mismatches are rejected, and unknown hosts
+  require explicit TOFU confirmation before connecting (see [SECURITY.md](SECURITY.md)).
 
 Please report vulnerabilities privately via GitHub Security Advisories, not public issues.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md). Code comments, commit messages
-and UI text are in Chinese; identifiers are English.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md). Code comments and commit
+messages are in Chinese; the UI is bilingual; identifiers are English.
 
 ## License
 
