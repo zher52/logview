@@ -1,27 +1,51 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 zher52
 
-//! 极简 i18n:以中文原文为 key,英文缺失时回退中文。
+//! 极简 i18n:以中文原文为 key,英文/俄文缺失时依次回退英文、中文。
 //!
-//! 这样界面代码可以原地 `i18n::t("取消")` 渐进迁移,新增文案不写英文也能正常显示。
+//! 这样界面代码可以原地 `i18n::t("取消")` 渐进迁移,新增文案不写翻译也能正常显示。
 //! 切换语言只需 `set` + 重新渲染;持久化字段是 `Settings::language`。
 
 use std::sync::atomic::{AtomicU8, Ordering};
+
+mod ru;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Lang {
     Zh,
     En,
+    Ru,
 }
 
 static CURRENT: AtomicU8 = AtomicU8::new(Lang::Zh as u8);
 
 impl Lang {
+    pub const ALL: [Lang; 3] = [Lang::Zh, Lang::En, Lang::Ru];
+
     pub fn from_code(code: &str) -> Self {
         if code.eq_ignore_ascii_case("en") {
             Lang::En
+        } else if code.eq_ignore_ascii_case("ru") {
+            Lang::Ru
         } else {
             Lang::Zh
+        }
+    }
+
+    pub fn code(self) -> &'static str {
+        match self {
+            Lang::Zh => "zh",
+            Lang::En => "en",
+            Lang::Ru => "ru",
+        }
+    }
+
+    /// 语言名称使用各自的文字,便于在任意当前语言下识别
+    pub fn label(self) -> &'static str {
+        match self {
+            Lang::Zh => "中文",
+            Lang::En => "English",
+            Lang::Ru => "Русский",
         }
     }
 
@@ -30,6 +54,7 @@ impl Lang {
         match self {
             Lang::Zh => "zh-CN",
             Lang::En => "en",
+            Lang::Ru => "ru",
         }
     }
 }
@@ -39,14 +64,14 @@ pub fn set(lang: Lang) {
 }
 
 pub fn lang() -> Lang {
-    if CURRENT.load(Ordering::Relaxed) == Lang::En as u8 {
-        Lang::En
-    } else {
-        Lang::Zh
+    match CURRENT.load(Ordering::Relaxed) {
+        x if x == Lang::En as u8 => Lang::En,
+        x if x == Lang::Ru as u8 => Lang::Ru,
+        _ => Lang::Zh,
     }
 }
 
-/// 取当前语言的文案;英文表未收录时回退中文原文
+/// 取当前语言的文案;当前语言表未收录时回退英文,再回退中文原文
 pub fn t(key: &'static str) -> &'static str {
     if lang() == Lang::Zh {
         return key;
@@ -54,7 +79,7 @@ pub fn t(key: &'static str) -> &'static str {
     lookup(key).unwrap_or(key)
 }
 
-/// 动态文案(错误/提示)翻译:按整串精确查表,未收录时原样返回
+/// 动态文案(错误/提示)翻译:按整串精确查表,未收录时回退英文/原样返回
 pub fn td(text: &str) -> String {
     if lang() == Lang::Zh {
         return text.to_string();
@@ -65,6 +90,18 @@ pub fn td(text: &str) -> String {
 }
 
 fn lookup(key: &str) -> Option<&'static str> {
+    match lang() {
+        Lang::Zh => None,
+        Lang::En => en_entry(key),
+        Lang::Ru => ru::RU
+            .iter()
+            .find(|(zh, _)| *zh == key)
+            .map(|(_, ru)| *ru)
+            .or_else(|| en_entry(key)),
+    }
+}
+
+fn en_entry(key: &str) -> Option<&'static str> {
     EN.iter().find(|(zh, _)| *zh == key).map(|(_, en)| *en)
 }
 
@@ -103,8 +140,8 @@ const EN: &[(&str, &str)] = &[
     ("快捷键", "Shortcuts"),
     ("界面语言", "Language"),
     (
-        "切换中文 / English(部分文案仍在迁移)",
-        "Switch 中文 / English (some text is still being migrated)",
+        "切换界面文案;未翻译的内容依次回退英文、中文",
+        "Switch UI language; untranslated text falls back to English, then Chinese",
     ),
     ("设置", "Settings"),
     ("搜索设置", "Search settings"),
@@ -696,5 +733,49 @@ mod tests {
         );
         set(Lang::Zh);
         assert_eq!(t("取消"), "取消");
+    }
+
+    #[test]
+    fn russian_translates_and_falls_back_to_english() {
+        set(Lang::Ru);
+        assert_eq!(t("取消"), "Отмена");
+        assert_eq!(td("取消"), "Отмена");
+        // 俄文缺失时回退英文,英文也缺时回退中文原文
+        let mut only_en = None;
+        for (zh, _) in EN {
+            if ru::RU.iter().all(|(k, _)| k != zh) {
+                only_en = Some(*zh);
+                break;
+            }
+        }
+        if let Some(zh) = only_en {
+            assert_eq!(lookup(zh), en_entry(zh));
+        }
+        assert_eq!(t("尚未收录的文案"), "尚未收录的文案");
+        set(Lang::Zh);
+    }
+
+    #[test]
+    fn language_codes_roundtrip() {
+        for lang in Lang::ALL {
+            assert_eq!(Lang::from_code(lang.code()), lang);
+            assert!(!lang.label().is_empty());
+            assert!(!lang.locale().is_empty());
+        }
+        assert_eq!(Lang::from_code("RU"), Lang::Ru);
+        assert_eq!(Lang::from_code("fr"), Lang::Zh);
+    }
+
+    #[test]
+    fn dictionaries_have_no_duplicate_keys() {
+        let mut seen = std::collections::HashSet::new();
+        for (zh, _) in EN {
+            assert!(seen.insert(*zh), "EN 重复键: {zh}");
+        }
+        let mut seen = std::collections::HashSet::new();
+        for (zh, ru) in ru::RU {
+            assert!(seen.insert(*zh), "RU 重复键: {zh}");
+            assert!(!ru.is_empty(), "RU 空译文: {zh}");
+        }
     }
 }

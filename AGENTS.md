@@ -18,7 +18,7 @@
 
 | 层 | 选择 |
 |---|---|
-| UI | `gpui-kit 0.11`（GPUI / gpui-component），组件与主题令牌，locale 跟随界面语言（`zh-CN` / `en`） |
+| UI | `gpui-kit 0.11`（GPUI / gpui-component），组件与主题令牌，locale 跟随界面语言（`zh-CN` / `en` / `ru`） |
 | 并发 | 每标签一个 worker 线程；`crossbeam-channel` 传递命令与消息 |
 | 网络 | `reqwest` blocking + rustls；`ssh2`（libssh2）blocking |
 | 凭据 | `keyring`（macOS / Windows / Linux 原生后端） |
@@ -61,7 +61,7 @@ src/
 ├── store.rs       settings.json 读写(含 configs、ssh_hosts、command_presets)、旧数据迁移
 ├── secrets.rs     系统钥匙串存取(不可用时退回仅内存)
 ├── ssh_config.rs  解析系统 ssh 配置,导入已保存主机(跳过通配与 Match)
-├── i18n.rs       中英文词典与 t/td/tf 取词（中文原文为 key，缺失回退中文）
+├── i18n.rs       中/英词典与 t/td/tf 取词（俄文表在 i18n/ru.rs；中文原文为 key，缺失回退英文、中文）
 ├── code_input.rs  正则输入框的词法着色
 └── code.rs        代码/配置语法高亮、Markdown 渲染辅助、大小限制常量
 ```
@@ -143,7 +143,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
   // Copyright (C) 2026 zher52
   ```
 - 提交前：`cargo fmt --all`、`cargo build`、`cargo test --locked`。
-- i18n：静态 UI 文案用 `i18n::t("...")`，带插值用 `i18n::tf("...{name}...", args)`，运行时错误/提示用 `i18n::td(&msg)`；英文未收录时回退中文。
+- i18n：静态 UI 文案用 `i18n::t("...")`，带插值用 `i18n::tf("...{name}...", args)`，运行时错误/提示用 `i18n::td(&msg)`；俄文/英文未收录时依次回退英文、中文。
 
 ## 已知限制（勿当 bug 修）
 
@@ -153,7 +153,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 - 命令源没有历史可回溯；需要历史请在命令参数里取（`journalctl -n`、`docker logs --tail`）。
 - SSH 未知主机采用 TOFU 确认（仅在无法读取 `known_hosts` 时静默放行，见 `SECURITY.md`）。
 - Windows / Linux 仅做 CI 构建检查，交互未充分验证。
-- 界面支持中英文切换（设置 → 界面语言）；工具栏、对话框、设置页、状态栏、命令预设与常见错误提示均已覆盖，未收录词条自动回退中文。
+- 界面支持中文 / English / Русский 切换（设置 → 界面语言）；工具栏、对话框、设置页、状态栏、命令预设与常见错误提示均已覆盖，未收录词条依次回退英文、中文。
 
 ## Git 约定
 

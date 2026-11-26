@@ -3324,15 +3324,13 @@ impl AppView {
     }
 
     /// 切换界面语言:同步 gpui-kit 组件文案并重绘
-    fn toggle_language(&mut self, cx: &mut Context<Self>) {
-        let next = if i18n::lang() == i18n::Lang::En {
-            "zh"
-        } else {
-            "en"
-        };
-        self.settings.language = next.to_string();
-        i18n::set(i18n::Lang::from_code(next));
-        gpui_kit::component::set_locale(i18n::lang().locale());
+    fn set_language(&mut self, lang: i18n::Lang, cx: &mut Context<Self>) {
+        if i18n::lang() == lang {
+            return;
+        }
+        self.settings.language = lang.code().to_string();
+        i18n::set(lang);
+        gpui_kit::component::set_locale(lang.locale());
         self.settings_apply(false, cx);
         cx.notify();
     }
@@ -4961,16 +4959,41 @@ impl AppView {
                     .into_any_element(),
             ),
         ));
-        // 界面语言:切换后立即重绘(仅影响已迁移文案与组件库 locale)
+        // 界面语言:三态选择,切换后立即重绘(仅影响已迁移文案与组件库 locale)
+        let mut lang_picker = div()
+            .flex()
+            .items_center()
+            .gap(px(2.0))
+            .p(px(2.0))
+            .rounded(px(6.0))
+            .bg(theme::hex(pal.fill_hover));
+        for lang in i18n::Lang::ALL {
+            let on = i18n::lang() == lang;
+            lang_picker = lang_picker.child(
+                div()
+                    .id(SharedString::from(format!("set-lang-{}", lang.code())))
+                    .cursor(CursorStyle::PointingHand)
+                    .px(px(9.0))
+                    .py(px(3.0))
+                    .rounded(px(5.0))
+                    .text_size(px(theme::scaled(12.0)))
+                    .text_color(theme::hex(if on { pal.text1 } else { pal.text2 }))
+                    .bg(if on {
+                        theme::hex(pal.bg_elevated)
+                    } else {
+                        gpui_kit::transparent_black()
+                    })
+                    .child(lang.label())
+                    .on_click(cx.listener(move |v, _e, _w, cx| v.set_language(lang, cx))),
+            );
+        }
         appearance.push((
-            "界面语言 language English".into(),
+            "界面语言 language language 文".into(),
             settings_row(
                 pal,
                 i18n::t("界面语言"),
-                Some(i18n::t("切换中文 / English(部分文案仍在迁移)").into()),
-                switch_el("set-lang-en", i18n::lang() == i18n::Lang::En, pal)
-                    .on_click(cx.listener(|v, _e, _w, cx| v.toggle_language(cx)))
-                    .into_any_element(),
+                Some(i18n::t("切换界面文案;未翻译的内容依次回退英文、中文").into()),
+                lang_picker.into_any_element(),
             ),
         ));
         let typography: Vec<(String, AnyElement)> = vec![

@@ -32,7 +32,7 @@ pub struct Settings {
     /// 日志字体族(空 = 跟随系统等宽字体)
     #[serde(default)]
     pub log_font_family: String,
-    /// 界面语言:"zh" / "en"(默认中文)
+    /// 界面语言:"zh" / "en" / "ru"(默认中文)
     #[serde(default = "default_language")]
     pub language: String,
     /// 日志行默认自动换行(新标签页的初始值;标签页内可单独切换)

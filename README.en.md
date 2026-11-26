@@ -1,7 +1,7 @@
 # LogView
 
 A native desktop log viewer built with **Rust + GPUI** (self-drawn UI, no WebView), inspired by the
-Chrome DevTools console. The interface supports **Chinese and English**; the primary documentation is
+Chrome DevTools console. The interface supports **Chinese, English and Russian**; the primary documentation is
 [README.md](README.md) (Chinese).
 
 ## Screenshots
@@ -31,8 +31,8 @@ Chrome DevTools console. The interface supports **Chinese and English**; the pri
   Linux Secret Service); settings files never contain secrets.
 - **SSH host keys** — TOFU confirmation with the SHA256 fingerprint; unknown hosts can be trusted once
   or written to `known_hosts`, while changed keys are rejected.
-- **Bilingual UI** — switch between Chinese and English in Settings; untranslated entries fall back to
-  Chinese.
+- **Multilingual UI** — switch between Chinese, English and Russian in Settings; untranslated entries fall
+  back to English, then Chinese.
 
 ## Requirements
 
@@ -208,7 +208,7 @@ Tail worker thread per tab (poll size → incremental reads, 1 MB chunks, ≤8 M
 | `secrets.rs` | OS keychain storage, in-memory fallback |
 | `store.rs` | `settings.json` read/write and legacy migration |
 | `tail.rs` | Worker protocol and file/stream loops |
-| `i18n.rs` | Chinese/English dictionary (`t` / `td` / `tf`) |
+| `i18n.rs` | Chinese→English dictionary and `t` / `td` / `tf` lookups (`i18n/ru.rs` holds the Russian table) |
 | `code_input.rs` | Regex input highlighting |
 | `code.rs` | Code/Markdown highlighting and preview limits |
 
@@ -260,7 +260,7 @@ is possible and auto-follow is disabled.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md). Code comments and commit
-messages are in Chinese; the UI is bilingual; identifiers are English.
+messages are in Chinese; the UI is available in Chinese, English and Russian; identifiers are English.
 
 ## License
 
