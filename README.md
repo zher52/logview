@@ -4,6 +4,14 @@
 
 打开本地 / SSH 远端 / HTTP 链接的日志文件,或直接运行命令(`adb logcat`、`journalctl -f`、`docker logs`…)把输出当日志看,正则分析日志级别并着色筛选,支持高亮与过滤检索、自动追加(tail -f)、行内链接识别。
 
+## 界面
+
+![主界面](docs/screenshots/main.png)
+
+自动追加(向上滚动自动暂停,回到底部继续;GIF 为实时录制):
+
+![自动追加](docs/screenshots/follow.gif)
+
 ## 功能特性
 
 - [x] **四种日志源**

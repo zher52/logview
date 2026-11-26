@@ -10,6 +10,8 @@
 - GitHub Actions：格式 / lint / 测试，依赖安全审计，依赖许可检查（cargo-deny）与 tag 发布工作流。
 - SSH 连接比对已有主机密钥，不一致时拒绝连接。
 - SSH 未知主机 TOFU 确认：弹窗展示算法与 SHA256 指纹，支持仅本次信任或写入 `known_hosts`。
+- 中英文切换脚手架（设置 → 界面语言），首批迁移弹窗与设置分类文案。
+- README 增加真实界面截图与自动追加 GIF。
 - 补齐 ssrf / search / links 单元测试（当前共 62 项）。
 
 ### Changed
