@@ -1372,8 +1372,8 @@ impl AppView {
         let key = key_of_params(params)?;
         match secrets::load(&key) {
             Ok(Some(sec)) if sec.apply(params) => None,
-            Ok(_) => Some("未找到已保存的凭据,连接时需重新输入".into()),
-            Err(e) => Some(format!("{e};连接时需重新输入凭据")),
+            Ok(_) => Some(i18n::t("未找到已保存的凭据,连接时需重新输入").into()),
+            Err(e) => Some(i18n::tf("{e};连接时需重新输入凭据", &[("e", e)])),
         }
     }
 
@@ -1391,8 +1391,10 @@ impl AppView {
                             self.cred_notice = None;
                         }
                         Err(e) => {
-                            self.cred_notice =
-                                Some(format!("{e};凭据仅在本次会话内有效,下次连接需重新输入"));
+                            self.cred_notice = Some(i18n::tf(
+                                "{e};凭据仅在本次会话内有效,下次连接需重新输入",
+                                &[("e", e)],
+                            ));
                         }
                     }
                 }
@@ -2262,7 +2264,7 @@ impl AppView {
         self.rebuild_rule_inputs(window, cx);
         self.settings_apply(true, cx);
         if let Some(d) = self.settings_panel.as_mut() {
-            d.cfg_notice = Some("已恢复全部内置默认规则".into());
+            d.cfg_notice = Some(i18n::t("已恢复全部内置默认规则").into());
         }
         cx.notify();
     }
@@ -2548,7 +2550,7 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let err = format!("{msg};请重新输入后重试");
+        let err = i18n::tf("{msg};请重新输入后重试", &[("msg", msg)]);
         match params {
             SourceParams::Ssh {
                 host,
@@ -3071,8 +3073,8 @@ impl AppView {
         let err = match validate_url_addr(u) {
             Some(e) => Some(e),
             None => match auth {
-                1 if user.is_empty() => Some("Basic 认证需要填写用户名".to_string()),
-                2 if token.is_empty() => Some("Bearer 认证需要填写 token".to_string()),
+                1 if user.is_empty() => Some(i18n::t("Basic 认证需要填写用户名").to_string()),
+                2 if token.is_empty() => Some(i18n::t("Bearer 认证需要填写 token").to_string()),
                 3 | 4 => {
                     let name = if header_name.is_empty() && auth == 3 {
                         "X-API-Key"
@@ -3095,7 +3097,7 @@ impl AppView {
                         .bytes()
                         .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
                     {
-                        Some("请求头名称包含非法字符".to_string())
+                        Some(i18n::t("请求头名称包含非法字符").to_string())
                     } else {
                         None
                     }
@@ -3530,7 +3532,7 @@ impl AppView {
                 false,
                 &f.cmd,
                 pal,
-                "远端命令由登录 shell 执行,可用管道与重定向。",
+                i18n::t("远端命令由登录 shell 执行,可用管道与重定向。"),
                 |v, i, w, cx| v.ssh_cmd_set_preset(i, w, cx),
                 |v| v.ssh_cmd_toggle_restart(),
             ));
@@ -3643,7 +3645,7 @@ impl AppView {
             true,
             &f.fields,
             pal,
-            "本机命令不经过 shell:管道与重定向不生效,参数按引号拆分。",
+            i18n::t("本机命令不经过 shell:管道与重定向不生效,参数按引号拆分。"),
             |v, i, w, cx| v.cmd_set_preset(i, w, cx),
             |v| v.cmd_toggle_restart(),
         );
@@ -4235,7 +4237,7 @@ impl AppView {
             .gap(px(2.0))
             .child(link(
                 "welcome-open",
-                "打开",
+                i18n::t("打开"),
                 pal,
                 move |v, _e, _w, cx| v.welcome_browse(ti, cx),
                 cx,
@@ -4551,7 +4553,9 @@ impl AppView {
                     .py(px(12.0))
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child("还没有保存的主机;可点下方「新增主机」,或从最近打开导入")
+                    .child(i18n::t(
+                        "还没有保存的主机;可点下方「新增主机」,或从最近打开导入",
+                    ))
                     .into_any_element(),
             );
         }
@@ -4634,7 +4638,9 @@ impl AppView {
                     .pb(px(4.0))
                     .text_size(px(theme::scaled(11.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child("删除会同时清理「最近打开」中的同名服务器;系统钥匙串里的凭据不受影响")
+                    .child(i18n::t(
+                        "删除会同时清理「最近打开」中的同名服务器;系统钥匙串里的凭据不受影响",
+                    ))
                     .into_any_element(),
             );
         }
@@ -4665,7 +4671,7 @@ impl AppView {
                     .child(
                         host_btn(
                             "set-host-import-ssh".into(),
-                            "从 ~/.ssh/config 导入",
+                            i18n::t("从 ~/.ssh/config 导入"),
                             false,
                             pal,
                         )
@@ -4697,7 +4703,7 @@ impl AppView {
                     .child(settings_row(
                         pal,
                         i18n::t("备注"),
-                        Some("用于区分同一主机的不同用途,可留空".into()),
+                        Some(i18n::t("用于区分同一主机的不同用途,可留空").into()),
                         text_input(&hn_e, 220.0),
                     ))
                     .child(settings_row(
@@ -4813,7 +4819,9 @@ impl AppView {
                     .py(px(12.0))
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child("没有保存的 URL 凭据;在「打开 URL」里选「保存凭据」后会出现在这里")
+                    .child(i18n::t(
+                        "没有保存的 URL 凭据;在「打开 URL」里选「保存凭据」后会出现在这里",
+                    ))
                     .into_any_element(),
             );
         }
@@ -5600,7 +5608,7 @@ impl AppView {
                     .text_size(px(theme::scaled(11.0)))
                     .text_color(theme::hex(pal.text3))
                     .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                    .child("恢复默认")
+                    .child(i18n::t("恢复默认"))
                     .on_click(cx.listener(move |v, _e, _w, cx| v.reset_shortcut(action, cx))),
             );
             shortcut_entries.push((
@@ -5609,8 +5617,8 @@ impl AppView {
             ));
         }
         for (keys, desc) in [
-            ("⏎", "检索框内跳到下一处命中"),
-            ("Esc", "关闭弹层 / 取消快捷键录制"),
+            ("⏎", i18n::t("检索框内跳到下一处命中")),
+            ("Esc", i18n::t("关闭弹层 / 取消快捷键录制")),
         ] {
             let caps: AnyElement = div()
                 .flex()
@@ -5620,12 +5628,12 @@ impl AppView {
                 .into_any_element();
             shortcut_entries.push((
                 format!("{desc} {keys}"),
-                settings_row(pal, desc, Some("固定绑定".into()), caps),
+                settings_row(pal, desc, Some(i18n::t("固定绑定").into()), caps),
             ));
         }
         if let Some(n) = d.sc_notice.clone() {
             shortcut_entries.push((
-                "快捷键提示".to_string(),
+                i18n::t("快捷键提示").to_string(),
                 div()
                     .px(px(16.0))
                     .py(px(8.0))
@@ -5638,16 +5646,16 @@ impl AppView {
 
         // —— 分组数据:按分类/分组组织,搜索时跨分类过滤 ——
         let groups_all: Vec<(usize, &'static str, Vec<(String, AnyElement)>)> = vec![
-            (0, "界面", appearance),
-            (0, "字号与字体", typography),
-            (0, "颜色管理", color_rows),
-            (1, "加载与自动追加", load),
-            (1, "内存", memory),
+            (0, i18n::t("界面"), appearance),
+            (0, i18n::t("字号与字体"), typography),
+            (0, i18n::t("颜色管理"), color_rows),
+            (1, i18n::t("加载与自动追加"), load),
+            (1, i18n::t("内存"), memory),
             (2, i18n::t("分析配置"), cfg_entries),
-            (3, "已保存的 SSH 主机", host_entries),
-            (3, "已保存的 URL 凭据", url_cred_entries),
+            (3, i18n::t("已保存的 SSH 主机"), host_entries),
+            (3, i18n::t("已保存的 URL 凭据"), url_cred_entries),
             (3, i18n::t("最近打开"), recents_cfg),
-            (4, "键盘快捷键", shortcut_entries),
+            (4, i18n::t("键盘快捷键"), shortcut_entries),
         ];
         let page_titles = [
             i18n::t("外观与显示"),
@@ -5707,7 +5715,7 @@ impl AppView {
                         .py(px(24.0))
                         .text_size(px(theme::scaled(12.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child("没有匹配的设置项"),
+                        .child(i18n::t("没有匹配的设置项")),
                 );
             } else {
                 scroll = scroll.children(groups);
@@ -5717,7 +5725,7 @@ impl AppView {
 
         // —— 页头 ——
         let head_title = if searching {
-            "搜索结果".to_string()
+            i18n::t("搜索结果").to_string()
         } else {
             page_titles[tab_sel].to_string()
         };
@@ -5775,11 +5783,11 @@ impl AppView {
                     .child(Input::new(&search_e).small().w_full()),
             );
         for (i, label) in [
-            "外观与显示",
-            "日志与性能",
+            i18n::t("外观与显示"),
+            i18n::t("日志与性能"),
             i18n::t("分析配置"),
             i18n::t("连接"),
-            "快捷键",
+            i18n::t("快捷键"),
         ]
         .iter()
         .enumerate()
@@ -5813,9 +5821,9 @@ impl AppView {
                 .text_size(px(theme::scaled(10.5)))
                 .text_color(theme::hex(pal.text3))
                 .child(if saved_recent {
-                    "已自动保存"
+                    i18n::t("已自动保存")
                 } else {
-                    "更改即时生效"
+                    i18n::t("更改即时生效")
                 }),
         );
 
@@ -5844,7 +5852,7 @@ impl AppView {
                         div()
                             .text_size(px(theme::scaled(11.0)))
                             .text_color(theme::hex(pal.text3))
-                            .child("所有更改立即生效并自动保存"),
+                            .child(i18n::t("所有更改立即生效并自动保存")),
                     ),
             );
 
@@ -6064,7 +6072,7 @@ impl AppView {
                         tab.rebuild_view();
                     }
                     Msg::Truncated { size } => {
-                        tab.store.insert_separator("── 检测到日志轮换 ──");
+                        tab.store.insert_separator(i18n::t("── 检测到日志轮换 ──"));
                         tab.store.set_total(size);
                         tab.rebuild_matched();
                         tab.rebuild_view();
@@ -6521,23 +6529,25 @@ impl AppView {
                     }
                     if kind == LinkKind::Url {
                         let target_browser = target.clone();
-                        menu = menu.item(PopupMenuItem::new("在浏览器打开").on_click(
+                        menu = menu.item(PopupMenuItem::new(i18n::t("在浏览器打开")).on_click(
                             move |_, _, _| {
                                 let _ = open::that(&target_browser);
                             },
                         ));
                     } else {
                         let target_local = target.clone();
-                        menu = menu.item(PopupMenuItem::new("作为本地文件打开").on_click(
+                        menu = menu.item(PopupMenuItem::new(i18n::t("作为本地文件打开")).on_click(
                             move |_, _, _| {
                                 let _ = open::that(&target_local);
                             },
                         ));
                     }
                     let target_copy = target.clone();
-                    menu = menu.item(PopupMenuItem::new("复制链接").on_click(move |_, _, cx| {
-                        cx.write_to_clipboard(ClipboardItem::new_string(target_copy.clone()));
-                    }));
+                    menu = menu.item(PopupMenuItem::new(i18n::t("复制链接")).on_click(
+                        move |_, _, cx| {
+                            cx.write_to_clipboard(ClipboardItem::new_string(target_copy.clone()));
+                        },
+                    ));
                 }
                 if !targets.is_empty() {
                     menu = menu.separator();
@@ -6545,11 +6555,13 @@ impl AppView {
 
                 let copy_row = row_text.clone();
                 let this_end = this.clone();
-                menu.item(PopupMenuItem::new("复制整行").on_click(move |_, _, cx| {
-                    cx.write_to_clipboard(ClipboardItem::new_string(copy_row.clone()));
-                }))
+                menu.item(
+                    PopupMenuItem::new(i18n::t("复制整行")).on_click(move |_, _, cx| {
+                        cx.write_to_clipboard(ClipboardItem::new_string(copy_row.clone()));
+                    }),
+                )
                 .item(
-                    PopupMenuItem::new("复制选中文本").on_click(|_, window, cx| {
+                    PopupMenuItem::new(i18n::t("复制选中文本")).on_click(|_, window, cx| {
                         let sel = gpui_kit::base::TextSelection::selected_text(window, cx);
                         if !sel.is_empty() {
                             cx.write_to_clipboard(ClipboardItem::new_string(sel));
@@ -6824,7 +6836,7 @@ impl AppView {
     ) {
         if let Some(d) = self.settings_panel.as_mut() {
             d.capture = Some(action.to_string());
-            d.sc_notice = Some("请按下组合键;Esc 取消".into());
+            d.sc_notice = Some(i18n::t("请按下组合键;Esc 取消").into());
         }
         let h = self.focus_handle.clone();
         window.focus(&h, cx);
@@ -6869,7 +6881,7 @@ impl AppView {
         crate::store::save(&self.settings);
         if let Some(d) = self.settings_panel.as_mut() {
             d.capture = None;
-            d.sc_notice = Some("已恢复默认快捷键".into());
+            d.sc_notice = Some(i18n::t("已恢复默认快捷键").into());
         }
         cx.notify();
     }
@@ -6882,7 +6894,7 @@ impl AppView {
             // 录制中优先取消录制
             if let Some(d) = self.settings_panel.as_mut() {
                 if d.capture.take().is_some() {
-                    d.sc_notice = Some("已取消修改".into());
+                    d.sc_notice = Some(i18n::t("已取消修改").into());
                     cx.notify();
                     return;
                 }
@@ -7714,9 +7726,9 @@ impl AppView {
                             "icons/tail-off.svg"
                         },
                         SharedString::from(if follow {
-                            "跟进中(点击暂停跟随)"
+                            i18n::t("跟进中(点击暂停跟随)")
                         } else {
-                            "已暂停(点击恢复跟随并跳到末尾)"
+                            i18n::t("已暂停(点击恢复跟随并跳到末尾)")
                         }),
                         follow,
                         pal,
@@ -7727,7 +7739,7 @@ impl AppView {
                     toolbar_icon_btn(
                         "btn-end",
                         "icons/jump-end.svg",
-                        SharedString::from("跳到末尾(只读文件尾部并继续跟随)"),
+                        SharedString::from(i18n::t("跳到末尾(只读文件尾部并继续跟随)")),
                         false,
                         pal,
                     )
@@ -7737,7 +7749,7 @@ impl AppView {
                     toolbar_icon_btn(
                         "btn-clear",
                         "icons/clear.svg",
-                        SharedString::from("清屏(保留读取位置,新日志继续追加)"),
+                        SharedString::from(i18n::t("清屏(保留读取位置,新日志继续追加)")),
                         false,
                         pal,
                     )
@@ -7840,7 +7852,7 @@ impl AppView {
                 segs.push((e, theme::hex(pal.error)));
             }
         } else {
-            segs.push(("就绪".into(), theme::hex(pal.text3)));
+            segs.push((i18n::t("就绪").into(), theme::hex(pal.text3)));
         }
         if let Some(n) = &self.cred_notice {
             segs.push((i18n::td(n), theme::hex(pal.warning)));
@@ -7908,7 +7920,7 @@ impl AppView {
                                         div()
                                             .text_size(px(theme::scaled(10.5)))
                                             .text_color(theme::hex(pal.text3))
-                                            .child("双击复制完整路径"),
+                                            .child(i18n::t("双击复制完整路径")),
                                     )
                             })
                             .build(window, cx)
@@ -7972,7 +7984,7 @@ impl AppView {
                     .bg(theme::hex(pal.primary))
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.on_primary))
-                    .child(format!("↓ {} 条新行", pending_new))
+                    .child(i18n::tf("↓ {n} 条新行", &[("n", pending_new.to_string())]))
                     .on_click(cx.listener(|v, _e, _w, _cx| v.jump_to_end())),
             )
         } else {
