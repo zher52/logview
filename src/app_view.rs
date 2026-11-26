@@ -2245,7 +2245,7 @@ impl AppView {
         self.rebuild_rule_inputs(window, cx);
         self.settings_apply(true, cx);
         if let Some(d) = self.settings_panel.as_mut() {
-            d.cfg_notice = Some("已恢复该内置配置的默认规则".into());
+            d.cfg_notice = Some(i18n::t("已恢复该内置配置的默认规则").into());
         }
         cx.notify();
     }
@@ -2747,11 +2747,11 @@ impl AppView {
         let edit = d.host_edit;
         let port = port_txt.parse::<u16>().ok().filter(|p| *p > 0);
         let err = if host.is_empty() {
-            Some("请填写主机名或 IP".to_string())
+            Some(i18n::t("请填写主机名或 IP").to_string())
         } else if user.is_empty() {
-            Some("请填写用户名".to_string())
+            Some(i18n::t("请填写用户名").to_string())
         } else if port.is_none() {
-            Some("端口需为 1–65535".to_string())
+            Some(i18n::t("端口需为 1–65535").to_string())
         } else {
             None
         };
@@ -3072,9 +3072,9 @@ impl AppView {
                         header_name.as_str()
                     };
                     if name.is_empty() {
-                        Some("请填写请求头名称".to_string())
+                        Some(i18n::t("请填写请求头名称").to_string())
                     } else if header_value.is_empty() {
-                        Some("请填写请求头值".to_string())
+                        Some(i18n::t("请填写请求头值").to_string())
                     } else if matches!(
                         name.to_ascii_lowercase().as_str(),
                         "host" | "content-length" | "transfer-encoding" | "connection"
@@ -3417,7 +3417,7 @@ impl AppView {
                     .py(px(6.0))
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.text3))
-                    .child("没有匹配的已保存服务器")
+                    .child(i18n::t("没有匹配的已保存服务器"))
                     .into_any_element(),
             );
         }
@@ -3438,7 +3438,7 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("服务器", pal))
+                .child(label(i18n::t("服务器"), pal))
                 .child(div().flex_1().child(Input::new(&host_e).small()))
                 .into_any_element(),
         );
@@ -3485,11 +3485,11 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("方式", pal))
+                .child(label(i18n::t("方式"), pal))
                 .child(segmented(
                     cx,
                     "ssh-mode",
-                    &["文件", i18n::t("命令")],
+                    &[i18n::t("文件"), i18n::t("命令")],
                     mode,
                     pal,
                     |v, i| v.ssh_set_mode(i),
@@ -3502,7 +3502,7 @@ impl AppView {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .child(label("远程路径", pal))
+                    .child(label(i18n::t("远程路径"), pal))
                     .child(div().flex_1().child(Input::new(&path_e).small()))
                     .into_any_element(),
             );
@@ -3850,7 +3850,13 @@ impl AppView {
                 .child(segmented(
                     cx,
                     "url-auth",
-                    &["无", "Basic", "Bearer", "API Key", "自定义头"],
+                    &[
+                        i18n::t("无"),
+                        "Basic",
+                        "Bearer",
+                        "API Key",
+                        i18n::t("自定义头"),
+                    ],
                     auth,
                     pal,
                     |v, i| v.url_set_auth(i),
@@ -3904,7 +3910,7 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(label("头名称", pal))
+                        .child(label(i18n::t("头名称"), pal))
                         .child(div().flex_1().child(Input::new(&hname_e).small()))
                         .into_any_element(),
                 );
@@ -3913,7 +3919,7 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(label("头值", pal))
+                        .child(label(i18n::t("头值"), pal))
                         .child(secret(&hvalue_e))
                         .into_any_element(),
                 );
@@ -4132,7 +4138,7 @@ impl AppView {
                                 .py(px(2.0))
                                 .text_size(px(theme::scaled(11.0)))
                                 .text_color(theme::hex(pal.text3))
-                                .child("分析配置(当前标签页)"),
+                                .child(i18n::t("分析配置(当前标签页)")),
                         )
                         .child(list)
                         .child(div().h(px(1.0)).my(px(2.0)).bg(theme::hex(pal.split)))
@@ -4146,7 +4152,7 @@ impl AppView {
                                 .text_size(px(theme::scaled(12.0)))
                                 .text_color(theme::hex(pal.primary))
                                 .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                                .child("在设置中管理…")
+                                .child(i18n::t("在设置中管理…"))
                                 .on_click(cx.listener(|v, _e, window, cx| {
                                     v.config_menu = None;
                                     v.open_settings_tab(None, window, cx);
@@ -4238,7 +4244,7 @@ impl AppView {
                 .pl(px(10.0))
                 .text_size(px(theme::scaled(11.5)))
                 .text_color(theme::hex(pal.text3))
-                .child("也可以把日志文件直接拖入窗口"),
+                .child(i18n::t("也可以把日志文件直接拖入窗口")),
         );
 
         let mut recent_rows: Vec<AnyElement> = Vec::new();
@@ -4324,12 +4330,12 @@ impl AppView {
                         .on_click(cx.listener(|v, _e, _w, cx| v.welcome_cancel_clear(cx))),
                 )
                 .child(
-                    text_btn("welcome-recents-clear", "确认清除", pal.error)
+                    text_btn("welcome-recents-clear", i18n::t("确认清除"), pal.error)
                         .on_click(cx.listener(|v, _e, _w, cx| v.welcome_clear_recents(cx))),
                 )
         } else {
             div().child(
-                text_btn("welcome-recents-clear", "清除", pal.text3)
+                text_btn("welcome-recents-clear", i18n::t("清除"), pal.text3)
                     .on_click(cx.listener(|v, _e, _w, cx| v.welcome_clear_recents(cx))),
             )
         };
@@ -4604,16 +4610,20 @@ impl AppView {
                     .px(px(16.0))
                     .py(px(10.0))
                     .child(
-                        host_btn("set-host-add".into(), "＋ 新增主机", true, pal).on_click(
-                            cx.listener(|v, _e, w, cx| {
+                        host_btn("set-host-add".into(), i18n::t("＋ 新增主机"), true, pal)
+                            .on_click(cx.listener(|v, _e, w, cx| {
                                 v.host_begin_new(w, cx);
                                 cx.notify();
-                            }),
-                        ),
+                            })),
                     )
                     .child(
-                        host_btn("set-host-import".into(), "从最近打开导入", false, pal)
-                            .on_click(cx.listener(|v, _e, _w, cx| v.host_import_recents(cx))),
+                        host_btn(
+                            "set-host-import".into(),
+                            i18n::t("从最近打开导入"),
+                            false,
+                            pal,
+                        )
+                        .on_click(cx.listener(|v, _e, _w, cx| v.host_import_recents(cx))),
                     )
                     .child(
                         host_btn(
@@ -4642,14 +4652,14 @@ impl AppView {
                             .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                             .text_color(theme::hex(pal.text2))
                             .child(if ed == HostEdit::New {
-                                "新增主机"
+                                i18n::t("新增主机")
                             } else {
-                                "编辑主机"
+                                i18n::t("编辑主机")
                             }),
                     )
                     .child(settings_row(
                         pal,
-                        "备注",
+                        i18n::t("备注"),
                         Some("用于区分同一主机的不同用途,可留空".into()),
                         text_input(&hn_e, 220.0),
                     ))
@@ -4686,7 +4696,7 @@ impl AppView {
                                 .flex()
                                 .gap(px(8.0))
                                 .child(
-                                    host_btn("set-host-save".into(), "保存", true, pal)
+                                    host_btn("set-host-save".into(), i18n::t("保存"), true, pal)
                                         .on_click(cx.listener(|v, _e, _w, cx| v.host_save(cx))),
                                 )
                                 .child(
@@ -8224,7 +8234,7 @@ fn validate_ssh_conn(host: &str, user: &str, port_txt: &str) -> Option<String> {
     }
     match port_txt.trim().parse::<u16>() {
         Ok(p) if p > 0 => None,
-        Ok(_) => Some("端口需为 1–65535".to_string()),
+        Ok(_) => Some(i18n::t("端口需为 1–65535").to_string()),
         Err(e) => Some(format!("端口无效: {e}")),
     }
 }
