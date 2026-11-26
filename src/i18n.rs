@@ -543,6 +543,37 @@ const EN: &[(&str, &str)] = &[
     ("↓ {n} 条新行", "↓ {n} new lines"),
     ("双击复制完整路径", "Double-click to copy the full path"),
     ("就绪", "Ready"),
+    ("导入 JSON", "Import JSON"),
+    ("导出 JSON", "Export JSON"),
+    (
+        "自动 = 取正则捕获组 1 的文本映射级别(err→ERROR、info→INFO 等);关闭后用所选固定级别。改动立即重分析全部标签。",
+        "Auto = map capture group 1 text to a level (err→ERROR, info→INFO, ...); when off, use the fixed level. Changes re-analyze all tabs immediately.",
+    ),
+    (
+        "需要含修饰键的组合(如 ⌘/Ctrl + 字母)",
+        "A modifier key is required (e.g. ⌘/Ctrl + a letter)",
+    ),
+    (
+        "请填写远程日志路径(例如 /var/log/app.log)",
+        "Enter the remote log path (e.g. /var/log/app.log)",
+    ),
+    ("预设不存在", "Preset not found"),
+    ("自定义", "Custom"),
+    (
+        "退出后自动重试(断线、设备重连)",
+        "Retry automatically after exit (disconnects, device reconnects)",
+    ),
+    (
+        "请填写日志地址(例如 https://example.com/app.log)",
+        "Enter the log URL (e.g. https://example.com/app.log)",
+    ),
+    (
+        "URL 需以 http:// 或 https:// 开头",
+        "URL must start with http:// or https://",
+    ),
+    ("请填写命令", "Enter a command"),
+    ("条", "items"),
+    ("行", "lines"),
 ];
 
 #[cfg(test)]

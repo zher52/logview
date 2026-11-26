@@ -4909,7 +4909,7 @@ impl AppView {
                     pal,
                     i18n::t("保存条数"),
                     Some(i18n::t("最多保留多少条最近打开记录(1–500)").into()),
-                    num_input(&rl_e, 96.0, "条", pal),
+                    num_input(&rl_e, 96.0, i18n::t("条"), pal),
                 ),
             ),
             (
@@ -5177,7 +5177,7 @@ impl AppView {
                 pal,
                 i18n::t("行数上限"),
                 Some(i18n::t("超出后环形丢弃最旧行(≥1000)").into()),
-                num_input(&max_e, 130.0, "行", pal),
+                num_input(&max_e, 130.0, i18n::t("行"), pal),
             ),
         )];
 
@@ -5231,11 +5231,11 @@ impl AppView {
         let mut cfg_act = div().flex().items_center().gap(px(8.0));
         cfg_act = cfg_act
             .child(
-                host_btn("cfg-import".into(), "导入 JSON", false, pal)
+                host_btn("cfg-import".into(), i18n::t("导入 JSON"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.import_configs(cx))),
             )
             .child(
-                host_btn("cfg-export".into(), "导出 JSON", false, pal)
+                host_btn("cfg-export".into(), i18n::t("导出 JSON"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.export_configs(cx))),
             );
         if let Some(n) = cfg_notice {
@@ -5539,7 +5539,7 @@ impl AppView {
                     div()
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child("自动 = 取正则捕获组 1 的文本映射级别(err→ERROR、info→INFO 等);关闭后用所选固定级别。改动立即重分析全部标签。"),
+                        .child(i18n::t("自动 = 取正则捕获组 1 的文本映射级别(err→ERROR、info→INFO 等);关闭后用所选固定级别。改动立即重分析全部标签。")),
                 );
             } else {
                 detail = detail.child(
@@ -6916,7 +6916,7 @@ impl AppView {
                 Some(spec) => self.assign_shortcut(&action, spec, cx),
                 None => {
                     if let Some(d) = self.settings_panel.as_mut() {
-                        d.sc_notice = Some("需要含修饰键的组合(如 ⌘/Ctrl + 字母)".into());
+                        d.sc_notice = Some(i18n::t("需要含修饰键的组合(如 ⌘/Ctrl + 字母)").into());
                     }
                     cx.notify();
                 }
@@ -8339,7 +8339,7 @@ fn validate_ssh(host: &str, user: &str, path: &str, port_txt: &str) -> Option<St
         return Some(i18n::t("请填写主机与用户名").to_string());
     }
     if path.trim().is_empty() {
-        return Some("请填写远程日志路径(例如 /var/log/app.log)".to_string());
+        return Some(i18n::t("请填写远程日志路径(例如 /var/log/app.log)").to_string());
     }
     validate_ssh_conn(host, user, port_txt)
 }
@@ -8406,7 +8406,7 @@ fn command_params(
     if fields.preset == 0 {
         let text = fields.text.read(cx).value().trim().to_string();
         if text.is_empty() {
-            return Err("请填写命令".into());
+            return Err(i18n::t("请填写命令").into());
         }
         let argv = if local {
             command::split_argv(&text)?
@@ -8414,7 +8414,7 @@ fn command_params(
             vec![text]
         };
         if argv.is_empty() {
-            return Err("请填写命令".into());
+            return Err(i18n::t("请填写命令").into());
         }
         return Ok(SourceParams::Command {
             target,
@@ -8426,7 +8426,7 @@ fn command_params(
         });
     }
     let list = command::presets_for(presets, local);
-    let p = list.get(fields.preset - 1).ok_or("预设不存在")?;
+    let p = list.get(fields.preset - 1).ok_or(i18n::t("预设不存在"))?;
     let mut values = BTreeMap::new();
     for (f, e) in &fields.inputs {
         values.insert(f.key.clone(), e.read(cx).value().to_string());
@@ -8455,7 +8455,7 @@ fn command_rows(
     on_restart: impl Fn(&mut AppView) + 'static,
 ) -> Vec<AnyElement> {
     let list = command::presets_for(presets, local);
-    let mut names: Vec<String> = vec!["自定义".into()];
+    let mut names: Vec<String> = vec![i18n::t("自定义").into()];
     names.extend(list.iter().map(|p| p.name.clone()));
     let sel = fields.preset.min(names.len().saturating_sub(1));
 
@@ -8567,7 +8567,7 @@ fn command_rows(
                 div()
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text2))
-                    .child("退出后自动重试(断线、设备重连)"),
+                    .child(i18n::t("退出后自动重试(断线、设备重连)")),
             )
             .into_any_element(),
     );
@@ -8586,10 +8586,10 @@ fn command_rows(
 fn validate_url_addr(url: &str) -> Option<String> {
     let u = url.trim();
     if u.is_empty() {
-        return Some("请填写日志地址(例如 https://example.com/app.log)".to_string());
+        return Some(i18n::t("请填写日志地址(例如 https://example.com/app.log)").to_string());
     }
     if !(u.starts_with("http://") || u.starts_with("https://")) {
-        return Some("URL 需以 http:// 或 https:// 开头".to_string());
+        return Some(i18n::t("URL 需以 http:// 或 https:// 开头").to_string());
     }
     None
 }
