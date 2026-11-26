@@ -779,7 +779,7 @@ pub fn http_client(v: &Validated) -> Result<reqwest::blocking::Client, String> {
         .connect_timeout(std::time::Duration::from_secs(15))
         .user_agent(concat!("LogView/", env!("CARGO_PKG_VERSION")))
         .build()
-        .map_err(|e| format!("HTTP client 构建失败: {e}"))
+        .map_err(|e| i18n::tf("HTTP client 构建失败: {e}", &[("e", e.to_string())]))
 }
 
 /// 根据源参数构造认证头(只保留用户显式填写的方式)
@@ -812,7 +812,7 @@ fn build_http_auth(p: &SourceParams) -> Result<Option<HttpAuthHeader>, String> {
                 return Ok(None);
             };
             let value = reqwest::header::HeaderValue::from_str(&format!("Bearer {token}"))
-                .map_err(|e| format!("Bearer token 无效: {e}"))?;
+                .map_err(|e| i18n::tf("Bearer token 无效: {e}", &[("e", e.to_string())]))?;
             Ok(Some(HttpAuthHeader::Header {
                 name: reqwest::header::AUTHORIZATION,
                 value,
@@ -834,9 +834,9 @@ fn build_http_auth(p: &SourceParams) -> Result<Option<HttpAuthHeader>, String> {
                 return Err(format!("不允许设置请求头: {name}"));
             }
             let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
-                .map_err(|e| format!("请求头名称无效: {e}"))?;
+                .map_err(|e| i18n::tf("请求头名称无效: {e}", &[("e", e.to_string())]))?;
             let value = reqwest::header::HeaderValue::from_str(value)
-                .map_err(|e| format!("请求头值无效: {e}"))?;
+                .map_err(|e| i18n::tf("请求头值无效: {e}", &[("e", e.to_string())]))?;
             Ok(Some(HttpAuthHeader::Header { name, value }))
         }
     }
@@ -871,7 +871,9 @@ fn http_get(
                 };
             }
         }
-        let resp = req.send().map_err(|e| format!("HTTP 请求失败: {e}"))?;
+        let resp = req
+            .send()
+            .map_err(|e| i18n::tf("HTTP 请求失败: {e}", &[("e", e.to_string())]))?;
         if resp.status().is_redirection() {
             let loc = resp
                 .headers()
@@ -1082,9 +1084,12 @@ fn capture_local(argv: &[String]) -> Result<String, String> {
         let err = String::from_utf8_lossy(&out.stderr);
         let err = err.trim();
         return Err(if err.is_empty() {
-            format!("取值命令失败(code={})", out.status.code().unwrap_or(-1))
+            i18n::tf(
+                "取值命令失败(code={code})",
+                &[("code", out.status.code().unwrap_or(-1).to_string())],
+            )
         } else {
-            format!("取值命令失败:{err}")
+            i18n::tf("取值命令失败:{err}", &[("err", err.to_string())])
         });
     }
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
@@ -1151,9 +1156,9 @@ pub fn open_command(
         };
         let value = out.split_whitespace().next().unwrap_or("").to_string();
         if value.is_empty() {
-            return Err(format!(
-                "取值失败:{} 没有输出(目标是否在运行?参数是否正确?)",
-                r.key
+            return Err(i18n::tf(
+                "取值失败:{key} 没有输出(目标是否在运行?参数是否正确?)",
+                &[("key", r.key.clone())],
             ));
         }
         let token = format!("${{{}}}", r.key);
@@ -1162,7 +1167,10 @@ pub fn open_command(
         }
     }
     if let Some(a) = argv.iter().find(|a| a.contains("${")) {
-        return Err(format!("命令中有未解析的占位符:{a}"));
+        return Err(i18n::tf(
+            "命令中有未解析的占位符:{a}",
+            &[("a", a.to_string())],
+        ));
     }
     match target {
         ExecTarget::Local => spawn_local(argv),

@@ -435,6 +435,18 @@ const EN: &[(&str, &str)] = &[
         "已取消连接:{host}:{port} 的主机密钥未确认",
         "Connection cancelled: the host key for {host}:{port} was not confirmed",
     ),
+    ("HTTP client 构建失败: {e}", "Failed to build the HTTP client: {e}"),
+    ("Bearer token 无效: {e}", "Invalid bearer token: {e}"),
+    ("请求头名称无效: {e}", "Invalid header name: {e}"),
+    ("请求头值无效: {e}", "Invalid header value: {e}"),
+    ("HTTP 请求失败: {e}", "HTTP request failed: {e}"),
+    ("取值命令失败(code={code})", "Value command failed (code={code})"),
+    ("取值命令失败:{err}", "Value command failed: {err}"),
+    (
+        "取值失败:{key} 没有输出(目标是否在运行?参数是否正确?)",
+        "Failed to resolve {key}: no output (is the target running? are the arguments correct?)",
+    ),
+    ("命令中有未解析的占位符:{a}", "Unresolved placeholder in command: {a}"),
 ];
 
 #[cfg(test)]
