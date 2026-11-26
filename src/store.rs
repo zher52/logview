@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 设置持久化:级别配置、颜色、轮询参数、最近打开(与 UI 框架解耦,纯 hex 颜色)
 
 use serde::{Deserialize, Serialize};

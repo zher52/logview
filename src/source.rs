@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 日志源:本地文件 / SSH(SFTP) / HTTP(Range 增量,SSRF 校验)
 
 use serde::{Deserialize, Serialize};

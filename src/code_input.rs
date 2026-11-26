@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 正则代码框:把正则源码切成词法片段,生成带颜色的文本装饰
 //!
 //! 设置页「匹配规则」的正则输入框用多行输入框(Textarea)承载,布局、光标、

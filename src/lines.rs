@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 行存储:字节流 → 行(UTF-8 断字安全)、级别标注、级别计数、行数上限
 
 use crate::level::{Engine, SEP};

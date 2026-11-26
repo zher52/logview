@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 检索:关键字(文本)/正则 × 大小写开关 × 高亮/过滤两种模式
 
 #[derive(Clone, Copy, PartialEq, Eq)]

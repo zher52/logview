@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 凭据存储:优先写入操作系统钥匙串(macOS Keychain / Windows 凭据管理器 / Linux Secret Service),
 //! 后端不可用时由调用方降级为「仅本次会话内存 + 手动输入」。
 //!

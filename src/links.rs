@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 链接识别:URL / POSIX 绝对路径 / Windows 路径 / 相对日志路径;JSON 行探测
 
 use regex::Regex;

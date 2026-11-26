@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 //! LogView 入口:解析 CLI 参数,创建主窗口(融合标题栏),交给 AppView 渲染

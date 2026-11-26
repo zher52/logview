@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! SSRF 防护:仅 http/https;DNS 全地址逐个校验,拒绝 localhost/环回/私有/保留网段;
 //! 返回固定的首个合法 IP 供连接使用,防 DNS rebinding
 

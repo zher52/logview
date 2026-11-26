@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! tail worker:每标签一个线程,轮询增量读取,推送 Append/Replace/Truncated 消息
 
 use crossbeam_channel::{Receiver, Sender};

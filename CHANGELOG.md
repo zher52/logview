@@ -7,7 +7,9 @@
 ### Added
 
 - 开源配套：AGPL-3.0 许可证、第三方素材声明、贡献与安全策略、Issue/PR 模板。
-- GitHub Actions：格式 / lint / 测试，依赖安全审计，依赖更新提醒。
+- GitHub Actions：格式 / lint / 测试，依赖安全审计，依赖许可检查（cargo-deny）与 tag 发布工作流。
+- SSH 连接比对已有主机密钥，不一致时拒绝连接。
+- 补齐 ssrf / search / links 单元测试（当前共 62 项）。
 
 ### Changed
 

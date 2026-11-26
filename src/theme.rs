@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! GPUI 主题令牌:antd v5 风格暗/亮双配色 + 字号/行高系统
 //!
 //! 颜色以 antd v5 设计令牌为准,存 hex 字符串;`palette(light)` 按当前主题取整套。

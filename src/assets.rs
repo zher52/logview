@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 应用资源:内置图标 SVG,其余路径回退到 gpui-kit 自带图标库
 //!
 //! 图标来源:ionicons 5.0.0(512×512 viewBox,单色渲染,颜色由 `svg().text_color()` 决定)。

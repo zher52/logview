@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 日志级别:内置/自定义多套正则配置、别名映射、编译求值引擎
 
 use serde::{Deserialize, Serialize};

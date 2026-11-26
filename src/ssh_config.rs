@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 解析 `~/.ssh/config`,把其中的具体主机导入为「已保存的 SSH 主机」
 //!
 //! 只做导入所需的最小解析:`Host` / `HostName` / `Port` / `User`,支持 `#` 注释、

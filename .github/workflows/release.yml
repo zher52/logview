@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # macOS 是当前主要支持平台:.app 打包 + 文件类型关联
+  macos:
+    name: macOS .app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 打包 .app
+        run: ./scripts/make_app.sh
+      - name: 压缩
+        run: ditto -c -k --keepParent "target/日志查看器.app" logview-macos.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: logview-macos
+          path: logview-macos.zip
+          if-no-files-found: error
+
+  # Windows / Linux 尚未充分验证,失败不阻塞 macOS 产物
+  binary:
+    name: ${{ matrix.name }} (实验性)
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: logview-windows
+            file: logview.exe
+          - os: ubuntu-latest
+            name: logview-linux
+            file: logview
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 安装 Linux 构建依赖
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config \
+            libxkbcommon-dev libwayland-dev libx11-dev libxcb1-dev libxkbcommon-x11-dev \
+            libfontconfig1-dev libfreetype6-dev libvulkan-dev libdbus-1-dev
+      - name: 构建
+        run: cargo build --release --locked
+      - name: 打包
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "${{ matrix.name }}.zip" "target/release/${{ matrix.file }}"
+          else
+            tar -czf "${{ matrix.name }}.tar.gz" -C target/release "${{ matrix.file }}"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}.*
+          if-no-files-found: ignore
+
+  publish:
+    name: 发布 Release
+    needs: [macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: 附加产物
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          fail_on_unmatched_files: false
+          generate_release_notes: true

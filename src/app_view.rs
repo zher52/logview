@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! GPUI 版主视图:标签栏 + 工具栏 + 日志区(虚拟滚动)+ 状态栏
 //!
 //! 视图管线:隐藏级别/过滤检索 → `Tab.view`(可见行索引);检索高亮 → 按行计算区间。

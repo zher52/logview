@@ -40,6 +40,14 @@ jobs:
         continue-on-error: true
         run: cargo clippy --all-targets --locked
 
+  licenses:
+    name: 依赖许可与来源检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@cargo-deny
+      - run: cargo deny check licenses bans sources
+
   # Windows / Linux 尚未在本机验证，先只做构建检查，失败不阻塞
   build-other:
     name: build (${{ matrix.os }}, 实验性)
