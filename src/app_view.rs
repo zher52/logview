@@ -3919,7 +3919,7 @@ impl AppView {
                         .pl(px(96.0))
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child("以 Authorization: Bearer <token> 发送")
+                        .child(i18n::t("以 Authorization: Bearer <token> 发送"))
                         .into_any_element(),
                 );
             }
@@ -3948,9 +3948,9 @@ impl AppView {
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
                         .child(if auth == 3 {
-                            "API Key 以请求头发送,名称默认 X-API-Key,可修改"
+                            i18n::t("API Key 以请求头发送,名称默认 X-API-Key,可修改")
                         } else {
-                            "自定义请求头,例如 X-Api-Key、X-Token 等"
+                            i18n::t("自定义请求头,例如 X-Api-Key、X-Token 等")
                         })
                         .into_any_element(),
                 );
@@ -3961,7 +3961,7 @@ impl AppView {
                         .pl(px(96.0))
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child("不携带认证信息")
+                        .child(i18n::t("不携带认证信息"))
                         .into_any_element(),
                 );
             }
@@ -3971,7 +3971,7 @@ impl AppView {
                 .pl(px(96.0))
                 .text_size(px(theme::scaled(11.0)))
                 .text_color(theme::hex(pal.text3))
-                .child("认证头只发送到初始主机,重定向到其他域名时不携带;密码/token/头值默认不写入最近打开。")
+                .child(i18n::t("认证头只发送到初始主机,重定向到其他域名时不携带;密码/token/头值默认不写入最近打开。"))
                 .into_any_element(),
         );
         rows.push(
@@ -3979,11 +3979,11 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("凭据", pal))
+                .child(label(i18n::t("凭据"), pal))
                 .child(segmented(
                     cx,
                     "url-remember",
-                    &["保存凭据", "仅记录历史"],
+                    &[i18n::t("保存凭据"), i18n::t("仅记录历史")],
                     if remember { 0 } else { 1 },
                     pal,
                     |v, i| v.url_set_remember(i == 0),
@@ -3996,11 +3996,11 @@ impl AppView {
                 .text_size(px(theme::scaled(11.0)))
                 .text_color(theme::hex(pal.text3))
                 .child(if !remember {
-                    "只记录地址与认证方式到最近打开,不保存密码/token;已保存的旧凭据不会自动删除,可在设置→连接里管理"
+                    i18n::t("只记录地址与认证方式到最近打开,不保存密码/token;已保存的旧凭据不会自动删除,可在设置→连接里管理")
                 } else if secrets::available() {
-                    "写入系统钥匙串,下次连接自动回填"
+                    i18n::t("写入系统钥匙串,下次连接自动回填")
                 } else {
-                    "系统钥匙串不可用,凭据仅本次会话有效"
+                    i18n::t("系统钥匙串不可用,凭据仅本次会话有效")
                 })
                 .into_any_element(),
         );

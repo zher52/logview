@@ -296,6 +296,38 @@ const EN: &[(&str, &str)] = &[
         "从头加载全部(大文件可能耗时较久)",
         "Load all from the start (may take a while for large files)",
     ),
+    (
+        "以 Authorization: Bearer <token> 发送",
+        "Sent as Authorization: Bearer <token>",
+    ),
+    (
+        "API Key 以请求头发送,名称默认 X-API-Key,可修改",
+        "API key is sent as a header; default name X-API-Key, editable",
+    ),
+    (
+        "自定义请求头,例如 X-Api-Key、X-Token 等",
+        "Custom header, e.g. X-Api-Key or X-Token",
+    ),
+    ("不携带认证信息", "No authentication information is sent"),
+    (
+        "认证头只发送到初始主机,重定向到其他域名时不携带;密码/token/头值默认不写入最近打开。",
+        "Auth headers are only sent to the original host and dropped on cross-domain redirects; passwords, tokens and header values are not saved to recent entries by default.",
+    ),
+    ("凭据", "Credentials"),
+    ("保存凭据", "Save credentials"),
+    ("仅记录历史", "History only"),
+    (
+        "只记录地址与认证方式到最近打开,不保存密码/token;已保存的旧凭据不会自动删除,可在设置→连接里管理",
+        "Only the address and auth method are saved to recent entries; passwords and tokens are not. Existing saved credentials are not deleted automatically; manage them in Settings → Connections.",
+    ),
+    (
+        "写入系统钥匙串,下次连接自动回填",
+        "Stored in the system keychain and filled in automatically next time",
+    ),
+    (
+        "系统钥匙串不可用,凭据仅本次会话有效",
+        "System keychain unavailable; credentials are valid for this session only",
+    ),
 ];
 
 #[cfg(test)]
