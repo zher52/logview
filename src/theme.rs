@@ -38,7 +38,11 @@ fn rgba_to_hsla(r: f32, g: f32, b: f32, a: f32) -> Hsla {
         return gpui_kit::hsla(0.0, 0.0, l, a);
     }
     let d = max - min;
-    let s = if l > 0.5 { d / (2.0 - max - min) } else { d / (max + min) };
+    let s = if l > 0.5 {
+        d / (2.0 - max - min)
+    } else {
+        d / (max + min)
+    };
     let h = if max == r {
         (g - b) / d + if g < b { 6.0 } else { 0.0 }
     } else if max == g {

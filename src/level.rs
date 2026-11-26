@@ -159,7 +159,11 @@ impl Engine {
                     .size_limit(16 * (1 << 20))
                     .build()
                 {
-                    rules.push(CompiledRule { re, auto: r.auto, level: r.level });
+                    rules.push(CompiledRule {
+                        re,
+                        auto: r.auto,
+                        level: r.level,
+                    });
                 }
             }
         }
@@ -180,7 +184,9 @@ impl Engine {
         for r in &self.rules {
             if let Some(caps) = r.re.captures(line) {
                 return if r.auto {
-                    caps.get(1).and_then(|m| alias_level(m.as_str())).unwrap_or(NONE)
+                    caps.get(1)
+                        .and_then(|m| alias_level(m.as_str()))
+                        .unwrap_or(NONE)
                 } else {
                     r.level
                 };

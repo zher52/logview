@@ -135,13 +135,25 @@ impl Settings {
     /// 指定主题的级别颜色(hex,7 个,顺序 TRACE…FATAL/无级别)
     pub fn level_colors_hex(&self, light: bool) -> Vec<String> {
         let defaults: Vec<String> = if light {
-            ["#8c8c8c", "#595959", "#52c41a", "#d48806", "#cf1322", "#cf1322", "#262626"]
-                .iter().map(|s| s.to_string()).collect()
+            [
+                "#8c8c8c", "#595959", "#52c41a", "#d48806", "#cf1322", "#cf1322", "#262626",
+            ]
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
         } else {
-            ["#75757e", "#8c8c8c", "#95de64", "#ffc53d", "#ff7875", "#ff7875", "#d9d9d9"]
-                .iter().map(|s| s.to_string()).collect()
+            [
+                "#75757e", "#8c8c8c", "#95de64", "#ffc53d", "#ff7875", "#ff7875", "#d9d9d9",
+            ]
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
         };
-        let src = if light { &self.colors_light } else { &self.colors };
+        let src = if light {
+            &self.colors_light
+        } else {
+            &self.colors
+        };
         let mut out = defaults;
         for (i, item) in out.iter_mut().enumerate() {
             if let Some(s) = src.get(i) {
@@ -200,10 +212,16 @@ impl Default for Settings {
             wrap: true,
             colors: [
                 "#75757e", "#8c8c8c", "#95de64", "#ffc53d", "#ff7875", "#ff7875", "#d9d9d9",
-            ].iter().map(|s| s.to_string()).collect(),
+            ]
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
             colors_light: [
                 "#8c8c8c", "#595959", "#52c41a", "#d48806", "#cf1322", "#cf1322", "#262626",
-            ].iter().map(|s| s.to_string()).collect(),
+            ]
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
             // 与级别色(灰/绿/玻珀/红)拉开色相:藕蓝底 + 白字加粗,暗色下对比充分
             highlight_dark: "#3b5bdb".to_string(),
             highlight_light: "#9db4ff".to_string(),
@@ -265,7 +283,13 @@ fn migrate_secrets(s: &mut Settings) {
             continue;
         }
         // 私钥正文无法安全放入钥匙串(Windows 单条 2560 字节上限),保留原样提示用户改用文件
-        if matches!(&r.params, SourceParams::Ssh { auth: SshAuth::KeyText { .. }, .. }) {
+        if matches!(
+            &r.params,
+            SourceParams::Ssh {
+                auth: SshAuth::KeyText { .. },
+                ..
+            }
+        ) {
             s.cred_notice =
                 Some("存在以私钥正文保存的连接,无法迁移到钥匙串;建议改用私钥文件".to_string());
             continue;
@@ -366,7 +390,8 @@ mod tests {
     fn shortcuts_default_override_and_reset() {
         let mut s = Settings::default();
         assert_eq!(s.shortcut("new_tab"), "secondary+t");
-        s.shortcuts.insert("new_tab".into(), "secondary+alt+t".into());
+        s.shortcuts
+            .insert("new_tab".into(), "secondary+alt+t".into());
         assert_eq!(s.shortcut("new_tab"), "secondary+alt+t");
         s.shortcuts.remove("new_tab");
         assert_eq!(s.shortcut("new_tab"), "secondary+t");

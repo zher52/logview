@@ -15,18 +15,37 @@ pub enum Cmd {
 
 pub enum Msg {
     /// `at`:该批数据的本地接收时间(Unix 毫秒);历史加载为 None(输出时间不可知)
-    Append { data: Vec<u8>, offset: u64, size: u64, at: Option<i64> },
-    Replace { data: Vec<u8>, offset: u64, size: u64 },
-    Partial { loaded: u64, total: u64 },
+    Append {
+        data: Vec<u8>,
+        offset: u64,
+        size: u64,
+        at: Option<i64>,
+    },
+    Replace {
+        data: Vec<u8>,
+        offset: u64,
+        size: u64,
+    },
+    Partial {
+        loaded: u64,
+        total: u64,
+    },
     Complete,
-    Truncated { size: u64 },
-    NoFollow { size: u64 },
-    Error { msg: String, fatal: bool },
+    Truncated {
+        size: u64,
+    },
+    NoFollow {
+        size: u64,
+    },
+    Error {
+        msg: String,
+        fatal: bool,
+    },
 }
 
-const CHUNK: usize = 1 << 20;      // 单次读取 1MB
-const TICK_BUDGET: u64 = 8 << 20;  // 每个轮询周期最多读 8MB
-const TAIL_ALIGN: u64 = 64 << 10;  // 跳到末尾时行对齐窗口
+const CHUNK: usize = 1 << 20; // 单次读取 1MB
+const TICK_BUDGET: u64 = 8 << 20; // 每个轮询周期最多读 8MB
+const TAIL_ALIGN: u64 = 64 << 10; // 跳到末尾时行对齐窗口
 
 /// 当前本地时间(Unix 毫秒),用于给跟随读到的行打接收时间戳
 fn now_ms() -> i64 {
@@ -39,7 +58,11 @@ fn now_ms() -> i64 {
 /// 诊断日志开关(LOGVIEW_DEBUG=1)
 pub fn debug_on() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var("LOGVIEW_DEBUG").map(|v| v == "1").unwrap_or(false))
+    *ON.get_or_init(|| {
+        std::env::var("LOGVIEW_DEBUG")
+            .map(|v| v == "1")
+            .unwrap_or(false)
+    })
 }
 
 pub fn spawn(
@@ -67,14 +90,20 @@ fn worker(
     let mut o = match source::open(&params) {
         Ok(o) => o,
         Err(e) => {
-            let _ = tx.send(Msg::Error { msg: e, fatal: true });
+            let _ = tx.send(Msg::Error {
+                msg: e,
+                fatal: true,
+            });
             return;
         }
     };
     let mut supports_range = match source::meta(&mut o) {
         Ok(m) => m.supports_range,
         Err(e) => {
-            let _ = tx.send(Msg::Error { msg: e, fatal: true });
+            let _ = tx.send(Msg::Error {
+                msg: e,
+                fatal: true,
+            });
             return;
         }
     };
@@ -105,9 +134,15 @@ fn worker(
         match source::meta(&mut o) {
             Err(e) => {
                 err_streak += 1;
-                let _ = tx.send(Msg::Error { msg: format!("{e}"), fatal: false });
+                let _ = tx.send(Msg::Error {
+                    msg: format!("{e}"),
+                    fatal: false,
+                });
                 if err_streak >= 5 {
-                    let _ = tx.send(Msg::Error { msg: format!("{e}"), fatal: true });
+                    let _ = tx.send(Msg::Error {
+                        msg: format!("{e}"),
+                        fatal: true,
+                    });
                     return;
                 }
                 std::thread::sleep(Duration::from_secs(2));
@@ -128,13 +163,24 @@ fn worker(
                     size = tot;
                     offset += d.len() as u64;
                     // 启动时的头部预读属于历史内容,时间不可知
-                    if tx.send(Msg::Append { data: d, offset, size, at: None }).is_err() {
+                    if tx
+                        .send(Msg::Append {
+                            data: d,
+                            offset,
+                            size,
+                            at: None,
+                        })
+                        .is_err()
+                    {
                         stopped = true;
                         break;
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Msg::Error { msg: e, fatal: false });
+                    let _ = tx.send(Msg::Error {
+                        msg: e,
+                        fatal: false,
+                    });
                     break;
                 }
             }
@@ -143,7 +189,10 @@ fn worker(
             return;
         }
         if offset < size {
-            let _ = tx.send(Msg::Partial { loaded: offset, total: size });
+            let _ = tx.send(Msg::Partial {
+                loaded: offset,
+                total: size,
+            });
         }
         break;
     }
@@ -162,7 +211,11 @@ fn worker(
             Ok(Cmd::Pause(p)) => paused = p,
             Ok(Cmd::SeekStart) => {
                 offset = 0;
-                let _ = tx.send(Msg::Replace { data: Vec::new(), offset: 0, size });
+                let _ = tx.send(Msg::Replace {
+                    data: Vec::new(),
+                    offset: 0,
+                    size,
+                });
                 while offset < size {
                     if let Ok((d, tot)) = source::read_at(&mut o, offset, CHUNK) {
                         if d.is_empty() {
@@ -170,7 +223,15 @@ fn worker(
                         }
                         size = tot;
                         offset += d.len() as u64;
-                        if tx.send(Msg::Append { data: d, offset, size, at: None }).is_err() {
+                        if tx
+                            .send(Msg::Append {
+                                data: d,
+                                offset,
+                                size,
+                                at: None,
+                            })
+                            .is_err()
+                        {
                             return;
                         }
                     } else {
@@ -211,7 +272,10 @@ fn worker(
                     }
                 }
                 if debug_on() {
-                    eprintln!("[dbg] worker 发出 Replace(offset={offset}, size={size}, bytes={})", data.len());
+                    eprintln!(
+                        "[dbg] worker 发出 Replace(offset={offset}, size={size}, bytes={})",
+                        data.len()
+                    );
                 }
                 if tx.send(Msg::Replace { data, offset, size }).is_err() {
                     return;
@@ -235,9 +299,15 @@ fn worker(
         match source::meta(&mut o) {
             Err(e) => {
                 err_streak += 1;
-                let _ = tx.send(Msg::Error { msg: format!("{e}(重试 {err_streak}/5)"), fatal: false });
+                let _ = tx.send(Msg::Error {
+                    msg: format!("{e}(重试 {err_streak}/5)"),
+                    fatal: false,
+                });
                 if err_streak >= 5 {
-                    let _ = tx.send(Msg::Error { msg: e, fatal: true });
+                    let _ = tx.send(Msg::Error {
+                        msg: e,
+                        fatal: true,
+                    });
                     return;
                 }
             }
@@ -263,12 +333,23 @@ fn worker(
                             budget = budget.saturating_sub(d.len() as u64);
                             // 跟随读取:这就是该批日志"输出"(写入文件)后我们观测到的时刻
                             let at = Some(now_ms());
-                            if tx.send(Msg::Append { data: d, offset, size, at }).is_err() {
+                            if tx
+                                .send(Msg::Append {
+                                    data: d,
+                                    offset,
+                                    size,
+                                    at,
+                                })
+                                .is_err()
+                            {
                                 return;
                             }
                         }
                         Err(e) => {
-                            let _ = tx.send(Msg::Error { msg: e, fatal: false });
+                            let _ = tx.send(Msg::Error {
+                                msg: e,
+                                fatal: false,
+                            });
                             break;
                         }
                     }

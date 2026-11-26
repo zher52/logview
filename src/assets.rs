@@ -10,18 +10,42 @@ use gpui_kit::{AssetSource, Result, SharedString};
 
 /// 内置图标表:`(资源路径, 文件内容)`
 const ICONS: &[(&str, &[u8])] = &[
-    ("icons/settings.svg", include_bytes!("../assets/icons/settings.svg")),
+    (
+        "icons/settings.svg",
+        include_bytes!("../assets/icons/settings.svg"),
+    ),
     // 跟随中 / 已暂停
-    ("icons/tail-on.svg", include_bytes!("../assets/icons/tail-on.svg")),
-    ("icons/tail-off.svg", include_bytes!("../assets/icons/tail-off.svg")),
-    ("icons/jump-end.svg", include_bytes!("../assets/icons/jump-end.svg")),
-    ("icons/clear.svg", include_bytes!("../assets/icons/clear.svg")),
-    ("icons/load-all.svg", include_bytes!("../assets/icons/load-all.svg")),
+    (
+        "icons/tail-on.svg",
+        include_bytes!("../assets/icons/tail-on.svg"),
+    ),
+    (
+        "icons/tail-off.svg",
+        include_bytes!("../assets/icons/tail-off.svg"),
+    ),
+    (
+        "icons/jump-end.svg",
+        include_bytes!("../assets/icons/jump-end.svg"),
+    ),
+    (
+        "icons/clear.svg",
+        include_bytes!("../assets/icons/clear.svg"),
+    ),
+    (
+        "icons/load-all.svg",
+        include_bytes!("../assets/icons/load-all.svg"),
+    ),
     ("icons/wrap.svg", include_bytes!("../assets/icons/wrap.svg")),
-    ("icons/configs.svg", include_bytes!("../assets/icons/configs.svg")),
+    (
+        "icons/configs.svg",
+        include_bytes!("../assets/icons/configs.svg"),
+    ),
     ("icons/edit.svg", include_bytes!("../assets/icons/edit.svg")),
     ("icons/save.svg", include_bytes!("../assets/icons/save.svg")),
-    ("icons/chevron-down.svg", include_bytes!("../assets/icons/chevron-down.svg")),
+    (
+        "icons/chevron-down.svg",
+        include_bytes!("../assets/icons/chevron-down.svg"),
+    ),
 ];
 
 pub struct AppAssets;

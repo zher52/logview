@@ -74,8 +74,18 @@ pub fn tokenize(src: &str) -> Vec<(Range<usize>, RxTok)> {
                     }
                     if matches!(
                         e,
-                        b'd' | b'D' | b'w' | b'W' | b's' | b'S' | b'b' | b'B' | b'A' | b'z'
-                            | b'Z' | b'p' | b'P'
+                        b'd' | b'D'
+                            | b'w'
+                            | b'W'
+                            | b's'
+                            | b'S'
+                            | b'b'
+                            | b'B'
+                            | b'A'
+                            | b'z'
+                            | b'Z'
+                            | b'p'
+                            | b'P'
                     ) {
                         RxTok::Escape
                     } else {

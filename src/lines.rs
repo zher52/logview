@@ -97,7 +97,11 @@ impl LineStore {
 
     /// 插入分隔行(轮换提示),level = SEP,不参与计数
     pub fn insert_separator(&mut self, text: &str) {
-        self.lines.push(Line { text: text.to_owned(), level: SEP, at: None });
+        self.lines.push(Line {
+            text: text.to_owned(),
+            level: SEP,
+            at: None,
+        });
         self.enforce_cap();
     }
 

@@ -1,7 +1,7 @@
 //! 链接识别:URL / POSIX 绝对路径 / Windows 路径 / 相对日志路径;JSON 行探测
 
-use std::sync::OnceLock;
 use regex::Regex;
+use std::sync::OnceLock;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LinkKind {
@@ -30,7 +30,9 @@ fn re_win() -> &'static Regex {
 }
 fn re_rel() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| Regex::new(r"(?:\./|\.\./|(?:[\w.-]+/)+)[\w.-]+\.(?:log|txt|out|err)\b").unwrap())
+    R.get_or_init(|| {
+        Regex::new(r"(?:\./|\.\./|(?:[\w.-]+/)+)[\w.-]+\.(?:log|txt|out|err)\b").unwrap()
+    })
 }
 
 /// 修剪 URL 尾部标点(含不成对的右括号)
@@ -41,7 +43,10 @@ fn trim_url_end(t: &str, s: usize, mut e: usize) -> usize {
             break;
         }
         let c = b[e - 1];
-        if matches!(c, b'.' | b',' | b';' | b':' | b'!' | b'?' | b'"' | b'\'' | b'>' | b']' | b'}') {
+        if matches!(
+            c,
+            b'.' | b',' | b';' | b':' | b'!' | b'?' | b'"' | b'\'' | b'>' | b']' | b'}'
+        ) {
             e -= 1;
         } else if c == b')' {
             let opens = b[s..e].iter().filter(|&&x| x == b'(').count();
@@ -83,7 +88,11 @@ pub fn detect(text: &str) -> Vec<Link> {
         if e <= s || s < last_end {
             continue;
         }
-        out.push(Link { start: s, end: e, kind: k });
+        out.push(Link {
+            start: s,
+            end: e,
+            kind: k,
+        });
         last_end = e;
     }
     out

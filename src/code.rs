@@ -5,10 +5,10 @@
 
 use std::ops::Range;
 
-use gpui_kit::base::text::CodeBlock;
 use gpui_kit::base::input::{
     EditorState, FoldRange, HighlightStyleResolver, InputEdit, InputHighlighter,
 };
+use gpui_kit::base::text::CodeBlock;
 use gpui_kit::{Context, HighlightStyle, Hsla, SharedString, Window};
 use ropey::Rope;
 
@@ -107,24 +107,123 @@ fn keywords(lang: Lang) -> &'static [&'static str] {
             "and", "or", "not", "in", "is", "async", "await", "yield", "global", "nonlocal",
         ],
         Lang::Js | Lang::Ts => &[
-            "function", "const", "let", "var", "return", "if", "else", "for", "while", "do",
-            "switch", "case", "break", "continue", "class", "extends", "new", "this", "import",
-            "export", "from", "default", "async", "await", "try", "catch", "finally", "throw",
-            "typeof", "instanceof", "interface", "type", "enum", "implements", "public", "private",
-            "readonly", "null", "undefined", "true", "false",
+            "function",
+            "const",
+            "let",
+            "var",
+            "return",
+            "if",
+            "else",
+            "for",
+            "while",
+            "do",
+            "switch",
+            "case",
+            "break",
+            "continue",
+            "class",
+            "extends",
+            "new",
+            "this",
+            "import",
+            "export",
+            "from",
+            "default",
+            "async",
+            "await",
+            "try",
+            "catch",
+            "finally",
+            "throw",
+            "typeof",
+            "instanceof",
+            "interface",
+            "type",
+            "enum",
+            "implements",
+            "public",
+            "private",
+            "readonly",
+            "null",
+            "undefined",
+            "true",
+            "false",
         ],
         Lang::Go => &[
-            "func", "package", "import", "return", "if", "else", "for", "range", "switch", "case",
-            "default", "break", "continue", "type", "struct", "interface", "map", "chan", "go",
-            "defer", "select", "var", "const", "nil", "true", "false",
+            "func",
+            "package",
+            "import",
+            "return",
+            "if",
+            "else",
+            "for",
+            "range",
+            "switch",
+            "case",
+            "default",
+            "break",
+            "continue",
+            "type",
+            "struct",
+            "interface",
+            "map",
+            "chan",
+            "go",
+            "defer",
+            "select",
+            "var",
+            "const",
+            "nil",
+            "true",
+            "false",
         ],
         Lang::C | Lang::Cpp | Lang::Java => &[
-            "int", "char", "float", "double", "void", "long", "short", "unsigned", "signed",
-            "struct", "union", "enum", "typedef", "const", "static", "extern", "return", "if",
-            "else", "for", "while", "do", "switch", "case", "break", "continue", "class", "public",
-            "private", "protected", "virtual", "override", "new", "delete", "namespace", "using",
-            "template", "typename", "static_cast", "nullptr", "true", "false", "import", "package",
-            "final", "throws",
+            "int",
+            "char",
+            "float",
+            "double",
+            "void",
+            "long",
+            "short",
+            "unsigned",
+            "signed",
+            "struct",
+            "union",
+            "enum",
+            "typedef",
+            "const",
+            "static",
+            "extern",
+            "return",
+            "if",
+            "else",
+            "for",
+            "while",
+            "do",
+            "switch",
+            "case",
+            "break",
+            "continue",
+            "class",
+            "public",
+            "private",
+            "protected",
+            "virtual",
+            "override",
+            "new",
+            "delete",
+            "namespace",
+            "using",
+            "template",
+            "typename",
+            "static_cast",
+            "nullptr",
+            "true",
+            "false",
+            "import",
+            "package",
+            "final",
+            "throws",
         ],
         Lang::Sh => &[
             "if", "then", "else", "elif", "fi", "for", "in", "do", "done", "while", "until",
@@ -205,7 +304,9 @@ pub fn line_spans(lang: Lang, line: &str) -> Vec<(usize, usize, Class)> {
                 break;
             }
         }
-        if c == b'"' || c == b'\'' || (matches!(lang, Lang::Js | Lang::Ts | Lang::Markdown) && c == b'`')
+        if c == b'"'
+            || c == b'\''
+            || (matches!(lang, Lang::Js | Lang::Ts | Lang::Markdown) && c == b'`')
         {
             let end = scan_string(bytes, i);
             let is_key = matches!(lang, Lang::Json | Lang::Toml | Lang::Yaml)
@@ -234,7 +335,9 @@ pub fn line_spans(lang: Lang, line: &str) -> Vec<(usize, usize, Class)> {
             let word = &line[i..j];
             if kw.contains(&word) {
                 out.push((i, j, Class::Keyword));
-            } else if matches!(lang, Lang::Toml | Lang::Yaml) && matches!(next_non_space(bytes, j), Some(b':') | Some(b'=')) && bytes.get(j) != Some(&b' ')
+            } else if matches!(lang, Lang::Toml | Lang::Yaml)
+                && matches!(next_non_space(bytes, j), Some(b':') | Some(b'='))
+                && bytes.get(j) != Some(&b' ')
             {
                 // TOML/YAML 的键名(如 `name: x` / `name = x`)
                 out.push((i, j, Class::Key));
@@ -253,7 +356,6 @@ pub fn line_spans(lang: Lang, line: &str) -> Vec<(usize, usize, Class)> {
     }
     out
 }
-
 
 /// 围栏代码块上的语言标签 → 内置语言(不认识的返回 None,按纯文本处理)
 pub fn lang_for_tag(tag: &str) -> Option<Lang> {
@@ -377,7 +479,6 @@ pub fn stub_missing_images(md: &str, base_dir: &std::path::Path) -> String {
     out
 }
 
-
 /// 代码块着色使用的全局配色:主题切换时由渲染路径刷新
 static HL_PALETTE: std::sync::OnceLock<std::sync::RwLock<CodePalette>> = std::sync::OnceLock::new();
 
@@ -419,7 +520,6 @@ pub fn install_code_block_highlighter(cx: &mut gpui_kit::App) {
 pub fn no_level_engine() -> crate::level::Engine {
     crate::level::Engine::compile_selected(&[], &[])
 }
-
 
 /// 编辑器着色配色(取自当前主题;主题切换时重建编辑器即可换色)
 #[derive(Clone, Copy)]
@@ -697,7 +797,9 @@ mod tests {
         // 任意区间不 panic 且落在字符边界
         for start in 0..hl.len() {
             let seg = hl.styles_in(start..hl.len());
-            assert!(hl.text().is_char_boundary(seg.first().map(|(r, _)| r.start).unwrap_or(hl.len())));
+            assert!(hl
+                .text()
+                .is_char_boundary(seg.first().map(|(r, _)| r.start).unwrap_or(hl.len())));
         }
     }
 
@@ -722,7 +824,10 @@ mod tests {
         let dir = std::env::temp_dir();
         let md = "![图](./no-such-file-xyz.png)\n![](https://example.com/a.png)\n```\n![x](./no-such.png)\n```\n";
         let out = stub_missing_images(md, &dir);
-        assert!(out.contains("⚠ 图片缺失:./no-such-file-xyz.png(图)"), "{out}");
+        assert!(
+            out.contains("⚠ 图片缺失:./no-such-file-xyz.png(图)"),
+            "{out}"
+        );
         assert!(out.contains("https://example.com/a.png"), "{out}");
         assert_eq!(out.matches('⚠').count(), 1, "围栏内不应改写:{out}");
     }

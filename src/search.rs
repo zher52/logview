@@ -17,7 +17,13 @@ pub struct SearchState {
 
 impl Default for SearchState {
     fn default() -> Self {
-        Self { query: String::new(), mode: Mode::Highlight, regex: false, case_sensitive: false, rev: 0 }
+        Self {
+            query: String::new(),
+            mode: Mode::Highlight,
+            regex: false,
+            case_sensitive: false,
+            rev: 0,
+        }
     }
 }
 
@@ -73,8 +79,15 @@ pub fn compile(s: &SearchState) -> Result<Option<Matcher>, String> {
             .map_err(|e| e.to_string())?;
         Ok(Some(Matcher::Re { re }))
     } else {
-        let needle = if s.case_sensitive { s.query.clone() } else { s.query.to_lowercase() };
-        Ok(Some(Matcher::Text { needle, cs: s.case_sensitive }))
+        let needle = if s.case_sensitive {
+            s.query.clone()
+        } else {
+            s.query.to_lowercase()
+        };
+        Ok(Some(Matcher::Text {
+            needle,
+            cs: s.case_sensitive,
+        }))
     }
 }
 

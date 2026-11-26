@@ -23,8 +23,8 @@ pub fn load() -> Result<Vec<SavedHost>, String> {
     let Some(path) = config_path() else {
         return Err("无法定位用户主目录,未导入".to_string());
     };
-    let text = std::fs::read_to_string(&path)
-        .map_err(|e| format!("读取 {} 失败: {e}", path.display()))?;
+    let text =
+        std::fs::read_to_string(&path).map_err(|e| format!("读取 {} 失败: {e}", path.display()))?;
     Ok(parse(&text))
 }
 
@@ -135,9 +135,9 @@ pub fn parse(text: &str) -> Vec<SavedHost> {
     // 按 主机(不区分大小写)+端口+用户名 去重,保留先出现的一条
     let mut uniq: Vec<SavedHost> = Vec::with_capacity(out.len());
     for h in out {
-        let dup = uniq.iter().any(|u| {
-            u.host.eq_ignore_ascii_case(&h.host) && u.port == h.port && u.user == h.user
-        });
+        let dup = uniq
+            .iter()
+            .any(|u| u.host.eq_ignore_ascii_case(&h.host) && u.port == h.port && u.user == h.user);
         if !dup {
             uniq.push(h);
         }
@@ -206,7 +206,12 @@ Host real
     User u
 ";
         let list = parse(text);
-        assert_eq!(list.len(), 1, "{:?}", list.iter().map(|h| &h.name).collect::<Vec<_>>());
+        assert_eq!(
+            list.len(),
+            1,
+            "{:?}",
+            list.iter().map(|h| &h.name).collect::<Vec<_>>()
+        );
         assert_eq!(list[0].name, "real");
         assert_eq!(list[0].port, 22, "通配块的 Port 不应影响后续主机");
         assert_eq!(list[0].user, "u");

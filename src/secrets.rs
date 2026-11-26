@@ -31,7 +31,11 @@ pub struct Secret {
 }
 
 fn non_empty(v: &str) -> Option<String> {
-    if v.is_empty() { None } else { Some(v.to_string()) }
+    if v.is_empty() {
+        None
+    } else {
+        Some(v.to_string())
+    }
 }
 
 fn non_empty_opt(v: &Option<String>) -> Option<String> {
@@ -55,7 +59,12 @@ impl Secret {
                 }
                 SshAuth::Agent => Secret::default(),
             },
-            SourceParams::Http { password, token, header_value, .. } => Secret {
+            SourceParams::Http {
+                password,
+                token,
+                header_value,
+                ..
+            } => Secret {
                 password: non_empty_opt(password),
                 token: non_empty_opt(token),
                 header_value: non_empty_opt(header_value),
@@ -101,7 +110,12 @@ impl Secret {
                 }
                 SshAuth::Agent => false,
             },
-            SourceParams::Http { password, token, header_value, .. } => {
+            SourceParams::Http {
+                password,
+                token,
+                header_value,
+                ..
+            } => {
                 let a = fill_opt(password, &self.password);
                 let b = fill_opt(token, &self.token);
                 let c = fill_opt(header_value, &self.header_value);
@@ -123,7 +137,9 @@ pub fn http_key(url: &str) -> String {
 /// 源参数对应的钥匙串账号;本地文件没有凭据,返回 None
 pub fn key_of(p: &SourceParams) -> Option<String> {
     match p {
-        SourceParams::Ssh { host, port, user, .. } => Some(ssh_key(user, host, *port)),
+        SourceParams::Ssh {
+            host, port, user, ..
+        } => Some(ssh_key(user, host, *port)),
         SourceParams::Http { url, .. } => Some(http_key(url)),
         SourceParams::Local { .. } => None,
     }
@@ -165,10 +181,7 @@ pub fn available() -> bool {
     static AVAILABLE: OnceLock<bool> = OnceLock::new();
     *AVAILABLE.get_or_init(|| match entry("__probe__") {
         // 正常应答(无论条目是否存在)说明后端工作正常
-        Ok(e) => matches!(
-            e.get_password(),
-            Ok(_) | Err(keyring::Error::NoEntry)
-        ),
+        Ok(e) => matches!(e.get_password(), Ok(_) | Err(keyring::Error::NoEntry)),
         Err(_) => false,
     })
 }

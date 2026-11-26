@@ -8,34 +8,32 @@ use std::time::{Duration, Instant};
 
 use std::cell::RefCell;
 
-use gpui_kit::{
-    div, px, point, AppContext as _, Bounds, ClickEvent, Context, CursorStyle, Div, ElementId,
-    Entity, ExternalPaths, FocusHandle, Focusable as _, HighlightStyle, Hsla,
-    InteractiveElement as _, IntoElement, KeyDownEvent, Keystroke, MouseButton, MouseDownEvent,
-    ParentElement as _, Pixels, Render,
-    ScrollStrategy, SharedString,
-    Size, Stateful, StatefulInteractiveElement as _, Styled as _, TextAlign, TextRun,
-    UnderlineStyle, Window, svg, ImageSource, SharedUri,
-};
+use gpui_kit::base::input::{Editor, EditorState, InputHighlighter, InputHighlighterFactory};
+use gpui_kit::base::ElementExt as _;
+use gpui_kit::base::SelectableText;
 use gpui_kit::component::color_picker::{ColorPicker, ColorPickerEvent, ColorPickerState};
-use gpui_kit::component::Colorize;
 use gpui_kit::component::input::{
     Input, InputContentType, InputEvent, InputState, Textarea, TextareaState,
 };
-use gpui_kit::component::text::TextView;
 use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenuItem};
 use gpui_kit::component::scroll::Scrollbar;
+use gpui_kit::component::text::TextView;
+use gpui_kit::component::Colorize;
 use gpui_kit::component::{
-    ActiveTheme as _, Sizable as _, TitleBar, VirtualListScrollHandle, v_virtual_list,
+    v_virtual_list, ActiveTheme as _, Sizable as _, TitleBar, VirtualListScrollHandle,
 };
-use gpui_kit::base::SelectableText;
-use gpui_kit::base::input::{Editor, EditorState, InputHighlighter, InputHighlighterFactory};
-use gpui_kit::base::ElementExt as _;
+use gpui_kit::{
+    div, point, px, svg, AppContext as _, Bounds, ClickEvent, Context, CursorStyle, Div, ElementId,
+    Entity, ExternalPaths, FocusHandle, Focusable as _, HighlightStyle, Hsla, ImageSource,
+    InteractiveElement as _, IntoElement, KeyDownEvent, Keystroke, MouseButton, MouseDownEvent,
+    ParentElement as _, Pixels, Render, ScrollStrategy, SharedString, SharedUri, Size, Stateful,
+    StatefulInteractiveElement as _, Styled as _, TextAlign, TextRun, UnderlineStyle, Window,
+};
 use gpui_kit::{AnyElement, ClipboardItem, PathPromptOptions};
 
-use crate::level::{level_names, Engine, LevelConfig, SEP, LEVEL_COUNT};
-use crate::links::{self, LinkKind};
+use crate::level::{level_names, Engine, LevelConfig, LEVEL_COUNT, SEP};
 use crate::lines::LineStore;
+use crate::links::{self, LinkKind};
 use crate::search::{self, Matcher, SearchState};
 use crate::secrets::{self, Secret};
 use crate::source::{SourceParams, SshAuth};
@@ -486,7 +484,6 @@ impl UrlForm {
     }
 }
 
-
 /// 设置面板状态:改动直接写入 `AppView.settings` 并立即生效(VS Code 式,无保存按钮)
 struct SettingsDialog {
     /// 当前分类:0 外观与显示 1 日志与性能 2 分析配置 3 连接
@@ -888,13 +885,19 @@ fn link_at_cursor(
             .ok()?;
         let line = lines.first()?;
         let local_y = pointer.y - bounds.top();
-        line.index_for_position(point(local_x, local_y), line_height).ok()?
+        line.index_for_position(point(local_x, local_y), line_height)
+            .ok()?
     } else {
-        let layout = window.text_system().layout_line(text, font_size, &[run], None);
+        let layout = window
+            .text_system()
+            .layout_line(text, font_size, &[run], None);
         layout.index_for_x(local_x)?
     };
 
-    links.iter().find(|l| index >= l.start && index < l.end).cloned()
+    links
+        .iter()
+        .find(|l| index >= l.start && index < l.end)
+        .cloned()
 }
 
 /// 主视图:持有全部标签与全局 UI 状态
@@ -954,9 +957,8 @@ impl AppView {
         paths: Vec<std::path::PathBuf>,
         settings: Settings,
     ) -> Self {
-        let search_input = cx.new(|cx| {
-            InputState::new(window, cx).placeholder("检索:高亮 / 过滤(支持正则)")
-        });
+        let search_input =
+            cx.new(|cx| InputState::new(window, cx).placeholder("检索:高亮 / 过滤(支持正则)"));
 
         // 字号来自设置:必须在首帧渲染前写入主题运行时值
         theme::set_font_sizes(settings.ui_font_size, settings.log_font_size);
@@ -1037,13 +1039,14 @@ impl AppView {
         }
 
         // 检索输入 → 当前标签查询(增量重编译 + 全量重建匹配集);Enter = 下一处
-        cx.subscribe(&search_input, |view, _input, ev: &InputEvent, cx| {
-            match ev {
+        cx.subscribe(
+            &search_input,
+            |view, _input, ev: &InputEvent, cx| match ev {
                 InputEvent::Change => view.apply_search(cx),
                 InputEvent::PressEnter { .. } => view.jump_match(true, cx),
                 _ => {}
-            }
-        })
+            },
+        )
         .detach();
 
         // 轮询 worker 消息:gpui 不会因 channel 有消息而出帧,定时唤起 update
@@ -1155,7 +1158,13 @@ impl AppView {
             }
             LinkKind::Path => {
                 let params = match self.tabs.get(self.active).and_then(|t| t.params.clone()) {
-                    Some(SourceParams::Ssh { host, port, user, auth, path }) => {
+                    Some(SourceParams::Ssh {
+                        host,
+                        port,
+                        user,
+                        auth,
+                        path,
+                    }) => {
                         // 相对路径按当前远端日志所在目录解析
                         let is_abs = text.starts_with('/')
                             || (text.len() >= 2 && text.as_bytes()[1] == b':');
@@ -1168,7 +1177,13 @@ impl AppView {
                                 .unwrap_or_default();
                             format!("{dir}/{text}")
                         };
-                        SourceParams::Ssh { host, port, user, auth, path: p }
+                        SourceParams::Ssh {
+                            host,
+                            port,
+                            user,
+                            auth,
+                            path: p,
+                        }
                     }
                     _ => SourceParams::Local { path: text },
                 };
@@ -1249,7 +1264,14 @@ impl AppView {
         let label = stored.label();
         let recents = &mut self.settings.recents;
         recents.retain(|r| r.label != label);
-        recents.insert(0, Recent { label, params: stored, remembered });
+        recents.insert(
+            0,
+            Recent {
+                label,
+                params: stored,
+                remembered,
+            },
+        );
         recents.truncate(self.settings.recents_limit.max(1));
         store::save(&self.settings);
     }
@@ -1261,7 +1283,8 @@ impl AppView {
         self.active = i;
         self.rows_cache.invalidate(); // 强制重建行尺寸
         let q = self.tabs[i].query.clone();
-        self.search_input.update(cx, |s, cx| s.set_value(q, window, cx));
+        self.search_input
+            .update(cx, |s, cx| s.set_value(q, window, cx));
     }
 
     fn close_tab(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
@@ -1289,13 +1312,20 @@ impl AppView {
         if self.active >= self.tabs.len() {
             self.active = self.tabs.len().saturating_sub(1);
         }
-        let q = self.tabs.get(self.active).map(|t| t.query.clone()).unwrap_or_default();
-        self.search_input.update(cx, |s, cx| s.set_value(q, window, cx));
+        let q = self
+            .tabs
+            .get(self.active)
+            .map(|t| t.query.clone())
+            .unwrap_or_default();
+        self.search_input
+            .update(cx, |s, cx| s.set_value(q, window, cx));
     }
 
     /// 关闭其他标签页(保留第 keep 个)
     fn close_other_tabs(&mut self, keep: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(keep_id) = self.tabs.get(keep).map(|t| t.id) else { return };
+        let Some(keep_id) = self.tabs.get(keep).map(|t| t.id) else {
+            return;
+        };
         let mut i = self.tabs.len();
         while i > 0 {
             i -= 1;
@@ -1349,11 +1379,8 @@ impl AppView {
                 if let Some(path) = path {
                     this.update(cx, |v, _cx| {
                         // 标签页可能已被关闭:按 id 找回,找不到就新开一个
-                        let target = id.and_then(|id| {
-                            v.tabs
-                                .iter()
-                                .position(|t| t.id == id && t.welcome)
-                        });
+                        let target =
+                            id.and_then(|id| v.tabs.iter().position(|t| t.id == id && t.welcome));
                         let params = SourceParams::Local { path };
                         if let Some(ti) = target {
                             v.open_in_tab(ti, params, false);
@@ -1375,11 +1402,7 @@ impl AppView {
     }
 
     /// 构建设置面板:输入框直接绑定 live 设置,改动即时(或防抖)生效
-    fn make_settings_dialog(
-        &self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> SettingsDialog {
+    fn make_settings_dialog(&self, window: &mut Window, cx: &mut Context<Self>) -> SettingsDialog {
         let mk = |v: String, window: &mut Window, cx: &mut Context<Self>| {
             let e = cx.new(|cx| InputState::new(window, cx));
             e.update(cx, |s, cx| s.set_value(v, window, cx));
@@ -1507,7 +1530,8 @@ impl AppView {
             self.active = pos;
             self.rows_cache.invalidate();
             let q = self.tabs[pos].query.clone();
-            self.search_input.update(cx, |s, cx| s.set_value(q, window, cx));
+            self.search_input
+                .update(cx, |s, cx| s.set_value(q, window, cx));
             return;
         }
         self.settings_panel = Some(self.make_settings_dialog(window, cx));
@@ -1536,11 +1560,17 @@ impl AppView {
     /// 把规则输入框内容写回设置(切换配置/增删规则/文本改动时调用)
     /// 把规则输入框内容写回设置（切换配置/增删规则/文本改动时调用）；返回是否有实际改动
     fn sync_rule_inputs(&mut self, cx: &mut Context<Self>) -> bool {
-        let Some(d) = self.settings_panel.as_ref() else { return false };
-        let Some(cfg) = self.settings.configs.get_mut(d.sel_config) else { return false };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return false;
+        };
+        let Some(cfg) = self.settings.configs.get_mut(d.sel_config) else {
+            return false;
+        };
         let mut changed = false;
         for (i, (re, fl)) in d.rule_inputs.iter().enumerate() {
-            let Some(rule) = cfg.rules.get_mut(i) else { break };
+            let Some(rule) = cfg.rules.get_mut(i) else {
+                break;
+            };
             let regex = re.read(cx).value().to_string();
             let flags = fl.read(cx).value().to_string();
             if rule.regex != regex || rule.flags != flags {
@@ -1553,7 +1583,9 @@ impl AppView {
     }
 
     fn rebuild_rule_inputs(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(d) = self.settings_panel.as_mut() else { return };
+        let Some(d) = self.settings_panel.as_mut() else {
+            return;
+        };
         let rules = self
             .settings
             .configs
@@ -1580,10 +1612,8 @@ impl AppView {
             .clamp(theme::FONT_SIZE_MIN, theme::FONT_SIZE_MAX);
         self.settings_rev += 1;
         // 字号变化影响所有行高(含换行测量),必须清空各标签的行高缓存
-        let size_changed = theme::set_font_sizes(
-            self.settings.ui_font_size,
-            self.settings.log_font_size,
-        );
+        let size_changed =
+            theme::set_font_sizes(self.settings.ui_font_size, self.settings.log_font_size);
         if size_changed {
             for tab in &mut self.tabs {
                 tab.heights.clear();
@@ -1666,7 +1696,9 @@ impl AppView {
             return;
         }
         let vals = {
-            let Some(d) = self.settings_panel.as_ref() else { return };
+            let Some(d) = self.settings_panel.as_ref() else {
+                return;
+            };
             let read = |e: &Entity<InputState>| e.read(cx).value().trim().to_string();
             (
                 read(&d.poll_ms),
@@ -1747,8 +1779,14 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(d) = self.settings_panel.as_ref() else { return };
-        let inputs = if light_theme { &d.color_light } else { &d.color_dark };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return;
+        };
+        let inputs = if light_theme {
+            &d.color_light
+        } else {
+            &d.color_dark
+        };
         let vals: Vec<String> = inputs
             .iter()
             .map(|e| e.read(cx).value().to_string())
@@ -1769,7 +1807,11 @@ impl AppView {
             }
         }
         // 输入框 → 色块
-        let picks = if light_theme { &d.pick_light } else { &d.pick_dark };
+        let picks = if light_theme {
+            &d.pick_light
+        } else {
+            &d.pick_dark
+        };
         for (i, v) in vals.iter().enumerate() {
             if is_hex_color(v) {
                 if let Some(p) = picks.get(i) {
@@ -1783,18 +1825,22 @@ impl AppView {
 
     /// 检索高亮底色:合法 hex 立即写入,并同步色块
     fn commit_highlight_colors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(d) = self.settings_panel.as_ref() else { return };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return;
+        };
         let hd = d.hl_dark.read(cx).value().to_string();
         let hl = d.hl_light.read(cx).value().to_string();
         if is_hex_color(&hd) {
             self.settings.highlight_dark = hd.clone();
             let c = theme::hex(&hd);
-            d.pick_hl_dark.update(cx, |s, cx| s.set_value(c, window, cx));
+            d.pick_hl_dark
+                .update(cx, |s, cx| s.set_value(c, window, cx));
         }
         if is_hex_color(&hl) {
             self.settings.highlight_light = hl.clone();
             let c = theme::hex(&hl);
-            d.pick_hl_light.update(cx, |s, cx| s.set_value(c, window, cx));
+            d.pick_hl_light
+                .update(cx, |s, cx| s.set_value(c, window, cx));
         }
         self.settings_apply(false, cx);
     }
@@ -1807,11 +1853,15 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        cx.subscribe_in(p, window, move |v, _p, ev: &ColorPickerEvent, window, cx| {
-            if let ColorPickerEvent::Change(Some(color)) = ev {
-                v.apply_picked_color(target, color_hex6(*color), window, cx);
-            }
-        })
+        cx.subscribe_in(
+            p,
+            window,
+            move |v, _p, ev: &ColorPickerEvent, window, cx| {
+                if let ColorPickerEvent::Change(Some(color)) = ev {
+                    v.apply_picked_color(target, color_hex6(*color), window, cx);
+                }
+            },
+        )
         .detach();
     }
 
@@ -1823,7 +1873,9 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(d) = self.settings_panel.as_ref() else { return };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return;
+        };
         let put = |v: &mut Vec<String>, i: usize, hex: &str| {
             while v.len() <= i {
                 v.push(String::new());
@@ -1881,12 +1933,7 @@ impl AppView {
         .detach();
     }
 
-    fn watch_highlight(
-        &self,
-        e: &Entity<InputState>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn watch_highlight(&self, e: &Entity<InputState>, window: &mut Window, cx: &mut Context<Self>) {
         cx.subscribe_in(e, window, |v, _e, ev: &InputEvent, window, cx| {
             if matches!(ev, InputEvent::Change | InputEvent::Blur) {
                 v.commit_highlight_colors(window, cx);
@@ -1908,7 +1955,9 @@ impl AppView {
     /// 把选中配置的规则装进输入框：条数相同则原地换内容（不重建实体、不触发失焦提交），
     /// 条数变了才重建。反复切换配置页签因此只剩一次赋值 + 着色重算。
     fn load_rule_inputs(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(sel) = self.settings_panel.as_ref().map(|d| d.sel_config) else { return };
+        let Some(sel) = self.settings_panel.as_ref().map(|d| d.sel_config) else {
+            return;
+        };
         let rules = self
             .settings
             .configs
@@ -2026,8 +2075,13 @@ impl AppView {
     /// 把某个内置配置恢复为出厂规则(规则被改坏时的一键修复)
     fn reset_builtin_config(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_rule_inputs(cx);
-        let Some(id) = self.settings.configs.get(i).map(|c| c.id.clone()) else { return };
-        let Some(def) = crate::level::builtin_configs().into_iter().find(|c| c.id == id) else {
+        let Some(id) = self.settings.configs.get(i).map(|c| c.id.clone()) else {
+            return;
+        };
+        let Some(def) = crate::level::builtin_configs()
+            .into_iter()
+            .find(|c| c.id == id)
+        else {
             return;
         };
         if let Some(c) = self.settings.configs.get_mut(i) {
@@ -2060,7 +2114,9 @@ impl AppView {
 
     fn add_rule(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_rule_inputs(cx);
-        let Some(d) = self.settings_panel.as_ref() else { return };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return;
+        };
         let idx = d.sel_config;
         if let Some(c) = self.settings.configs.get_mut(idx) {
             c.rules.push(crate::level::Rule {
@@ -2076,7 +2132,9 @@ impl AppView {
 
     fn del_rule(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_rule_inputs(cx);
-        let Some(d) = self.settings_panel.as_ref() else { return };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return;
+        };
         let idx = d.sel_config;
         if let Some(c) = self.settings.configs.get_mut(idx) {
             if c.rules.len() > 1 {
@@ -2089,7 +2147,9 @@ impl AppView {
 
     fn toggle_rule_auto(&mut self, i: usize, cx: &mut Context<Self>) {
         self.sync_rule_inputs(cx);
-        let Some(d) = self.settings_panel.as_ref() else { return };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return;
+        };
         let idx = d.sel_config;
         if let Some(r) = self
             .settings
@@ -2104,7 +2164,9 @@ impl AppView {
 
     fn cycle_rule_level(&mut self, i: usize, cx: &mut Context<Self>) {
         self.sync_rule_inputs(cx);
-        let Some(d) = self.settings_panel.as_ref() else { return };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return;
+        };
         let idx = d.sel_config;
         if let Some(r) = self
             .settings
@@ -2119,10 +2181,18 @@ impl AppView {
     }
 
     /// 最近打开:先尝试钥匙串回填;凭据缺失则弹表单预填,避免直接认证失败
-    fn welcome_open_recent(&mut self, ti: usize, idx: usize, window: &mut Window, cx: &mut Context<Self>) {
+    fn welcome_open_recent(
+        &mut self,
+        ti: usize,
+        idx: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         // 打开记录属于其他操作,顺手退出清除确认态
         self.recents_confirm = false;
-        let Some(r) = self.settings.recents.get(idx).cloned() else { return };
+        let Some(r) = self.settings.recents.get(idx).cloned() else {
+            return;
+        };
         let mut params = r.params;
         if let Some(msg) = self.fill_from_keyring(&mut params) {
             self.prompt_credentials(params, msg, window, cx);
@@ -2144,17 +2214,30 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         match params {
-            SourceParams::Ssh { host, port, user, path, .. } => {
+            SourceParams::Ssh {
+                host,
+                port,
+                user,
+                path,
+                ..
+            } => {
                 let mut form = SshForm::new(window, cx);
                 form.host.update(cx, |s, cx| s.set_value(host, window, cx));
-                form.port.update(cx, |s, cx| s.set_value(port.to_string(), window, cx));
+                form.port
+                    .update(cx, |s, cx| s.set_value(port.to_string(), window, cx));
                 form.user.update(cx, |s, cx| s.set_value(user, window, cx));
                 form.path.update(cx, |s, cx| s.set_value(path, window, cx));
                 form.remember = secrets::available();
                 form.err = Some(msg);
                 self.dialog = Dialog::Ssh(form);
             }
-            SourceParams::Http { url, auth, user, header_name, .. } => {
+            SourceParams::Http {
+                url,
+                auth,
+                user,
+                header_name,
+                ..
+            } => {
                 let mut form = UrlForm::new(window, cx);
                 form.url.update(cx, |s, cx| s.set_value(url, window, cx));
                 form.auth = match auth {
@@ -2168,7 +2251,8 @@ impl AppView {
                     form.user.update(cx, |s, cx| s.set_value(u, window, cx));
                 }
                 if let Some(n) = header_name {
-                    form.header_name.update(cx, |s, cx| s.set_value(n, window, cx));
+                    form.header_name
+                        .update(cx, |s, cx| s.set_value(n, window, cx));
                 }
                 form.remember = secrets::available();
                 form.err = Some(msg);
@@ -2203,20 +2287,37 @@ impl AppView {
     ) {
         let err = format!("{msg};请重新输入后重试");
         match params {
-            SourceParams::Ssh { host, port, user, path, .. } => {
+            SourceParams::Ssh {
+                host,
+                port,
+                user,
+                path,
+                ..
+            } => {
                 let mut f = SshForm::new(window, cx);
                 f.retry = Some(tab_id);
-                f.host.update(cx, |s, cx| s.set_value(host.clone(), window, cx));
-                f.port.update(cx, |s, cx| s.set_value(port.to_string(), window, cx));
-                f.user.update(cx, |s, cx| s.set_value(user.clone(), window, cx));
-                f.path.update(cx, |s, cx| s.set_value(path.clone(), window, cx));
+                f.host
+                    .update(cx, |s, cx| s.set_value(host.clone(), window, cx));
+                f.port
+                    .update(cx, |s, cx| s.set_value(port.to_string(), window, cx));
+                f.user
+                    .update(cx, |s, cx| s.set_value(user.clone(), window, cx));
+                f.path
+                    .update(cx, |s, cx| s.set_value(path.clone(), window, cx));
                 f.err = Some(err);
                 self.dialog = Dialog::Ssh(f);
             }
-            SourceParams::Http { url, auth, user, header_name, .. } => {
+            SourceParams::Http {
+                url,
+                auth,
+                user,
+                header_name,
+                ..
+            } => {
                 let mut f = UrlForm::new(window, cx);
                 f.retry = Some(tab_id);
-                f.url.update(cx, |s, cx| s.set_value(url.clone(), window, cx));
+                f.url
+                    .update(cx, |s, cx| s.set_value(url.clone(), window, cx));
                 f.auth = match auth {
                     crate::source::HttpAuthKind::None => 0,
                     crate::source::HttpAuthKind::Basic => 1,
@@ -2225,7 +2326,8 @@ impl AppView {
                     crate::source::HttpAuthKind::Header => 4,
                 };
                 if let Some(u) = user.as_deref().filter(|u| !u.is_empty()) {
-                    f.user.update(cx, |s, cx| s.set_value(u.to_string(), window, cx));
+                    f.user
+                        .update(cx, |s, cx| s.set_value(u.to_string(), window, cx));
                 }
                 if let Some(h) = header_name.as_deref().filter(|h| !h.is_empty()) {
                     f.header_name
@@ -2272,8 +2374,14 @@ impl AppView {
             out.push((label, h.host.clone(), h.port, h.user.clone()));
         }
         for r in &self.settings.recents {
-            if let SourceParams::Ssh { host, port, user, .. } = &r.params {
-                if out.iter().any(|(_, h, p, u)| h == host && p == port && u == user) {
+            if let SourceParams::Ssh {
+                host, port, user, ..
+            } = &r.params
+            {
+                if out
+                    .iter()
+                    .any(|(_, h, p, u)| h == host && p == port && u == user)
+                {
                     continue;
                 }
                 out.push((
@@ -2297,22 +2405,28 @@ impl AppView {
             d.host_edit = Some(HostEdit::New);
             d.host_err = None;
             d.host_notice = None;
-            d.h_name.update(cx, |s, cx| s.set_value(String::new(), window, cx));
-            d.h_host.update(cx, |s, cx| s.set_value(String::new(), window, cx));
+            d.h_name
+                .update(cx, |s, cx| s.set_value(String::new(), window, cx));
+            d.h_host
+                .update(cx, |s, cx| s.set_value(String::new(), window, cx));
             d.h_port.update(cx, |s, cx| s.set_value("22", window, cx));
-            d.h_user.update(cx, |s, cx| s.set_value(String::new(), window, cx));
+            d.h_user
+                .update(cx, |s, cx| s.set_value(String::new(), window, cx));
         }
     }
 
     fn host_begin_edit(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(h) = self.settings.ssh_hosts.get(i).cloned() else { return };
+        let Some(h) = self.settings.ssh_hosts.get(i).cloned() else {
+            return;
+        };
         if let Some(d) = self.settings_panel.as_mut() {
             d.host_edit = Some(HostEdit::Existing(i));
             d.host_err = None;
             d.host_notice = None;
             d.h_name.update(cx, |s, cx| s.set_value(h.name, window, cx));
             d.h_host.update(cx, |s, cx| s.set_value(h.host, window, cx));
-            d.h_port.update(cx, |s, cx| s.set_value(h.port.to_string(), window, cx));
+            d.h_port
+                .update(cx, |s, cx| s.set_value(h.port.to_string(), window, cx));
             d.h_user.update(cx, |s, cx| s.set_value(h.user, window, cx));
         }
     }
@@ -2327,7 +2441,9 @@ impl AppView {
 
     /// 保存当前编辑项:新增则追加,编辑则覆盖原位置;只保存连接目标,不含凭据
     fn host_save(&mut self, cx: &mut Context<Self>) {
-        let Some(d) = self.settings_panel.as_ref() else { return };
+        let Some(d) = self.settings_panel.as_ref() else {
+            return;
+        };
         let name = d.h_name.read(cx).value().trim().to_string();
         let host = d.h_host.read(cx).value().trim().to_string();
         let user = d.h_user.read(cx).value().trim().to_string();
@@ -2376,9 +2492,9 @@ impl AppView {
         let gone = self.settings.ssh_hosts.remove(i);
         // 同时清理最近打开里的同一主机,否则下拉列表会因「最近打开」再次出现该服务器
         self.settings.recents.retain(|r| match &r.params {
-            SourceParams::Ssh { host, port, user, .. } => {
-                !(host == &gone.host && *port == gone.port && user == &gone.user)
-            }
+            SourceParams::Ssh {
+                host, port, user, ..
+            } => !(host == &gone.host && *port == gone.port && user == &gone.user),
             _ => true,
         });
         crate::store::save(&self.settings);
@@ -2413,7 +2529,9 @@ impl AppView {
                     crate::store::save(&self.settings);
                 }
                 match (added, dup) {
-                    (0, 0) => "~/.ssh/config 里没有可导入的具体主机;通配与 Match 块已跳过".to_string(),
+                    (0, 0) => {
+                        "~/.ssh/config 里没有可导入的具体主机;通配与 Match 块已跳过".to_string()
+                    }
                     (0, n) => format!("~/.ssh/config 中的主机均已存在,跳过 {n} 个重复项"),
                     (n, 0) => format!("已从 ~/.ssh/config 导入 {n} 个主机"),
                     (n, d) => format!("已从 ~/.ssh/config 导入 {n} 个主机,跳过 {d} 个重复项"),
@@ -2432,10 +2550,16 @@ impl AppView {
     fn host_import_recents(&mut self, cx: &mut Context<Self>) {
         let mut added = 0usize;
         for r in self.settings.recents.clone() {
-            if let SourceParams::Ssh { host, port, user, .. } = &r.params {
-                if self.settings.ssh_hosts.iter().any(|h| {
-                    &h.host == host && h.port == *port && &h.user == user
-                }) {
+            if let SourceParams::Ssh {
+                host, port, user, ..
+            } = &r.params
+            {
+                if self
+                    .settings
+                    .ssh_hosts
+                    .iter()
+                    .any(|h| &h.host == host && h.port == *port && &h.user == user)
+                {
                     continue;
                 }
                 self.settings.ssh_hosts.push(crate::store::SavedHost {
@@ -2471,7 +2595,9 @@ impl AppView {
             return;
         };
         // 钥匙串中已有该服务器的密码时直接回填
-        let saved = secrets::load(&secrets::ssh_key(&user, &host, port)).ok().flatten();
+        let saved = secrets::load(&secrets::ssh_key(&user, &host, port))
+            .ok()
+            .flatten();
         if let Dialog::Ssh(f) = &mut self.dialog {
             if let Some(sec) = saved {
                 if let Some(pw) = sec.password {
@@ -2480,7 +2606,8 @@ impl AppView {
                 }
             }
             f.host.update(cx, |s, cx| s.set_value(host, window, cx));
-            f.port.update(cx, |s, cx| s.set_value(port.to_string(), window, cx));
+            f.port
+                .update(cx, |s, cx| s.set_value(port.to_string(), window, cx));
             f.user.update(cx, |s, cx| s.set_value(user, window, cx));
             // 远程路径不自动回填:焦点落到路径框,由用户自行填写(联想列表随主机框失焦收起)
             f.path.update(cx, |s, cx| s.focus(window, cx));
@@ -2490,7 +2617,9 @@ impl AppView {
 
     /// 提交 SSH 表单:在当前空白页打开,否则新开标签页
     fn ssh_submit(&mut self, cx: &mut Context<Self>) {
-        let Some(Dialog::Ssh(f)) = Some(&self.dialog) else { return };
+        let Some(Dialog::Ssh(f)) = Some(&self.dialog) else {
+            return;
+        };
         let get = |e: &Entity<InputState>| e.read(cx).value().to_string();
         let host = get(&f.host);
         let port_txt = get(&f.port);
@@ -2573,7 +2702,9 @@ impl AppView {
 
     /// 提交 URL 表单:网址 + 认证(无 / Basic / Bearer / API Key / 自定义头)
     fn url_submit(&mut self, cx: &mut Context<Self>) {
-        let Some(Dialog::Url(f)) = Some(&self.dialog) else { return };
+        let Some(Dialog::Url(f)) = Some(&self.dialog) else {
+            return;
+        };
         let get = |e: &Entity<InputState>| e.read(cx).value().to_string();
         let url = get(&f.url);
         let auth = f.auth;
@@ -2616,7 +2747,7 @@ impl AppView {
                     }
                 }
                 _ => None,
-            }
+            },
         };
         if let Some(e) = err {
             if let Dialog::Url(f) = &mut self.dialog {
@@ -2662,7 +2793,14 @@ impl AppView {
                 Some(header_name),
                 Some(header_value),
             ),
-            _ => (crate::source::HttpAuthKind::None, None, None, None, None, None),
+            _ => (
+                crate::source::HttpAuthKind::None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
         };
         let params = SourceParams::Http {
             url: u.to_string(),
@@ -2776,7 +2914,9 @@ impl AppView {
             prompt: None,
         });
         cx.spawn(async move |this, cx| {
-            let Ok(Ok(Some(paths))) = rx.await else { return };
+            let Ok(Ok(Some(paths))) = rx.await else {
+                return;
+            };
             let Some(p) = paths.first() else { return };
             let (cfg, msg) = match std::fs::read_to_string(p) {
                 Ok(txt) => match serde_json::from_str::<Vec<LevelConfig>>(&txt) {
@@ -2904,9 +3044,9 @@ impl AppView {
                             .text_ellipsis()
                             .child(name),
                     )
-                    .on_click(cx.listener(move |v, _e, window, cx| {
-                        v.ssh_pick_server(orig, window, cx)
-                    }))
+                    .on_click(
+                        cx.listener(move |v, _e, window, cx| v.ssh_pick_server(orig, window, cx)),
+                    )
                     .into_any_element(),
             );
         }
@@ -2971,9 +3111,12 @@ impl AppView {
                 .gap(px(8.0))
                 .child(label("密码", pal))
                 .child(
-                    div()
-                        .flex_1()
-                        .child(Input::new(&pass_e).small().content_type(InputContentType::Password).mask_toggle()),
+                    div().flex_1().child(
+                        Input::new(&pass_e)
+                            .small()
+                            .content_type(InputContentType::Password)
+                            .mask_toggle(),
+                    ),
                 )
                 .into_any_element(),
         );
@@ -3039,7 +3182,11 @@ impl AppView {
             );
         }
 
-        let header = dlg_header("SSH 连接", pal, cx.listener(|v, _e, _w, _cx| v.close_dialog()));
+        let header = dlg_header(
+            "SSH 连接",
+            pal,
+            cx.listener(|v, _e, _w, _cx| v.close_dialog()),
+        );
         let body = div()
             .flex()
             .flex_col()
@@ -3264,7 +3411,11 @@ impl AppView {
             );
         }
 
-        let header = dlg_header("打开 URL", pal, cx.listener(|v, _e, _w, _cx| v.close_dialog()));
+        let header = dlg_header(
+            "打开 URL",
+            pal,
+            cx.listener(|v, _e, _w, _cx| v.close_dialog()),
+        );
         let body = div()
             .flex()
             .flex_col()
@@ -3405,12 +3556,7 @@ impl AppView {
                                 .child("分析配置(当前标签页)"),
                         )
                         .child(list)
-                        .child(
-                            div()
-                                .h(px(1.0))
-                                .my(px(2.0))
-                                .bg(theme::hex(pal.split)),
-                        )
+                        .child(div().h(px(1.0)).my(px(2.0)).bg(theme::hex(pal.split)))
                         .child(
                             div()
                                 .id("cfg-manage")
@@ -3450,8 +3596,7 @@ impl AppView {
             id: &'static str,
             label: &str,
             pal: &'static Palette,
-            on_click: impl Fn(&mut AppView, &ClickEvent, &mut Window, &mut Context<AppView>)
-                + 'static,
+            on_click: impl Fn(&mut AppView, &ClickEvent, &mut Window, &mut Context<AppView>) + 'static,
             cx: &Context<AppView>,
         ) -> AnyElement {
             div()
@@ -3473,18 +3618,34 @@ impl AppView {
             .flex_col()
             .items_start()
             .gap(px(2.0))
-            .child(link("welcome-open", "打开", pal, move |v, _e, _w, cx| {
-                v.welcome_browse(ti, cx)
-            }, cx))
-            .child(link("welcome-ssh", "SSH", pal, move |v, _e, window, cx| {
-                v.open_ssh_dialog(window, cx)
-            }, cx))
-            .child(link("welcome-url", "URL", pal, move |v, _e, window, cx| {
-                v.open_url_dialog(window, cx)
-            }, cx))
-            .child(link("welcome-settings", "设置", pal, move |v, _e, window, cx| {
-                v.open_settings_tab(Some(ti), window, cx)
-            }, cx));
+            .child(link(
+                "welcome-open",
+                "打开",
+                pal,
+                move |v, _e, _w, cx| v.welcome_browse(ti, cx),
+                cx,
+            ))
+            .child(link(
+                "welcome-ssh",
+                "SSH",
+                pal,
+                move |v, _e, window, cx| v.open_ssh_dialog(window, cx),
+                cx,
+            ))
+            .child(link(
+                "welcome-url",
+                "URL",
+                pal,
+                move |v, _e, window, cx| v.open_url_dialog(window, cx),
+                cx,
+            ))
+            .child(link(
+                "welcome-settings",
+                "设置",
+                pal,
+                move |v, _e, window, cx| v.open_settings_tab(Some(ti), window, cx),
+                cx,
+            ));
         let links = links.child(
             div()
                 .mt(px(6.0))
@@ -3551,12 +3712,7 @@ impl AppView {
             );
         }
         let has_recents = !recent_rows.is_empty();
-        let link_block = div()
-            .w_full()
-            .flex()
-            .flex_col()
-            .gap(px(4.0))
-            .child(links);
+        let link_block = div().w_full().flex().flex_col().gap(px(4.0)).child(links);
 
         // 小号文字按钮:确认态下同时给出「取消」与「确认清除」,可随时退出确认
         let text_btn = |id: &'static str, label: &'static str, color: &'static str| {
@@ -3874,8 +4030,13 @@ impl AppView {
                             .on_click(cx.listener(|v, _e, _w, cx| v.host_import_recents(cx))),
                     )
                     .child(
-                        host_btn("set-host-import-ssh".into(), "从 ~/.ssh/config 导入", false, pal)
-                            .on_click(cx.listener(|v, _e, _w, cx| v.host_import_ssh_config(cx))),
+                        host_btn(
+                            "set-host-import-ssh".into(),
+                            "从 ~/.ssh/config 导入",
+                            false,
+                            pal,
+                        )
+                        .on_click(cx.listener(|v, _e, _w, cx| v.host_import_ssh_config(cx))),
                     )
                     .into_any_element(),
             ),
@@ -3929,7 +4090,9 @@ impl AppView {
                                 )
                                 .child(
                                     host_btn("set-host-cancel".into(), "取消", false, pal)
-                                        .on_click(cx.listener(|v, _e, _w, cx| v.host_edit_cancel(cx))),
+                                        .on_click(
+                                            cx.listener(|v, _e, _w, cx| v.host_edit_cancel(cx)),
+                                        ),
                                 ),
                         )
                         .into_any_element(),
@@ -3962,10 +4125,19 @@ impl AppView {
                 if !r.remembered {
                     continue;
                 }
-                let SourceParams::Http { url, auth, user, header_name, .. } = &r.params else {
+                let SourceParams::Http {
+                    url,
+                    auth,
+                    user,
+                    header_name,
+                    ..
+                } = &r.params
+                else {
                     continue;
                 };
-                let Some(key) = secrets::key_of(&r.params) else { continue };
+                let Some(key) = secrets::key_of(&r.params) else {
+                    continue;
+                };
                 if out.iter().any(|(k, ..)| k == &key) {
                     continue;
                 }
@@ -3976,7 +4148,12 @@ impl AppView {
                     }
                     _ => String::new(),
                 };
-                out.push((key, url.clone(), http_auth_label(*auth).to_string(), principal));
+                out.push((
+                    key,
+                    url.clone(),
+                    http_auth_label(*auth).to_string(),
+                    principal,
+                ));
             }
             out
         };
@@ -4037,9 +4214,11 @@ impl AppView {
                             false,
                             pal,
                         )
-                        .on_click(cx.listener(move |v, _e, _w, cx| {
-                            v.url_cred_delete(del_key.clone(), cx)
-                        })),
+                        .on_click(
+                            cx.listener(move |v, _e, _w, cx| {
+                                v.url_cred_delete(del_key.clone(), cx)
+                            }),
+                        ),
                     )
                     .into_any_element(),
             );
@@ -4108,7 +4287,10 @@ impl AppView {
             settings_row(
                 pal,
                 "显示时间戳",
-                Some("在日志行左侧显示该行的本地时间(本次查看期间新到达的行;已存在的历史行留空)".into()),
+                Some(
+                    "在日志行左侧显示该行的本地时间(本次查看期间新到达的行;已存在的历史行留空)"
+                        .into(),
+                ),
                 switch_el("set-ts", show_ts, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_show_timestamps(cx)))
                     .into_any_element(),
@@ -4237,17 +4419,13 @@ impl AppView {
             } else {
                 (&pick_hl_dark, &hl_dark_e)
             };
-            let mut row = div()
-                .flex()
-                .items_center()
-                .gap(px(col_gap))
-                .child(
-                    div()
-                        .w(px(theme_w))
-                        .text_size(px(theme::scaled(12.0)))
-                        .text_color(theme::hex(pal.text1))
-                        .child(if light_row { "亮色" } else { "暗色" }),
-                );
+            let mut row = div().flex().items_center().gap(px(col_gap)).child(
+                div()
+                    .w(px(theme_w))
+                    .text_size(px(theme::scaled(12.0)))
+                    .text_color(theme::hex(pal.text1))
+                    .child(if light_row { "亮色" } else { "暗色" }),
+            );
             for i in 0..LEVEL_COUNT {
                 row = row.child(color_cell(&picks[i], &inputs[i], cell_w));
             }
@@ -4268,12 +4446,7 @@ impl AppView {
                         .py(px(10.0))
                         .child(head1)
                         .child(head2)
-                        .child(
-                            div()
-                                .h(px(1.0))
-                                .my(px(2.0))
-                                .bg(theme::hex(pal.split)),
-                        )
+                        .child(div().h(px(1.0)).my(px(2.0)).bg(theme::hex(pal.split)))
                         .child(body),
                 )
                 .child(
@@ -4344,9 +4517,7 @@ impl AppView {
                 .text_color(theme::hex(pal.text1))
                 .hover(|s| s.bg(theme::hex(pal.fill_hover)))
                 .child("编辑")
-                .on_click(cx.listener(move |v, _e, window, cx| {
-                    v.open_config_page(i, window, cx)
-                }))
+                .on_click(cx.listener(move |v, _e, window, cx| v.open_config_page(i, window, cx)))
                 .into_any_element();
             let meta = format!(
                 "{} · {} 条规则{}",
@@ -4450,9 +4621,7 @@ impl AppView {
                                     )),
                             ),
                     )
-                    .on_click(
-                        cx.listener(move |v, _e, window, cx| v.select_config(i, window, cx)),
-                    );
+                    .on_click(cx.listener(move |v, _e, window, cx| v.select_config(i, window, cx)));
                 list = list.child(item);
             }
             let add = dlg_btn("cfg-add", "＋ 新建配置", false, pal)
@@ -4515,7 +4684,11 @@ impl AppView {
                             .bg(theme::hex(pal.fill))
                             .text_size(px(theme::scaled(10.5)))
                             .text_color(theme::hex(pal.text3))
-                            .child(if *built_in { "内置配置" } else { "自定义配置" }),
+                            .child(if *built_in {
+                                "内置配置"
+                            } else {
+                                "自定义配置"
+                            }),
                     )
                     .child(div().flex_1())
                     .child(
@@ -4524,25 +4697,20 @@ impl AppView {
                             .text_color(theme::hex(pal.text2))
                             .child("启用(新标签页默认)"),
                     )
-                    .child(
-                        switch_el("cfg-enable", *enabled, pal)
-                            .on_click(cx.listener(move |v, _e, _w, cx| {
-                                v.toggle_config_enabled(sel, cx)
-                            })),
-                    );
+                    .child(switch_el("cfg-enable", *enabled, pal).on_click(
+                        cx.listener(move |v, _e, _w, cx| v.toggle_config_enabled(sel, cx)),
+                    ));
                 if !*built_in {
                     head = head.child(
                         dlg_btn("cfg-del", "删除配置", false, pal)
                             .on_click(cx.listener(|v, _e, window, cx| v.del_config(window, cx))),
                     );
                 } else {
-                    head = head.child(
-                        dlg_btn("cfg-reset-one", "恢复默认", false, pal).on_click(
-                            cx.listener(move |v, _e, window, cx| {
-                                v.reset_builtin_config(sel, window, cx)
-                            }),
-                        ),
-                    );
+                    head = head.child(dlg_btn("cfg-reset-one", "恢复默认", false, pal).on_click(
+                        cx.listener(move |v, _e, window, cx| {
+                            v.reset_builtin_config(sel, window, cx)
+                        }),
+                    ));
                 }
                 detail = detail.child(head);
 
@@ -4567,7 +4735,9 @@ impl AppView {
                         .into_any_element(),
                 );
                 for (i, (auto, level)) in rules.iter().enumerate() {
-                    let Some((re, fl)) = rule_inputs.get(i) else { break };
+                    let Some((re, fl)) = rule_inputs.get(i) else {
+                        break;
+                    };
                     let mut r = div()
                         .flex()
                         .items_center()
@@ -4583,25 +4753,23 @@ impl AppView {
                                 .text_color(theme::hex(pal.text3))
                                 .child(format!("{}", i + 1)),
                         )
-                        .child(div().flex_1().min_w(px(0.0)).child(
-                            Textarea::new(re)
-                                .small()
-                                .w_full()
-                                .font_family(code_mono.clone())
-                                .text_size(px(theme::scaled(12.0)))
-                                .text_color(theme::hex(pal.text1)),
-                        ))
+                        .child(
+                            div().flex_1().min_w(px(0.0)).child(
+                                Textarea::new(re)
+                                    .small()
+                                    .w_full()
+                                    .font_family(code_mono.clone())
+                                    .text_size(px(theme::scaled(12.0)))
+                                    .text_color(theme::hex(pal.text1)),
+                            ),
+                        )
                         .child(div().w(px(56.0)).child(Input::new(fl).small().w_full()))
                         .child(
                             div().w(px(44.0)).child(
-                                switch_el(
-                                    SharedString::from(format!("rule-auto-{i}")),
-                                    *auto,
-                                    pal,
-                                )
-                                .on_click(
-                                    cx.listener(move |v, _e, _w, cx| v.toggle_rule_auto(i, cx)),
-                                ),
+                                switch_el(SharedString::from(format!("rule-auto-{i}")), *auto, pal)
+                                    .on_click(
+                                        cx.listener(move |v, _e, _w, cx| v.toggle_rule_auto(i, cx)),
+                                    ),
                             ),
                         );
                     let chip = if *auto {
@@ -4628,9 +4796,7 @@ impl AppView {
                             .text_size(px(theme::scaled(10.5)))
                             .text_color(lc)
                             .child(format!("{lname} ▸"))
-                            .on_click(
-                                cx.listener(move |v, _e, _w, cx| v.cycle_rule_level(i, cx)),
-                            )
+                            .on_click(cx.listener(move |v, _e, _w, cx| v.cycle_rule_level(i, cx)))
                             .into_any_element()
                     };
                     r = r.child(chip);
@@ -4645,9 +4811,9 @@ impl AppView {
                                 .text_color(theme::hex(pal.text3))
                                 .hover(|s| s.bg(theme::hex(pal.fill_hover)))
                                 .child("×")
-                                .on_click(cx.listener(move |v, _e, window, cx| {
-                                    v.del_rule(i, window, cx)
-                                })),
+                                .on_click(
+                                    cx.listener(move |v, _e, window, cx| v.del_rule(i, window, cx)),
+                                ),
                         );
                     }
                     rule_rows.push(r.into_any_element());
@@ -4657,9 +4823,8 @@ impl AppView {
                         .px(px(12.0))
                         .py(px(8.0))
                         .child(
-                            dlg_btn("rule-add", "＋ 添加规则", false, pal).on_click(
-                                cx.listener(|v, _e, window, cx| v.add_rule(window, cx)),
-                            ),
+                            dlg_btn("rule-add", "＋ 添加规则", false, pal)
+                                .on_click(cx.listener(|v, _e, window, cx| v.add_rule(window, cx))),
                         )
                         .into_any_element(),
                 );
@@ -4895,7 +5060,10 @@ impl AppView {
                     .pb(px(6.0))
                     .child(Input::new(&search_e).small().w_full()),
             );
-        for (i, label) in ["外观与显示", "日志与性能", "分析配置", "连接", "快捷键"].iter().enumerate() {
+        for (i, label) in ["外观与显示", "日志与性能", "分析配置", "连接", "快捷键"]
+            .iter()
+            .enumerate()
+        {
             let on = tab_sel == i && !searching;
             nav = nav.child(
                 div()
@@ -4913,9 +5081,9 @@ impl AppView {
                     .text_color(theme::hex(if on { pal.text1 } else { pal.text2 }))
                     .hover(|s| s.bg(theme::hex(pal.fill_hover)))
                     .child(*label)
-                    .on_click(cx.listener(move |v, _e, window, cx| {
-                        v.set_settings_tab(i, window, cx)
-                    })),
+                    .on_click(
+                        cx.listener(move |v, _e, window, cx| v.set_settings_tab(i, window, cx)),
+                    ),
             );
         }
         nav = nav.child(div().flex_1()).child(
@@ -4969,21 +5137,16 @@ impl AppView {
             .bg(theme::hex(pal.bg_layout))
             .child(header)
             .child(
-                div()
-                    .flex_1()
-                    .min_h(px(0.0))
-                    .flex()
-                    .child(nav)
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w(px(0.0))
-                            .min_h(px(0.0))
-                            .flex()
-                            .flex_col()
-                            .child(page_head)
-                            .child(body),
-                    ),
+                div().flex_1().min_h(px(0.0)).flex().child(nav).child(
+                    div()
+                        .flex_1()
+                        .min_w(px(0.0))
+                        .min_h(px(0.0))
+                        .flex()
+                        .flex_col()
+                        .child(page_head)
+                        .child(body),
+                ),
             )
             .into_any_element()
     }
@@ -5012,7 +5175,9 @@ impl AppView {
 
     /// 配置多选下拉框:切换当前标签页的一项分析配置
     fn toggle_tab_config(&mut self, idx: usize) {
-        let Some(cfg) = self.settings.configs.get(idx) else { return };
+        let Some(cfg) = self.settings.configs.get(idx) else {
+            return;
+        };
         let id = cfg.id.clone();
         let configs = self.settings.configs.clone();
         if let Some(t) = self.active_tab_mut() {
@@ -5070,7 +5235,12 @@ impl AppView {
     // ---- worker 消息轮询 ----
 
     /// 在鼠标位置上方弹出一条短提示(约 1.2s 后自动消失,由 poll 清理)
-    fn show_toast(&mut self, text: impl Into<String>, at: gpui_kit::Point<Pixels>, cx: &mut Context<Self>) {
+    fn show_toast(
+        &mut self,
+        text: impl Into<String>,
+        at: gpui_kit::Point<Pixels>,
+        cx: &mut Context<Self>,
+    ) {
         self.toast = Some(Toast {
             text: text.into(),
             at,
@@ -5081,7 +5251,11 @@ impl AppView {
 
     fn poll(&mut self) {
         // 短提示到期即清除(渲染侧用同一截止时间判断是否展示)
-        if self.toast.as_ref().is_some_and(|t| Instant::now() >= t.until) {
+        if self
+            .toast
+            .as_ref()
+            .is_some_and(|t| Instant::now() >= t.until)
+        {
             self.toast = None;
         }
 
@@ -5114,7 +5288,12 @@ impl AppView {
                 };
                 let tab = &mut self.tabs[ti];
                 match m {
-                    Msg::Append { data, offset, size, at } => {
+                    Msg::Append {
+                        data,
+                        offset,
+                        size,
+                        at,
+                    } => {
                         let dropped_before = tab.store.dropped;
                         let len_before = tab.store.len();
                         tab.store.push_bytes(&data, &tab.engine, at);
@@ -5252,8 +5431,7 @@ impl AppView {
     /// 视图是否贴底:gpui 的 offset 自底部累加且符号约定随版本变化,
     /// 用与 max_offset 的绝对差值判断(内容不足一屏时两者同为 0)
     fn at_bottom(&self) -> bool {
-        bottom_distance(self.list.offset().y, self.list.max_offset().y)
-            <= px(theme::row_h() * 2.0)
+        bottom_distance(self.list.offset().y, self.list.max_offset().y) <= px(theme::row_h() * 2.0)
     }
 
     // ---- 行渲染(虚拟列表回调,只渲染可见区间) ----
@@ -5321,7 +5499,12 @@ impl AppView {
             for &li in &tab.view {
                 let height = if wrap {
                     tab.heights.get(li as usize).copied().unwrap_or_else(|| {
-                        estimate_row_height(&tab.store.lines[li as usize].text, wrap_w, char_w, row_h)
+                        estimate_row_height(
+                            &tab.store.lines[li as usize].text,
+                            wrap_w,
+                            char_w,
+                            row_h,
+                        )
                     })
                 } else {
                     row_h
@@ -5339,7 +5522,11 @@ impl AppView {
         self.rows_cache.sizes.clone()
     }
 
-    fn render_rows(&mut self, range: std::ops::Range<usize>, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    fn render_rows(
+        &mut self,
+        range: std::ops::Range<usize>,
+        cx: &mut Context<Self>,
+    ) -> Vec<AnyElement> {
         let ti = self.active.min(self.tabs.len().saturating_sub(1));
         let Some(t) = self.tabs.get(ti) else {
             return Vec::new();
@@ -5350,12 +5537,21 @@ impl AppView {
         let hl_bg = theme::hex(&self.settings.highlight_hex(light));
         let hl_fg = theme::hex(self.settings.highlight_fg_hex(light));
         let link_color = theme::hex(pal.primary);
-        let lv: Vec<Hsla> = self.settings.level_colors_hex(light).iter().map(|s| theme::hex(s)).collect();
+        let lv: Vec<Hsla> = self
+            .settings
+            .level_colors_hex(light)
+            .iter()
+            .map(|s| theme::hex(s))
+            .collect();
         let show_ln = self.settings.show_line_numbers;
         // 时间戳列:只对真实日志源显示(与 row_sizes 的列宽计算保持一致)
         let show_ts = self.settings.show_timestamps && t.params.is_some();
         // 时区偏移每帧取一次,避免逐行查时区
-        let ts_offset = if show_ts { crate::lines::local_offset_secs() } else { 0 };
+        let ts_offset = if show_ts {
+            crate::lines::local_offset_secs()
+        } else {
+            0
+        };
         let row_h = theme::row_h();
         let wrap = t.wrap;
         let code_lang = t.code.as_ref().and_then(|d| d.lang);
@@ -5369,7 +5565,9 @@ impl AppView {
         let mut out = Vec::with_capacity(range.end - range.start);
         for pos in range {
             let Some(&li) = t.view.get(pos) else { continue };
-            let Some(line) = t.store.lines.get(li as usize) else { continue };
+            let Some(line) = t.store.lines.get(li as usize) else {
+                continue;
+            };
             let h = sizes.get(pos).map(|s| s.height).unwrap_or(px(row_h));
 
             // 级别着色:全部级别使用设置中的级别色;WARN/ERROR/FATAL 另加整行底色
@@ -5380,7 +5578,9 @@ impl AppView {
                 SEP => (gpui_kit::transparent_black(), theme::hex(pal.text3)),
                 l => (
                     gpui_kit::transparent_black(),
-                    lv.get(l as usize).copied().unwrap_or_else(|| theme::hex(pal.text1)),
+                    lv.get(l as usize)
+                        .copied()
+                        .unwrap_or_else(|| theme::hex(pal.text1)),
                 ),
             };
             let selected = sel.map_or(false, |(a, b)| {
@@ -5524,15 +5724,11 @@ impl AppView {
             let text_bounds = Rc::new(RefCell::new(None::<Bounds<Pixels>>));
             let text = SharedString::from(line.text.clone());
             let text_id = SharedString::from(format!("rowtext-{}-{}", tab_id, pos));
-            let text_cell = div()
-                .flex_1()
-                .min_w(px(0.0))
-                .overflow_hidden()
-                .child(
-                    SelectableText::new(text_id, text)
-                        .document_order(pos as u64)
-                        .highlights(highlights),
-                );
+            let text_cell = div().flex_1().min_w(px(0.0)).overflow_hidden().child(
+                SelectableText::new(text_id, text)
+                    .document_order(pos as u64)
+                    .highlights(highlights),
+            );
             {
                 let cell = text_bounds.clone();
                 row = row.child(text_cell.on_prepaint(move |bounds, _window, _cx| {
@@ -5604,12 +5800,14 @@ impl AppView {
                 menu.item(PopupMenuItem::new("复制整行").on_click(move |_, _, cx| {
                     cx.write_to_clipboard(ClipboardItem::new_string(copy_row.clone()));
                 }))
-                .item(PopupMenuItem::new("复制选中文本").on_click(|_, window, cx| {
-                    let sel = gpui_kit::base::TextSelection::selected_text(window, cx);
-                    if !sel.is_empty() {
-                        cx.write_to_clipboard(ClipboardItem::new_string(sel));
-                    }
-                }))
+                .item(
+                    PopupMenuItem::new("复制选中文本").on_click(|_, window, cx| {
+                        let sel = gpui_kit::base::TextSelection::selected_text(window, cx);
+                        if !sel.is_empty() {
+                            cx.write_to_clipboard(ClipboardItem::new_string(sel));
+                        }
+                    }),
+                )
                 .separator()
                 .item(PopupMenuItem::new("跳到末尾").on_click(move |_, _, cx| {
                     this_end.update(cx, |v, _| v.jump_to_end());
@@ -5624,14 +5822,24 @@ impl AppView {
 
     /// 把某行 JSON 格式化后开到新标签页(egui 版同)
     fn open_json_tab(&mut self, li: usize, _window: &mut Window, cx: &mut Context<Self>) {
-        let Some(line) = self.tabs.get(self.active).and_then(|t| t.store.lines.get(li)) else {
+        let Some(line) = self
+            .tabs
+            .get(self.active)
+            .and_then(|t| t.store.lines.get(li))
+        else {
             return;
         };
         let Ok(v) = serde_json::from_str::<serde_json::Value>(line.text.trim()) else {
             return;
         };
-        let Ok(pretty) = serde_json::to_string_pretty(&v) else { return };
-        let mut tab = Tab::text(&self.settings, format!("JSON · {}", self.tabs[self.active].title), &pretty);
+        let Ok(pretty) = serde_json::to_string_pretty(&v) else {
+            return;
+        };
+        let mut tab = Tab::text(
+            &self.settings,
+            format!("JSON · {}", self.tabs[self.active].title),
+            &pretty,
+        );
         tab.id = self.next_tab_id;
         self.next_tab_id += 1;
         self.tabs.push(tab);
@@ -5644,7 +5852,9 @@ impl AppView {
     /// 跳到末尾:重取尾部并恢复跟随(暂停中也一并恢复,否则新日志不会追加)
     fn jump_to_end(&mut self) {
         {
-            let Some(t) = self.active_tab_mut() else { return };
+            let Some(t) = self.active_tab_mut() else {
+                return;
+            };
             let _ = t.cmd_tx.send(Cmd::SeekEnd);
             t.follow = true;
             t.pending_new = 0;
@@ -5676,7 +5886,9 @@ impl AppView {
     /// 跟随开关(对齐 egui 版:暂停跟随时同时暂停 worker,恢复时继续并贴底)
     fn toggle_follow(&mut self) {
         let follow = {
-            let Some(t) = self.active_tab_mut() else { return };
+            let Some(t) = self.active_tab_mut() else {
+                return;
+            };
             t.follow = !t.follow;
             t.pending_new = 0;
             t.paused = !t.follow; // 跟进中→暂停;暂停→恢复
@@ -5692,7 +5904,9 @@ impl AppView {
 
     /// 清屏:清空当前标签的行与派生视图,worker 继续追加(egui 版同)
     fn clear_screen(&mut self, cx: &mut Context<Self>) {
-        let Some(t) = self.active_tab_mut() else { return };
+        let Some(t) = self.active_tab_mut() else {
+            return;
+        };
         t.store.clear();
         t.view.clear();
         t.matched.clear();
@@ -5706,7 +5920,9 @@ impl AppView {
     /// 代码视图:只读 ⇄ 编辑(首次进入时用当前文本创建多行编辑器)
     fn toggle_code_edit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let ni = self.active.min(self.tabs.len().saturating_sub(1));
-        let Some(t) = self.tabs.get_mut(ni) else { return };
+        let Some(t) = self.tabs.get_mut(ni) else {
+            return;
+        };
         let Some(d) = t.code.as_mut() else { return };
         if d.editor.is_none() {
             let lang = d.lang;
@@ -5718,11 +5934,10 @@ impl AppView {
                 if let Some(lang) = lang {
                     // 语言名只用于状态展示;真正的着色由下面的 highlighter 提供
                     s.set_highlighter(lang.label(), cx);
-                    let factory: InputHighlighterFactory =
-                        std::rc::Rc::new(move |_name: &str| {
-                            Some(Box::new(crate::code::CodeHighlighter::new(lang, palette))
-                                as Box<dyn InputHighlighter>)
-                        });
+                    let factory: InputHighlighterFactory = std::rc::Rc::new(move |_name: &str| {
+                        Some(Box::new(crate::code::CodeHighlighter::new(lang, palette))
+                            as Box<dyn InputHighlighter>)
+                    });
                     s.set_highlighter_factory(factory, cx);
                 }
                 s.set_value(text.clone(), window, cx);
@@ -5745,10 +5960,16 @@ impl AppView {
     /// 保存代码视图到磁盘,并刷新只读渲染的行缓存
     fn save_code(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         let ni = self.active.min(self.tabs.len().saturating_sub(1));
-        let Some(t) = self.tabs.get_mut(ni) else { return };
-        let Some(ed) = t.code.as_ref().and_then(|d| d.editor.clone()) else { return };
+        let Some(t) = self.tabs.get_mut(ni) else {
+            return;
+        };
+        let Some(ed) = t.code.as_ref().and_then(|d| d.editor.clone()) else {
+            return;
+        };
         let text = ed.read(cx).value().to_string();
-        let Some(path) = t.code.as_ref().map(|d| d.path.clone()) else { return };
+        let Some(path) = t.code.as_ref().map(|d| d.path.clone()) else {
+            return;
+        };
         match std::fs::write(&path, &text) {
             Ok(()) => {
                 if let Some(d) = t.code.as_mut() {
@@ -5769,7 +5990,9 @@ impl AppView {
 
     /// 检索结果跳转:在 matched 中循环,把命中行滚到视口中间,并解除跟随(egui 版同)
     fn jump_match(&mut self, next: bool, cx: &mut Context<Self>) {
-        let Some(t) = self.tabs.get(self.active) else { return };
+        let Some(t) = self.tabs.get(self.active) else {
+            return;
+        };
         if t.matched.is_empty() {
             return;
         }
@@ -5802,7 +6025,9 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(t) = self.active_tab_mut() else { return };
+        let Some(t) = self.active_tab_mut() else {
+            return;
+        };
         if (extend || cmd) && t.sel_anchor.is_some() {
             t.sel_focus = Some(li);
         } else {
@@ -5816,7 +6041,9 @@ impl AppView {
 
     /// 复制选中行的文本(⌘C);未选中时不动作
     fn copy_selection(&mut self, cx: &mut Context<Self>) {
-        let Some(t) = self.tabs.get(self.active) else { return };
+        let Some(t) = self.tabs.get(self.active) else {
+            return;
+        };
         let Some((a, b)) = t.sel_range() else { return };
         let text = t
             .store
@@ -5835,7 +6062,12 @@ impl AppView {
     }
 
     /// 开始录制某动作的新快捷键(焦点交还根节点,否则收不到按键)
-    fn begin_shortcut_capture(&mut self, action: &str, window: &mut Window, cx: &mut Context<Self>) {
+    fn begin_shortcut_capture(
+        &mut self,
+        action: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let Some(d) = self.settings_panel.as_mut() {
             d.capture = Some(action.to_string());
             d.sc_notice = Some("请按下组合键;Esc 取消".into());
@@ -5862,7 +6094,9 @@ impl AppView {
         if let Some((other, _)) = conflict {
             self.settings.shortcuts.insert(other.to_string(), old);
         }
-        self.settings.shortcuts.insert(action.to_string(), spec.clone());
+        self.settings
+            .shortcuts
+            .insert(action.to_string(), spec.clone());
         crate::store::save(&self.settings);
         if let Some(d) = self.settings_panel.as_mut() {
             d.capture = None;
@@ -5923,7 +6157,9 @@ impl AppView {
         }
         // 普通分发:按设置里的绑定匹配(未改过时即默认 ⌘T/⌘W/…)
         let secondary = ks.modifiers.secondary(cx);
-        let Some(spec) = keystroke_spec(ks, secondary) else { return };
+        let Some(spec) = keystroke_spec(ks, secondary) else {
+            return;
+        };
         let hit = store::SHORTCUT_ACTIONS
             .iter()
             .map(|(a, _)| *a)
@@ -5954,7 +6190,12 @@ impl AppView {
         let pal: &Palette = theme::palette(light);
         let ui_font = self.ui_font(cx);
         let mono_font = self.log_font(cx);
-        let lv: Vec<Hsla> = self.settings.level_colors_hex(light).iter().map(|s| theme::hex(s)).collect();
+        let lv: Vec<Hsla> = self
+            .settings
+            .level_colors_hex(light)
+            .iter()
+            .map(|s| theme::hex(s))
+            .collect();
         let names = level_names();
 
         // 标签条数据(先收集成小数据,避免与 listener 借用冲突)
@@ -5992,20 +6233,16 @@ impl AppView {
         let code_bar: Option<AnyElement> = code_doc.map(|d| {
             let editing = d.editing;
             let lang = d.lang.map(|l| l.label()).unwrap_or("纯文本");
-            let mut bar = div()
-                .flex()
-                .items_center()
-                .gap(px(6.0))
-                .child(
-                    div()
-                        .px(px(6.0))
-                        .py(px(2.0))
-                        .rounded(px(4.0))
-                        .bg(theme::hex(pal.fill))
-                        .text_size(px(theme::scaled(10.5)))
-                        .text_color(theme::hex(pal.text2))
-                        .child(lang),
-                );
+            let mut bar = div().flex().items_center().gap(px(6.0)).child(
+                div()
+                    .px(px(6.0))
+                    .py(px(2.0))
+                    .rounded(px(4.0))
+                    .bg(theme::hex(pal.fill))
+                    .text_size(px(theme::scaled(10.5)))
+                    .text_color(theme::hex(pal.text2))
+                    .child(lang),
+            );
             bar = bar.child(
                 toolbar_icon_btn(
                     "code-edit",
@@ -6128,27 +6365,28 @@ impl AppView {
                                         &d.text, &base_dir,
                                     )),
                                 )
-
                                 .scrollable(true)
                                 .selectable(true)
-                                .image_source(move |uri: &SharedUri| {
-                                    let src = uri.to_string();
-                                    // 远程与内嵌 data URL 交回默认处理
-                                    if src.starts_with("http://")
-                                        || src.starts_with("https://")
-                                        || src.starts_with("data:")
-                                    {
-                                        return ImageSource::from(src);
-                                    }
-                                    let raw = src.strip_prefix("file://").unwrap_or(&src);
-                                    let p = std::path::Path::new(raw);
-                                    let full = if p.is_absolute() {
-                                        p.to_path_buf()
-                                    } else {
-                                        base_dir.join(p)
-                                    };
-                                    ImageSource::from(full)
-                                }),
+                                .image_source(
+                                    move |uri: &SharedUri| {
+                                        let src = uri.to_string();
+                                        // 远程与内嵌 data URL 交回默认处理
+                                        if src.starts_with("http://")
+                                            || src.starts_with("https://")
+                                            || src.starts_with("data:")
+                                        {
+                                            return ImageSource::from(src);
+                                        }
+                                        let raw = src.strip_prefix("file://").unwrap_or(&src);
+                                        let p = std::path::Path::new(raw);
+                                        let full = if p.is_absolute() {
+                                            p.to_path_buf()
+                                        } else {
+                                            base_dir.join(p)
+                                        };
+                                        ImageSource::from(full)
+                                    },
+                                ),
                             ),
                     )
                     .into_any_element(),
@@ -6190,12 +6428,14 @@ impl AppView {
                                     ent.update(cx, |v, cx| v.close_tab(idx, w, cx));
                                 }
                             }))
-                            .item(PopupMenuItem::new("关闭其他").on_click({
-                                let ent = ent.clone();
-                                move |_, w, cx| {
-                                    ent.update(cx, |v, cx| v.close_other_tabs(idx, w, cx));
-                                }
-                            }))
+                            .item(
+                                PopupMenuItem::new("关闭其他").on_click({
+                                    let ent = ent.clone();
+                                    move |_, w, cx| {
+                                        ent.update(cx, |v, cx| v.close_other_tabs(idx, w, cx));
+                                    }
+                                }),
+                            )
                         }
                     })
                     .child(
@@ -6361,7 +6601,11 @@ impl AppView {
                 .h(px(26.0))
                 .flex()
                 .items_center()
-                .px(px(if chip_style == ChipStyle::Full { 8.0 } else { 5.0 }))
+                .px(px(if chip_style == ChipStyle::Full {
+                    8.0
+                } else {
+                    5.0
+                }))
                 .rounded(px(4.0))
                 .bg(theme::hex(pal.bg_bar))
                 .text_size(px(theme::scaled(11.0)))
@@ -6376,9 +6620,7 @@ impl AppView {
                 .tooltip(move |window, cx| {
                     let tip = tip.clone();
                     gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
-                        div()
-                            .text_size(px(theme::scaled(11.0)))
-                            .child(tip.clone())
+                        div().text_size(px(theme::scaled(11.0))).child(tip.clone())
                     })
                     .build(window, cx)
                 })
@@ -6432,13 +6674,10 @@ impl AppView {
                     .text_color(theme::hex(pal.text3)),
             )
             .tooltip(move |window, cx| {
-                let tip = SharedString::from(format!(
-                    "分析配置:{cfg_on}/{cfg_total} 已启用,点击选择"
-                ));
+                let tip =
+                    SharedString::from(format!("分析配置:{cfg_on}/{cfg_total} 已启用,点击选择"));
                 gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
-                    div()
-                        .text_size(px(theme::scaled(11.0)))
-                        .child(tip.clone())
+                    div().text_size(px(theme::scaled(11.0))).child(tip.clone())
                 })
                 .build(window, cx)
             })
@@ -6644,115 +6883,109 @@ impl AppView {
             base.children(code_bar)
         } else {
             base
-            // 模式:高亮 / 过滤
-            .child(
-                div()
-                    .flex()
-                    .rounded(px(6.0))
-                    .border_1()
-                    .border_color(theme::hex(pal.border))
-                    .overflow_hidden()
-                    .child(
-                        div()
-                            .id("mode-highlight")
-                            .cursor(CursorStyle::PointingHand)
-                            .px(px(10.0))
-                            .py(px(3.0))
-                            .text_size(px(theme::scaled(12.0)))
-                            .bg(if !filter_mode {
-                                theme::hex(pal.bg_selected)
-                            } else {
-                                gpui_kit::transparent_black()
-                            })
-                            .text_color(if !filter_mode {
-                                theme::hex(pal.text1)
-                            } else {
-                                theme::hex(pal.text2)
-                            })
-                            .child("高亮")
-                            .on_click(cx.listener(|v, _e, _w, _cx| v.set_filter_mode(false))),
+                // 模式:高亮 / 过滤
+                .child(
+                    div()
+                        .flex()
+                        .rounded(px(6.0))
+                        .border_1()
+                        .border_color(theme::hex(pal.border))
+                        .overflow_hidden()
+                        .child(
+                            div()
+                                .id("mode-highlight")
+                                .cursor(CursorStyle::PointingHand)
+                                .px(px(10.0))
+                                .py(px(3.0))
+                                .text_size(px(theme::scaled(12.0)))
+                                .bg(if !filter_mode {
+                                    theme::hex(pal.bg_selected)
+                                } else {
+                                    gpui_kit::transparent_black()
+                                })
+                                .text_color(if !filter_mode {
+                                    theme::hex(pal.text1)
+                                } else {
+                                    theme::hex(pal.text2)
+                                })
+                                .child("高亮")
+                                .on_click(cx.listener(|v, _e, _w, _cx| v.set_filter_mode(false))),
+                        )
+                        .child(
+                            div()
+                                .id("mode-filter")
+                                .cursor(CursorStyle::PointingHand)
+                                .px(px(10.0))
+                                .py(px(3.0))
+                                .text_size(px(theme::scaled(12.0)))
+                                .bg(if filter_mode {
+                                    theme::hex(pal.bg_selected)
+                                } else {
+                                    gpui_kit::transparent_black()
+                                })
+                                .text_color(if filter_mode {
+                                    theme::hex(pal.text1)
+                                } else {
+                                    theme::hex(pal.text2)
+                                })
+                                .child("过滤")
+                                .on_click(cx.listener(|v, _e, _w, _cx| v.set_filter_mode(true))),
+                        ),
+                )
+                .children(match_nav)
+                .child(div().flex().gap(px(4.0)).overflow_hidden().children(chips))
+                .child(cfg_btn)
+                .child(wrap_btn)
+                .children(code_bar)
+                .child(div().flex_1())
+                .child(
+                    toolbar_icon_btn(
+                        "btn-follow",
+                        if follow {
+                            "icons/tail-on.svg"
+                        } else {
+                            "icons/tail-off.svg"
+                        },
+                        SharedString::from(if follow {
+                            "跟进中(点击暂停跟随)"
+                        } else {
+                            "已暂停(点击恢复跟随并跳到末尾)"
+                        }),
+                        follow,
+                        pal,
                     )
-                    .child(
-                        div()
-                            .id("mode-filter")
-                            .cursor(CursorStyle::PointingHand)
-                            .px(px(10.0))
-                            .py(px(3.0))
-                            .text_size(px(theme::scaled(12.0)))
-                            .bg(if filter_mode {
-                                theme::hex(pal.bg_selected)
-                            } else {
-                                gpui_kit::transparent_black()
-                            })
-                            .text_color(if filter_mode {
-                                theme::hex(pal.text1)
-                            } else {
-                                theme::hex(pal.text2)
-                            })
-                            .child("过滤")
-                            .on_click(cx.listener(|v, _e, _w, _cx| v.set_filter_mode(true))),
-                    ),
-            )
-            .children(match_nav)
-            .child(
-                div()
-                    .flex()
-                    .gap(px(4.0))
-                    .overflow_hidden()
-                    .children(chips),
-            )
-            .child(cfg_btn)
-            .child(wrap_btn)
-            .children(code_bar)
-            .child(div().flex_1())
-            .child(
-                toolbar_icon_btn(
-                    "btn-follow",
-                    if follow {
-                        "icons/tail-on.svg"
-                    } else {
-                        "icons/tail-off.svg"
-                    },
-                    SharedString::from(if follow {
-                        "跟进中(点击暂停跟随)"
-                    } else {
-                        "已暂停(点击恢复跟随并跳到末尾)"
-                    }),
-                    follow,
-                    pal,
+                    .on_click(cx.listener(|v, _e, _w, _cx| v.toggle_follow())),
                 )
-                .on_click(cx.listener(|v, _e, _w, _cx| v.toggle_follow())),
-            )
-            .child(
-                toolbar_icon_btn(
-                    "btn-end",
-                    "icons/jump-end.svg",
-                    SharedString::from("跳到末尾(只读文件尾部并继续跟随)"),
-                    false,
-                    pal,
+                .child(
+                    toolbar_icon_btn(
+                        "btn-end",
+                        "icons/jump-end.svg",
+                        SharedString::from("跳到末尾(只读文件尾部并继续跟随)"),
+                        false,
+                        pal,
+                    )
+                    .on_click(cx.listener(|v, _e, _w, _cx| v.jump_to_end())),
                 )
-                .on_click(cx.listener(|v, _e, _w, _cx| v.jump_to_end())),
-            )
-            .child(
-                toolbar_icon_btn(
-                    "btn-clear",
-                    "icons/clear.svg",
-                    SharedString::from("清屏(保留读取位置,新日志继续追加)"),
-                    false,
-                    pal,
+                .child(
+                    toolbar_icon_btn(
+                        "btn-clear",
+                        "icons/clear.svg",
+                        SharedString::from("清屏(保留读取位置,新日志继续追加)"),
+                        false,
+                        pal,
+                    )
+                    .on_click(cx.listener(|v, _e, _w, cx| v.clear_screen(cx))),
                 )
-                .on_click(cx.listener(|v, _e, _w, cx| v.clear_screen(cx))),
-            )
-            .child(
-                toolbar_icon_btn(
-                    "btn-all",
-                    "icons/load-all.svg",
-                    SharedString::from("从头加载全部(大文件可能耗时较久)"),
-                    false,
-                    pal,
+                .child(
+                    toolbar_icon_btn(
+                        "btn-all",
+                        "icons/load-all.svg",
+                        SharedString::from("从头加载全部(大文件可能耗时较久)"),
+                        false,
+                        pal,
+                    )
+                    .on_click(cx.listener(|v, _e, _w, _cx| v.load_all())),
                 )
-                .on_click(cx.listener(|v, _e, _w, _cx| v.load_all())),
-            )
         };
 
         // —— 状态栏 segments ——
@@ -6778,10 +7011,17 @@ impl AppView {
                 theme::hex(pal.text3),
             ));
             if let Some((loaded, total)) = loading {
-                let pct = if total > 0 { loaded as f64 / total as f64 * 100.0 } else { 0.0 };
+                let pct = if total > 0 {
+                    loaded as f64 / total as f64 * 100.0
+                } else {
+                    0.0
+                };
                 segs.push((format!("加载中 {:.0}%", pct), theme::hex(pal.primary)));
             }
-            segs.push((format!("轮询 {}ms", self.settings.poll_ms), theme::hex(pal.text3)));
+            segs.push((
+                format!("轮询 {}ms", self.settings.poll_ms),
+                theme::hex(pal.text3),
+            ));
             if cur.map_or(false, |t| t.relevel.is_some()) {
                 segs.push(("重新分析级别中…".into(), theme::hex(pal.warning)));
             }
@@ -6836,12 +7076,9 @@ impl AppView {
         } else {
             segs.len().saturating_sub(1)
         };
-        let avail = (window.viewport_size().width
-            - px(20.0)
-            - px(12.0) * gaps as f32
-            - seg_w
-            - px(8.0))
-            .max(px(48.0));
+        let avail =
+            (window.viewport_size().width - px(20.0) - px(12.0) * gaps as f32 - seg_w - px(8.0))
+                .max(px(48.0));
         let loc_el: Option<AnyElement> = location.map(|loc| {
             let shown = elide_path(&loc, avail, &mut measure);
             let copy = loc.clone();
@@ -7010,7 +7247,8 @@ impl AppView {
             let vp = window.viewport_size();
             // 居中对齐鼠标,超出窗口时收回边界
             let left = (t.at.x - w * 0.5).clamp(px(4.0), (vp.width - w - px(4.0)).max(px(4.0)));
-            let top = (t.at.y - h - px(12.0)).clamp(px(4.0), (vp.height - h - px(4.0)).max(px(4.0)));
+            let top =
+                (t.at.y - h - px(12.0)).clamp(px(4.0), (vp.height - h - px(4.0)).max(px(4.0)));
             // 成功色实底:暗色主题的 success 偏亮,配深色字;亮色主题反之配白字
             let (toast_bg, toast_fg) = if light {
                 (theme::hex(pal.success), theme::hex(pal.on_primary))
@@ -7049,21 +7287,19 @@ impl AppView {
             .track_focus(&self.focus_handle)
             .on_key_down(cx.listener(|v, e: &KeyDownEvent, w, cx| v.handle_key(e, w, cx)))
             // 系统文件拖入:gpui 把外部拖拽包装为 ExternalPaths 的 drop 事件
-            .on_drop(cx.listener(|v, paths: &ExternalPaths, _window, _cx| {
-                v.handle_file_drop(paths)
-            }))
+            .on_drop(
+                cx.listener(|v, paths: &ExternalPaths, _window, _cx| v.handle_file_drop(paths)),
+            )
             .child(
-                TitleBar::new()
-                    .bg(theme::hex(pal.bg_bar))
-                    .child(
-                        div()
-                            .w_full()
-                            .h_full()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .children(bar),
-                    ),
+                TitleBar::new().bg(theme::hex(pal.bg_bar)).child(
+                    div()
+                        .w_full()
+                        .h_full()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .children(bar),
+                ),
             )
             .child(body)
             .children(self.render_dialog(window, cx))
@@ -7363,7 +7599,10 @@ fn color_cell(pick: &Entity<ColorPickerState>, input: &Entity<InputState>, w: f3
 
 /// 设置页文本输入
 fn text_input(e: &Entity<InputState>, w: f32) -> AnyElement {
-    div().w(px(w)).child(Input::new(e).small()).into_any_element()
+    div()
+        .w(px(w))
+        .child(Input::new(e).small())
+        .into_any_element()
 }
 
 // ---- 弹层通用小部件 ----
@@ -7439,7 +7678,12 @@ fn switch_el(id: impl Into<ElementId>, on: bool, pal: &'static Palette) -> State
 }
 
 /// 对话框按钮(primary=主题色实底)
-fn dlg_btn(id: &'static str, label: &'static str, primary: bool, pal: &'static Palette) -> Stateful<Div> {
+fn dlg_btn(
+    id: &'static str,
+    label: &'static str,
+    primary: bool,
+    pal: &'static Palette,
+) -> Stateful<Div> {
     let base = div()
         .id(id)
         .cursor(CursorStyle::PointingHand)
@@ -7461,7 +7705,12 @@ fn dlg_btn(id: &'static str, label: &'static str, primary: bool, pal: &'static P
 }
 
 /// 设置页动态按钮(文案固定、id 可变)
-fn host_btn(id: SharedString, label: &'static str, primary: bool, pal: &'static Palette) -> Stateful<Div> {
+fn host_btn(
+    id: SharedString,
+    label: &'static str,
+    primary: bool,
+    pal: &'static Palette,
+) -> Stateful<Div> {
     let base = div()
         .id(id)
         .cursor(CursorStyle::PointingHand)
@@ -7690,9 +7939,7 @@ fn toolbar_icon_btn(
         .tooltip(move |window, cx| {
             let tip = tip.clone();
             gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
-                div()
-                    .text_size(px(theme::scaled(11.0)))
-                    .child(tip.clone())
+                div().text_size(px(theme::scaled(11.0))).child(tip.clone())
             })
             .build(window, cx)
         })
@@ -7701,20 +7948,32 @@ fn toolbar_icon_btn(
 #[cfg(test)]
 mod tests {
     use super::{
-        bottom_distance, elide_path, http_auth_label, is_auth_error, pick_chip_style,
-        validate_ssh, validate_url_addr, ChipStyle,
+        bottom_distance, elide_path, http_auth_label, is_auth_error, pick_chip_style, validate_ssh,
+        validate_url_addr, ChipStyle,
     };
     use gpui_kit::px;
 
     #[test]
     fn chip_style_degrades_with_window_width() {
         // 其余控件 700、完整芯片 400、首字母+计数 250、仅首字母 120
-        assert_eq!(pick_chip_style(1200.0, 700.0, 400.0, 250.0), ChipStyle::Full);
+        assert_eq!(
+            pick_chip_style(1200.0, 700.0, 400.0, 250.0),
+            ChipStyle::Full
+        );
         // 差 1px 放不下完整名称 → 退到首字母+计数
-        assert_eq!(pick_chip_style(1099.0, 700.0, 400.0, 250.0), ChipStyle::Short);
-        assert_eq!(pick_chip_style(960.0, 700.0, 400.0, 250.0), ChipStyle::Short);
+        assert_eq!(
+            pick_chip_style(1099.0, 700.0, 400.0, 250.0),
+            ChipStyle::Short
+        );
+        assert_eq!(
+            pick_chip_style(960.0, 700.0, 400.0, 250.0),
+            ChipStyle::Short
+        );
         // 连计数也放不下 → 只留首字母
-        assert_eq!(pick_chip_style(840.0, 700.0, 400.0, 250.0), ChipStyle::Letter);
+        assert_eq!(
+            pick_chip_style(840.0, 700.0, 400.0, 250.0),
+            ChipStyle::Letter
+        );
     }
 
     #[test]
@@ -7773,16 +8032,26 @@ mod tests {
         let msg = validate_ssh("h", "u", "  ", "22").unwrap();
         assert!(msg.contains("远程日志路径"), "{msg}");
         assert!(validate_ssh("h", "u", "/var/log/app.log", "22").is_none());
-        assert!(validate_ssh("", "u", "/a.log", "22").unwrap().contains("主机"));
-        assert!(validate_ssh("h", "", "/a.log", "22").unwrap().contains("用户名"));
-        assert!(validate_ssh("h", "u", "/a.log", "0").unwrap().contains("端口"));
-        assert!(validate_ssh("h", "u", "/a.log", "abc").unwrap().contains("端口"));
+        assert!(validate_ssh("", "u", "/a.log", "22")
+            .unwrap()
+            .contains("主机"));
+        assert!(validate_ssh("h", "", "/a.log", "22")
+            .unwrap()
+            .contains("用户名"));
+        assert!(validate_ssh("h", "u", "/a.log", "0")
+            .unwrap()
+            .contains("端口"));
+        assert!(validate_ssh("h", "u", "/a.log", "abc")
+            .unwrap()
+            .contains("端口"));
     }
 
     #[test]
     fn url_requires_address() {
         assert!(validate_url_addr("   ").unwrap().contains("日志地址"));
-        assert!(validate_url_addr("example.com/a.log").unwrap().contains("http"));
+        assert!(validate_url_addr("example.com/a.log")
+            .unwrap()
+            .contains("http"));
         assert!(validate_url_addr("https://example.com/a.log").is_none());
     }
 }

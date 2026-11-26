@@ -11,9 +11,15 @@ pub enum SshAuth {
     #[serde(rename = "password")]
     Password(String),
     #[serde(rename = "keyText")]
-    KeyText { key: String, passphrase: Option<String> },
+    KeyText {
+        key: String,
+        passphrase: Option<String>,
+    },
     #[serde(rename = "keyFile")]
-    KeyFile { path: String, passphrase: Option<String> },
+    KeyFile {
+        path: String,
+        passphrase: Option<String>,
+    },
     #[serde(rename = "agent")]
     Agent,
 }
@@ -33,7 +39,10 @@ pub enum HttpAuthKind {
 /// 已校验、可直接附加到请求上的认证信息
 #[derive(Clone)]
 pub enum HttpAuthHeader {
-    Basic { user: String, password: String },
+    Basic {
+        user: String,
+        password: String,
+    },
     Header {
         name: reqwest::header::HeaderName,
         value: reqwest::header::HeaderValue,
@@ -43,8 +52,16 @@ pub enum HttpAuthHeader {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SourceParams {
-    Local { path: String },
-    Ssh { host: String, port: u16, user: String, auth: SshAuth, path: String },
+    Local {
+        path: String,
+    },
+    Ssh {
+        host: String,
+        port: u16,
+        user: String,
+        auth: SshAuth,
+        path: String,
+    },
     Http {
         url: String,
         /// 认证方式(旧数据缺省为无认证)
@@ -75,7 +92,9 @@ impl SourceParams {
                 .file_name()
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_else(|| path.clone()),
-            Self::Ssh { host, user, path, .. } => {
+            Self::Ssh {
+                host, user, path, ..
+            } => {
                 let f = std::path::Path::new(path)
                     .file_name()
                     .map(|s| s.to_string_lossy().into_owned())
@@ -96,7 +115,13 @@ impl SourceParams {
     pub fn location(&self) -> String {
         match self {
             Self::Local { path } => path.clone(),
-            Self::Ssh { host, port, user, path, .. } => {
+            Self::Ssh {
+                host,
+                port,
+                user,
+                path,
+                ..
+            } => {
                 if *port == 22 {
                     format!("{user}@{host}:{path}")
                 } else {
@@ -110,7 +135,13 @@ impl SourceParams {
     pub fn summary(&self) -> String {
         match self {
             Self::Local { path } => format!("本地 {path}"),
-            Self::Ssh { host, port, user, path, .. } => format!("SSH {user}@{host}:{port} {path}"),
+            Self::Ssh {
+                host,
+                port,
+                user,
+                path,
+                ..
+            } => format!("SSH {user}@{host}:{port} {path}"),
             Self::Http { url, user, .. } => match user {
                 Some(u) if !u.is_empty() => format!("HTTP {u}@{url}"),
                 _ => format!("HTTP {url}"),
@@ -132,7 +163,12 @@ impl SourceParams {
                 SshAuth::KeyFile { passphrase, .. } => *passphrase = None,
                 SshAuth::Agent => {}
             },
-            Self::Http { password, token, header_value, .. } => {
+            Self::Http {
+                password,
+                token,
+                header_value,
+                ..
+            } => {
                 *password = None;
                 *token = None;
                 *header_value = None;
@@ -155,7 +191,12 @@ impl SourceParams {
                 }
                 SshAuth::Agent => false,
             },
-            Self::Http { password, token, header_value, .. } => {
+            Self::Http {
+                password,
+                token,
+                header_value,
+                ..
+            } => {
                 password.as_ref().is_some_and(|p| !p.is_empty())
                     || token.as_ref().is_some_and(|t| !t.is_empty())
                     || header_value.as_ref().is_some_and(|v| !v.is_empty())
@@ -167,9 +208,18 @@ impl SourceParams {
     /// 按当前认证方式是否缺少必需凭据(仅覆盖界面可输入的组合,决定是否回填钥匙串/弹表单)
     pub fn needs_secret(&self) -> bool {
         match self {
-            Self::Ssh { auth: SshAuth::Password(p), .. } => p.is_empty(),
+            Self::Ssh {
+                auth: SshAuth::Password(p),
+                ..
+            } => p.is_empty(),
             Self::Ssh { .. } => false,
-            Self::Http { auth, password, token, header_value, .. } => match auth {
+            Self::Http {
+                auth,
+                password,
+                token,
+                header_value,
+                ..
+            } => match auth {
                 HttpAuthKind::None => false,
                 HttpAuthKind::Basic => !password.as_ref().is_some_and(|p| !p.is_empty()),
                 HttpAuthKind::Bearer => !token.as_ref().is_some_and(|t| !t.is_empty()),
@@ -188,8 +238,17 @@ pub struct SourceMeta {
 }
 
 pub enum Opened {
-    Local { path: PathBuf },
-    Ssh { sess: ssh2::Session, host: String, port: u16, user: String, auth: SshAuth, path: String },
+    Local {
+        path: PathBuf,
+    },
+    Ssh {
+        sess: ssh2::Session,
+        host: String,
+        port: u16,
+        user: String,
+        auth: SshAuth,
+        path: String,
+    },
     Http {
         v: Validated,
         supports_range: bool,
@@ -204,11 +263,26 @@ pub fn open(p: &SourceParams) -> Result<Opened, String> {
             if !std::path::Path::new(path).is_file() {
                 return Err(format!("文件不存在或不是普通文件: {path}"));
             }
-            Ok(Opened::Local { path: PathBuf::from(path) })
+            Ok(Opened::Local {
+                path: PathBuf::from(path),
+            })
         }
-        SourceParams::Ssh { host, port, user, auth, path } => {
+        SourceParams::Ssh {
+            host,
+            port,
+            user,
+            auth,
+            path,
+        } => {
             let sess = ssh_connect(host, *port, user, auth)?;
-            Ok(Opened::Ssh { sess, host: host.clone(), port: *port, user: user.clone(), auth: auth.clone(), path: path.clone() })
+            Ok(Opened::Ssh {
+                sess,
+                host: host.clone(),
+                port: *port,
+                user: user.clone(),
+                auth: auth.clone(),
+                path: path.clone(),
+            })
         }
         SourceParams::Http { url, .. } => {
             let mut v = validate_url(url)?;
@@ -217,12 +291,23 @@ pub fn open(p: &SourceParams) -> Result<Opened, String> {
             let resp = http_get(&mut client, &mut v, Some("bytes=0-0"), auth.as_ref())?;
             let status = resp.status();
             if status == reqwest::StatusCode::PARTIAL_CONTENT {
-                let total = parse_content_range_total(resp.headers().get(reqwest::header::CONTENT_RANGE));
-                return Ok(Opened::Http { v, supports_range: true, total, auth });
+                let total =
+                    parse_content_range_total(resp.headers().get(reqwest::header::CONTENT_RANGE));
+                return Ok(Opened::Http {
+                    v,
+                    supports_range: true,
+                    total,
+                    auth,
+                });
             }
             if status.is_success() {
                 let total = resp.content_length();
-                return Ok(Opened::Http { v, supports_range: false, total, auth });
+                return Ok(Opened::Http {
+                    v,
+                    supports_range: false,
+                    total,
+                    auth,
+                });
             }
             // 401/403 标记为认证失败,由界面弹出连接表单让用户重填凭据
             if status == reqwest::StatusCode::UNAUTHORIZED
@@ -239,14 +324,26 @@ pub fn meta(o: &mut Opened) -> Result<SourceMeta, String> {
     match o {
         Opened::Local { path } => {
             let m = std::fs::metadata(path).map_err(|e| format!("stat 失败: {e}"))?;
-            Ok(SourceMeta { size: m.len(), supports_range: true })
+            Ok(SourceMeta {
+                size: m.len(),
+                supports_range: true,
+            })
         }
         Opened::Ssh { sess, path, .. } => {
             let sftp = sess.sftp().map_err(|e| format!("SFTP 通道失败: {e}"))?;
-            let st = sftp.stat(std::path::Path::new(path)).map_err(|e| format!("SFTP stat 失败: {e}"))?;
-            Ok(SourceMeta { size: st.size.unwrap_or(0), supports_range: true })
+            let st = sftp
+                .stat(std::path::Path::new(path))
+                .map_err(|e| format!("SFTP stat 失败: {e}"))?;
+            Ok(SourceMeta {
+                size: st.size.unwrap_or(0),
+                supports_range: true,
+            })
         }
-        Opened::Http { total, supports_range, .. } => Ok(SourceMeta {
+        Opened::Http {
+            total,
+            supports_range,
+            ..
+        } => Ok(SourceMeta {
             size: total.unwrap_or(0),
             supports_range: *supports_range,
         }),
@@ -257,17 +354,23 @@ pub fn meta(o: &mut Opened) -> Result<SourceMeta, String> {
 pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), String> {
     match o {
         Opened::Local { path } => {
-            let total = std::fs::metadata(path.as_path()).map_err(|e| format!("stat 失败: {e}"))?.len();
+            let total = std::fs::metadata(path.as_path())
+                .map_err(|e| format!("stat 失败: {e}"))?
+                .len();
             if off >= total {
                 return Ok((Vec::new(), total));
             }
-            let mut f = std::fs::File::open(path.as_path()).map_err(|e| format!("打开失败: {e}"))?;
-            f.seek(SeekFrom::Start(off)).map_err(|e| format!("seek 失败: {e}"))?;
+            let mut f =
+                std::fs::File::open(path.as_path()).map_err(|e| format!("打开失败: {e}"))?;
+            f.seek(SeekFrom::Start(off))
+                .map_err(|e| format!("seek 失败: {e}"))?;
             let want = ((total - off) as usize).min(max);
             let mut buf = vec![0u8; want];
             let mut got = 0;
             while got < want {
-                let n = f.read(&mut buf[got..]).map_err(|e| format!("读取失败: {e}"))?;
+                let n = f
+                    .read(&mut buf[got..])
+                    .map_err(|e| format!("读取失败: {e}"))?;
                 if n == 0 {
                     break;
                 }
@@ -286,8 +389,11 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             if off >= total {
                 return Ok((Vec::new(), total));
             }
-            let mut f = sftp.open(std::path::Path::new(path)).map_err(|e| format!("SFTP open 失败: {e}"))?;
-            f.seek(SeekFrom::Start(off)).map_err(|e| format!("SFTP seek 失败: {e}"))?;
+            let mut f = sftp
+                .open(std::path::Path::new(path))
+                .map_err(|e| format!("SFTP open 失败: {e}"))?;
+            f.seek(SeekFrom::Start(off))
+                .map_err(|e| format!("SFTP seek 失败: {e}"))?;
             let want = ((total - off) as usize).min(max);
             let mut buf = vec![0u8; want];
             let mut got = 0;
@@ -302,9 +408,18 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             buf.truncate(got);
             Ok((buf, total))
         }
-        Opened::Http { v, supports_range, auth, .. } => {
+        Opened::Http {
+            v,
+            supports_range,
+            auth,
+            ..
+        } => {
             let mut client = http_client(v)?;
-            let range = if *supports_range { Some(format!("bytes={off}-")) } else { None };
+            let range = if *supports_range {
+                Some(format!("bytes={off}-"))
+            } else {
+                None
+            };
             let mut resp = http_get(&mut client, v, range.as_deref(), auth.as_ref())?;
             let status = resp.status();
             if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
@@ -328,7 +443,12 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
 
 // ---------- SSH ----------
 
-pub fn ssh_connect(host: &str, port: u16, user: &str, auth: &SshAuth) -> Result<ssh2::Session, String> {
+pub fn ssh_connect(
+    host: &str,
+    port: u16,
+    user: &str,
+    auth: &SshAuth,
+) -> Result<ssh2::Session, String> {
     let tcp = std::net::TcpStream::connect((host, port))
         .map_err(|e| format!("SSH 连接失败 {host}:{port}: {e}"))?;
     let mut sess = ssh2::Session::new().map_err(|e| e.to_string())?;
@@ -337,11 +457,16 @@ pub fn ssh_connect(host: &str, port: u16, user: &str, auth: &SshAuth) -> Result<
     sess.handshake().map_err(|e| format!("SSH 握手失败: {e}"))?;
     let ok = match auth {
         SshAuth::Password(p) => sess.userauth_password(user, p).is_ok(),
-        SshAuth::KeyText { key, passphrase } => {
-            sess.userauth_pubkey_memory(user, None, key, passphrase.as_deref()).is_ok()
-        }
+        SshAuth::KeyText { key, passphrase } => sess
+            .userauth_pubkey_memory(user, None, key, passphrase.as_deref())
+            .is_ok(),
         SshAuth::KeyFile { path, passphrase } => sess
-            .userauth_pubkey_file(user, None, std::path::Path::new(path), passphrase.as_deref())
+            .userauth_pubkey_file(
+                user,
+                None,
+                std::path::Path::new(path),
+                passphrase.as_deref(),
+            )
             .is_ok(),
         SshAuth::Agent => sess.userauth_agent(user).is_ok(),
     };
@@ -354,11 +479,7 @@ pub fn ssh_connect(host: &str, port: u16, user: &str, auth: &SshAuth) -> Result<
 // ---------- HTTP ----------
 
 pub fn http_client(v: &Validated) -> Result<reqwest::blocking::Client, String> {
-    let host = v
-        .url
-        .host_str()
-        .ok_or("URL 缺少主机名")?
-        .to_owned();
+    let host = v.url.host_str().ok_or("URL 缺少主机名")?.to_owned();
     reqwest::blocking::Client::builder()
         .resolve(host.as_str(), v.addr)
         .redirect(reqwest::redirect::Policy::none())
@@ -371,7 +492,16 @@ pub fn http_client(v: &Validated) -> Result<reqwest::blocking::Client, String> {
 
 /// 根据源参数构造认证头(只保留用户显式填写的方式)
 fn build_http_auth(p: &SourceParams) -> Result<Option<HttpAuthHeader>, String> {
-    let SourceParams::Http { auth, user, password, token, header_name, header_value, .. } = p else {
+    let SourceParams::Http {
+        auth,
+        user,
+        password,
+        token,
+        header_name,
+        header_value,
+        ..
+    } = p
+    else {
         return Ok(None);
     };
     match auth {
@@ -431,7 +561,9 @@ fn http_get(
     // 认证只发给初始主机,避免跟随重定向时泄露到其他域名
     let auth_host = auth.and_then(|_| v.url.host_str().map(|h| h.to_owned()));
     for _ in 0..6 {
-        let mut req = client.get(cur.clone()).header(reqwest::header::ACCEPT, "*/*");
+        let mut req = client
+            .get(cur.clone())
+            .header(reqwest::header::ACCEPT, "*/*");
         if let Some(r) = range {
             req = req.header(reqwest::header::RANGE, r);
         }
@@ -455,7 +587,10 @@ fn http_get(
                 .and_then(|h| h.to_str().ok())
                 .ok_or("重定向缺少 Location")?
                 .to_owned();
-            cur = v.url.join(&loc).map_err(|_| "重定向 Location 无效".to_string())?;
+            cur = v
+                .url
+                .join(&loc)
+                .map_err(|_| "重定向 Location 无效".to_string())?;
             *v = validate_url(cur.as_str())?;
             *client = http_client(v)?;
             continue;
@@ -552,7 +687,14 @@ mod tests {
 
     #[test]
     fn custom_header_and_invalid_name() {
-        let p = http(HttpAuthKind::Header, None, None, None, Some("X-Token"), Some("v"));
+        let p = http(
+            HttpAuthKind::Header,
+            None,
+            None,
+            None,
+            Some("X-Token"),
+            Some("v"),
+        );
         match build_http_auth(&p).unwrap() {
             Some(HttpAuthHeader::Header { name, value }) => {
                 assert_eq!(name.as_str(), "x-token");
@@ -560,15 +702,34 @@ mod tests {
             }
             _ => panic!("应构造自定义头"),
         }
-        let bad = http(HttpAuthKind::Header, None, None, None, Some("bad name"), Some("v"));
+        let bad = http(
+            HttpAuthKind::Header,
+            None,
+            None,
+            None,
+            Some("bad name"),
+            Some("v"),
+        );
         assert!(build_http_auth(&bad).is_err());
     }
 
     #[test]
     fn sanitized_drops_all_http_secrets() {
-        let p = http(HttpAuthKind::Bearer, Some("u"), Some("p"), Some("t"), Some("X-Key"), Some("v"));
+        let p = http(
+            HttpAuthKind::Bearer,
+            Some("u"),
+            Some("p"),
+            Some("t"),
+            Some("X-Key"),
+            Some("v"),
+        );
         match p.sanitized() {
-            SourceParams::Http { password, token, header_value, .. } => {
+            SourceParams::Http {
+                password,
+                token,
+                header_value,
+                ..
+            } => {
                 assert!(password.is_none() && token.is_none() && header_value.is_none());
             }
             _ => panic!("类型不应改变"),
