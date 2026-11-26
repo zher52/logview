@@ -364,6 +364,27 @@ const EN: &[(&str, &str)] = &[
     ("已启用", "Enabled"),
     ("未启用", "Disabled"),
     ("{n} 条规则{suffix}", "{n} rules{suffix}"),
+    (
+        "~/.ssh/config 里没有可导入的具体主机;通配与 Match 块已跳过",
+        "~/.ssh/config has no concrete hosts to import; wildcard and Match blocks were skipped",
+    ),
+    (
+        "~/.ssh/config 中的主机均已存在,跳过 {n} 个重复项",
+        "All hosts in ~/.ssh/config already exist; skipped {n} duplicates",
+    ),
+    ("已从 ~/.ssh/config 导入 {n} 个主机", "Imported {n} hosts from ~/.ssh/config"),
+    (
+        "已从 ~/.ssh/config 导入 {n} 个主机,跳过 {d} 个重复项",
+        "Imported {n} hosts from ~/.ssh/config; skipped {d} duplicates",
+    ),
+    ("已删除该 URL 凭据", "Deleted the URL credentials"),
+    ("删除失败:{e}", "Delete failed: {e}"),
+    ("不允许设置请求头: {name}", "Header not allowed: {name}"),
+    ("凭据删除失败:{e}", "Failed to delete credentials: {e}"),
+    ("在新标签页打开 {target}", "Open {target} in a new tab"),
+    ("从头加载", "Load from start"),
+    ("已复制路径", "Path copied"),
+    ("请填写主机与用户名", "Enter a host and username"),
 ];
 
 #[cfg(test)]

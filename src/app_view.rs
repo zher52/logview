@@ -2825,12 +2825,20 @@ impl AppView {
                     crate::store::save(&self.settings);
                 }
                 match (added, dup) {
-                    (0, 0) => {
-                        "~/.ssh/config 里没有可导入的具体主机;通配与 Match 块已跳过".to_string()
-                    }
-                    (0, n) => format!("~/.ssh/config 中的主机均已存在,跳过 {n} 个重复项"),
-                    (n, 0) => format!("已从 ~/.ssh/config 导入 {n} 个主机"),
-                    (n, d) => format!("已从 ~/.ssh/config 导入 {n} 个主机,跳过 {d} 个重复项"),
+                    (0, 0) => i18n::t("~/.ssh/config 里没有可导入的具体主机;通配与 Match 块已跳过")
+                        .to_string(),
+                    (0, n) => i18n::tf(
+                        "~/.ssh/config 中的主机均已存在,跳过 {n} 个重复项",
+                        &[("n", n.to_string())],
+                    ),
+                    (n, 0) => i18n::tf(
+                        "已从 ~/.ssh/config 导入 {n} 个主机",
+                        &[("n", n.to_string())],
+                    ),
+                    (n, d) => i18n::tf(
+                        "已从 ~/.ssh/config 导入 {n} 个主机,跳过 {d} 个重复项",
+                        &[("n", n.to_string()), ("d", d.to_string())],
+                    ),
                 }
             }
             Err(e) => e,
@@ -3024,8 +3032,8 @@ impl AppView {
     /// 删除一条已保存的 URL 凭据:先删钥匙串条目,再把对应最近打开标记为未保存
     fn url_cred_delete(&mut self, key: String, cx: &mut Context<Self>) {
         let notice = match secrets::delete(&key) {
-            Ok(()) => "已删除该 URL 凭据".to_string(),
-            Err(e) => format!("删除失败:{e}"),
+            Ok(()) => i18n::t("已删除该 URL 凭据").to_string(),
+            Err(e) => i18n::tf("删除失败:{e}", &[("e", e.to_string())]),
         };
         let mut changed = false;
         for r in &mut self.settings.recents {
@@ -3079,7 +3087,10 @@ impl AppView {
                         name.to_ascii_lowercase().as_str(),
                         "host" | "content-length" | "transfer-encoding" | "connection"
                     ) {
-                        Some(format!("不允许设置请求头: {name}"))
+                        Some(i18n::tf(
+                            "不允许设置请求头: {name}",
+                            &[("name", name.to_string())],
+                        ))
                     } else if !name
                         .bytes()
                         .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
@@ -3215,7 +3226,7 @@ impl AppView {
         }
         if let Some(k) = secrets::key_of(&r.params) {
             if let Err(e) = secrets::delete(&k) {
-                self.cred_notice = Some(format!("凭据删除失败:{e}"));
+                self.cred_notice = Some(i18n::tf("凭据删除失败:{e}", &[("e", e.to_string())]));
             }
         }
     }
@@ -6496,11 +6507,14 @@ impl AppView {
                     let this_open = this.clone();
                     let target_open = target.clone();
                     menu = menu.item(
-                        PopupMenuItem::new(format!("在新标签页打开 {}", short_link(&target)))
-                            .on_click(move |_, _, cx| {
-                                this_open
-                                    .update(cx, |v, _| v.open_from_link(kind, target_open.clone()));
-                            }),
+                        PopupMenuItem::new(i18n::tf(
+                            "在新标签页打开 {target}",
+                            &[("target", short_link(&target))],
+                        ))
+                        .on_click(move |_, _, cx| {
+                            this_open
+                                .update(cx, |v, _| v.open_from_link(kind, target_open.clone()));
+                        }),
                     );
                     if !precise {
                         continue;
@@ -7548,7 +7562,7 @@ impl AppView {
                         &[("off", off.to_string()), ("total", total.to_string())],
                     ))
                     .child(
-                        banner_btn("ban-head", "从头加载")
+                        banner_btn("ban-head", i18n::t("从头加载"))
                             .on_click(cx.listener(|v, _e, _w, _cx| v.load_all())),
                     )
                     .child(
@@ -7901,7 +7915,7 @@ impl AppView {
                         .on_click(cx.listener(move |v, e: &ClickEvent, _w, cx| {
                             if e.click_count() >= 2 {
                                 cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()));
-                                v.show_toast("已复制路径", e.position(), cx);
+                                v.show_toast(i18n::t("已复制路径"), e.position(), cx);
                             }
                         })),
                 )
@@ -8309,7 +8323,7 @@ fn http_auth_label(k: crate::source::HttpAuthKind) -> &'static str {
 /// SSH 表单校验:主机/用户名、远程路径、端口依次校验,返回第一条错误
 fn validate_ssh(host: &str, user: &str, path: &str, port_txt: &str) -> Option<String> {
     if host.trim().is_empty() || user.trim().is_empty() {
-        return Some("请填写主机与用户名".to_string());
+        return Some(i18n::t("请填写主机与用户名").to_string());
     }
     if path.trim().is_empty() {
         return Some("请填写远程日志路径(例如 /var/log/app.log)".to_string());
@@ -8320,7 +8334,7 @@ fn validate_ssh(host: &str, user: &str, path: &str, port_txt: &str) -> Option<St
 /// SSH 命令模式:不需要远程路径
 fn validate_ssh_conn(host: &str, user: &str, port_txt: &str) -> Option<String> {
     if host.trim().is_empty() || user.trim().is_empty() {
-        return Some("请填写主机与用户名".to_string());
+        return Some(i18n::t("请填写主机与用户名").to_string());
     }
     match port_txt.trim().parse::<u16>() {
         Ok(p) if p > 0 => None,
