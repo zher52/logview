@@ -46,6 +46,7 @@
 │ LocalSource: fs.stat + seek 读                                           │
 │ SshSource : ssh2 Session + SFTP(stat/open/seek/readdir)                  │
 │ HttpSource: Range 探测 → 206 增量 / 200 全量(不支持跟随)                │
+│ CommandSrc: 本地 spawn / ssh2 exec(channel 读)→ 按行入 store            │
 │ ssrf.rs   : 仅 http/https;DNS 全地址逐个校验,拒绝 localhost/环回/私有/  │
 │             保留网段(IPv4+IPv6);固定 IP 连接;重定向逐跳复检;大小上限  │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -125,7 +126,10 @@ Msg(worker→UI):
   Truncated { size }                // 轮换/截断
   Error   { msg, fatal }
   NoFollow{ size }                  // HTTP 不支持 Range,无法跟随
+  Exited  { code, retry_in }        // 命令退出:显示退出码;retry_in = 若可重试,下次重开倒计时
 ```
+
+命令源复用同一 worker,但走「流式」分支:常驻读取线程把 stdout/stderr 合并后送入 channel,worker 循环只负责节流转发;`Pause` 期间读并丢弃(不反压子进程),`SeekEnd` 清空缓冲后继续,`SeekStart`(加载全部)禁用。
 
 ## 8. SSRF 安全策略(按安全约束实现)
 
@@ -164,3 +168,15 @@ Msg(worker→UI):
 | M3 | SSH / HTTP 源 + SSRF 校验 | 密码/密钥可连,内网 URL 被拒且提示明确 |
 | M4 | 链接识别 + 新标签打开 + JSON pretty + 右键菜单 | URL/路径/JSON 全可点 |
 | M5 | 设置持久化 + 快捷键 + 打包 | 配置可导入导出,dmg 可分发 |
+| M6 | 命令源(本地 / SSH)+ 预设数据化 | `adb logcat`、`journalctl -f` 可看可跟;退出码与重试可见 |
+
+## 12. 命令源(0.3.0)
+
+**定位**:日志往往来自「持续输出的命令」而不只是文件。命令源把任意长驻命令的输出变成标签页,与文件源共用级别分析、检索、跟随与行数上限。
+
+- **入口两处、一套表单**:欢迎页「命令」= 本地;SSH 对话框「命令」分页 = 远端。二者共用 `CmdFields`(预设选择 + 字段值 + 自定义 argv + 自动重试)。
+- **预设是数据**:`Settings.command_presets` 持久化整套预设(argv 模板、字段、`resolve` 预解析步骤、`level_config_id`);`builtin_presets()` 只是首次启动与按 id 补齐的默认值,用户修改不被覆盖。
+- **展开规则**:`${field}` 替换;值为空的可选参数连同紧邻 `-` 开头的开关一起丢弃(`["-s","${serial}"]` → 无);`resolve` 在执行前跑一条短命令取结果(如 `adb shell pidof -s pkg` → `${pid}`),失败即报错。
+- **执行边界**:本地按 argv `exec`,不经 shell(可执行文件由 `PATH` 解析);远端拼成一条命令行交给登录 shell(`sh -c`),每个参数单引号转义 —— 因此支持管道与重定向,但不承诺 argv 级安全,这一点在 README 里明说。
+- **生命周期**:进程退出后标签保留输出并标注退出码;预设开启「退出后重试」时按 1s→2s→…(上限 30s)退避重开,适合 `adb logcat` 设备重连、容器重启;用户手动关闭标签即停止并回收子进程。
+- **不做的事**:不提供通用 SSH 终端;不做 PTY;不解析 ANSI(与文件源一致)。

@@ -49,6 +49,18 @@ cargo clippy --all-targets --locked
 > `AGENTS.md` 记录的是 egui 时期的实现细节，部分内容已与当前 GPUI 实现不一致；
 > 冲突时以 README 与源码为准。
 
+## 贡献命令预设
+
+命令源的能力全部由 `settings.json` 的 `command_presets` 驱动,不必写 Rust:
+
+- `id` / `name`:稳定标识与显示名;`local` / `ssh`:是否可用于本地、SSH 目标。
+- `argv`:命令模板,`${字段名}` 占位;值解析为空的参数会连同紧邻的以 `-` 开头的开关一起丢弃(可选参数).
+- `fields`:表单字段(`key`/`label`/`placeholder`/`optional`),`optional` 为真时允许留空。
+- `resolve`:执行前预解析,把命令输出填入某个占位符(例:`adb shell pidof -s ${package}` → `${pid}`)。
+- `level_config_id`:产出的行用哪套级别配置分析。
+
+内置预设定义在 `src/command.rs` 的 `builtin_presets()`,只放通用、无争议的命令;厂商专用或需要固定主机/路径的预设建议由用户自行添加(设置文件里直接加即可)。新增内置项时保留既有 id,`store.rs` 的迁移只按 id 追加缺失项,不会覆盖用户修改。改完请补 `command.rs` 的单元测试(模板展开、可选参数丢弃、必填校验)。
+
 ## 提交规范
 
 提交信息使用中文，格式：

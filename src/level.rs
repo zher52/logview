@@ -116,6 +116,27 @@ pub fn builtin_configs() -> Vec<LevelConfig> {
                 flags: "".into(),
             }],
         },
+        // Android logcat `-v threadtime`:MM-DD HH:MM:SS.mmm  PID  TID L Tag: msg
+        LevelConfig {
+            id: "builtin-android-logcat".into(),
+            name: "Android logcat (threadtime)".into(),
+            enabled: true,
+            built_in: true,
+            rules: vec![
+                Rule {
+                    auto: true,
+                    level: INFO,
+                    regex: r"^\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\s+\d+\s+\d+\s+([VDIWEFA])\s".into(),
+                    flags: "".into(),
+                },
+                Rule {
+                    auto: true,
+                    level: INFO,
+                    regex: r"^\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\s+([VDIWEFA])\s".into(),
+                    flags: "".into(),
+                },
+            ],
+        },
         // 方括号包裹的单字母(如 [D] xxx),格式精确,默认启用
         LevelConfig {
             id: "builtin-bracket-letters".into(),

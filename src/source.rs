@@ -4,9 +4,13 @@
 //! 日志源:本地文件 / SSH(SFTP) / HTTP(Range 增量,SSRF 校验)
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
+use crate::command::CommandPlan;
 use crate::ssrf::{validate_url, Validated};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
@@ -52,6 +56,35 @@ pub enum HttpAuthHeader {
     },
 }
 
+/// 命令在何处执行(本机 / 远端 SSH)
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ExecTarget {
+    Local,
+    Ssh {
+        host: String,
+        port: u16,
+        user: String,
+        auth: SshAuth,
+    },
+}
+
+impl ExecTarget {
+    pub fn auth_mut(&mut self) -> Option<&mut SshAuth> {
+        match self {
+            Self::Local => None,
+            Self::Ssh { auth, .. } => Some(auth),
+        }
+    }
+
+    pub fn auth(&self) -> Option<&SshAuth> {
+        match self {
+            Self::Local => None,
+            Self::Ssh { auth, .. } => Some(auth),
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SourceParams {
@@ -86,6 +119,25 @@ pub enum SourceParams {
         #[serde(default)]
         header_value: Option<String>,
     },
+    /// 命令源:本机子进程或 SSH 远端命令,stdout 作为日志流
+    Command {
+        target: ExecTarget,
+        /// 已展开的 argv(展示 + 无预设时的执行依据);SSH 自定义命令时只有一项
+        #[serde(default)]
+        argv: Vec<String>,
+        /// 预设 id(重新打开时按预设 + values 重新展开,避免沿用旧 PID)
+        #[serde(default)]
+        preset: Option<String>,
+        /// 预设字段值
+        #[serde(default)]
+        values: BTreeMap<String, String>,
+        /// 退出后自动重试(SSH 断线、adb 设备重连等)
+        #[serde(default)]
+        restart: bool,
+        /// 自定义命令原文(SSH 时不加引号,允许管道/重定向)
+        #[serde(default)]
+        raw: bool,
+    },
 }
 
 impl SourceParams {
@@ -110,6 +162,14 @@ impl SourceParams {
                 .filter(|s| !s.is_empty())
                 .unwrap_or(url)
                 .to_string(),
+            Self::Command { target, argv, .. } => {
+                let cmd = crate::command::display(argv);
+                let short = shorten(&cmd, 48);
+                match target {
+                    ExecTarget::Local => short,
+                    ExecTarget::Ssh { host, user, .. } => format!("{short} · {user}@{host}"),
+                }
+            }
         }
     }
 
@@ -132,6 +192,21 @@ impl SourceParams {
                 }
             }
             Self::Http { url, .. } => url.clone(),
+            Self::Command { target, argv, .. } => {
+                let cmd = crate::command::display(argv);
+                match target {
+                    ExecTarget::Local => cmd,
+                    ExecTarget::Ssh {
+                        host, port, user, ..
+                    } => {
+                        if *port == 22 {
+                            format!("{user}@{host}: {cmd}")
+                        } else {
+                            format!("{user}@{host}:{port}: {cmd}")
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -149,6 +224,15 @@ impl SourceParams {
                 Some(u) if !u.is_empty() => format!("HTTP {u}@{url}"),
                 _ => format!("HTTP {url}"),
             },
+            Self::Command { target, argv, .. } => {
+                let cmd = crate::command::display(argv);
+                match target {
+                    ExecTarget::Local => format!("命令(本机) {cmd}"),
+                    ExecTarget::Ssh {
+                        host, port, user, ..
+                    } => format!("命令 {user}@{host}:{port} {cmd}"),
+                }
+            }
         }
     }
 
@@ -175,6 +259,11 @@ impl SourceParams {
                 *password = None;
                 *token = None;
                 *header_value = None;
+            }
+            Self::Command { target, .. } => {
+                if let Some(auth) = target.auth_mut() {
+                    scrub_auth(auth);
+                }
             }
             Self::Local { .. } => {}
         }
@@ -204,6 +293,7 @@ impl SourceParams {
                     || token.as_ref().is_some_and(|t| !t.is_empty())
                     || header_value.as_ref().is_some_and(|v| !v.is_empty())
             }
+            Self::Command { target, .. } => target.auth().is_some_and(auth_has_secret),
             Self::Local { .. } => false,
         }
     }
@@ -230,7 +320,15 @@ impl SourceParams {
                     !header_value.as_ref().is_some_and(|v| !v.is_empty())
                 }
             },
-            Self::Local { .. } => false,
+            Self::Command {
+                target:
+                    ExecTarget::Ssh {
+                        auth: SshAuth::Password(p),
+                        ..
+                    },
+                ..
+            } => p.is_empty(),
+            Self::Command { .. } | Self::Local { .. } => false,
         }
     }
 }
@@ -246,10 +344,6 @@ pub enum Opened {
     },
     Ssh {
         sess: ssh2::Session,
-        host: String,
-        port: u16,
-        user: String,
-        auth: SshAuth,
         path: String,
     },
     Http {
@@ -258,6 +352,19 @@ pub enum Opened {
         total: Option<u64>,
         auth: Option<HttpAuthHeader>,
     },
+    Stream(StreamHandle),
+}
+
+/// 命令输出流:单向、不可 seek
+pub struct StreamHandle {
+    /// stdout(本机已把 stderr 并入同一通道)
+    pub reader: Box<dyn Read + Send>,
+    /// 本机子进程;停止时 kill。SSH 命令为 None(靠 stop 标志关通道)
+    pub child: Option<std::process::Child>,
+    /// 停止标志:读端据此尽快退出
+    pub stop: Arc<AtomicBool>,
+    /// SSH 通道退出码(读端读到 EOF 后写入)
+    pub exit: Arc<Mutex<Option<i32>>>,
 }
 
 pub fn open(p: &SourceParams) -> Result<Opened, String> {
@@ -280,13 +387,10 @@ pub fn open(p: &SourceParams) -> Result<Opened, String> {
             let sess = ssh_connect(host, *port, user, auth)?;
             Ok(Opened::Ssh {
                 sess,
-                host: host.clone(),
-                port: *port,
-                user: user.clone(),
-                auth: auth.clone(),
                 path: path.clone(),
             })
         }
+        SourceParams::Command { .. } => Err("命令源需通过 open_command 打开".into()),
         SourceParams::Http { url, .. } => {
             let mut v = validate_url(url)?;
             let auth = build_http_auth(p)?;
@@ -350,6 +454,7 @@ pub fn meta(o: &mut Opened) -> Result<SourceMeta, String> {
             size: total.unwrap_or(0),
             supports_range: *supports_range,
         }),
+        Opened::Stream(_) => Err("命令流不支持大小/随机读取".into()),
     }
 }
 
@@ -423,7 +528,7 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             } else {
                 None
             };
-            let mut resp = http_get(&mut client, v, range.as_deref(), auth.as_ref())?;
+            let resp = http_get(&mut client, v, range.as_deref(), auth.as_ref())?;
             let status = resp.status();
             if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
                 return Err(format!("HTTP {status}"));
@@ -441,6 +546,7 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             drop(limited);
             Ok((buf, total))
         }
+        Opened::Stream(_) => Err("命令流不支持随机读取".into()),
     }
 }
 
@@ -489,11 +595,22 @@ pub fn ssh_connect(
     user: &str,
     auth: &SshAuth,
 ) -> Result<ssh2::Session, String> {
+    ssh_connect_t(host, port, user, auth, 20_000)
+}
+
+/// 连接并认证;`timeout_ms` 作用于阻塞调用(0 = 不限时)
+fn ssh_connect_t(
+    host: &str,
+    port: u16,
+    user: &str,
+    auth: &SshAuth,
+    timeout_ms: u32,
+) -> Result<ssh2::Session, String> {
     let tcp = std::net::TcpStream::connect((host, port))
         .map_err(|e| format!("SSH 连接失败 {host}:{port}: {e}"))?;
     let mut sess = ssh2::Session::new().map_err(|e| e.to_string())?;
     sess.set_tcp_stream(tcp);
-    sess.set_timeout(20_000);
+    sess.set_timeout(timeout_ms);
     sess.handshake().map_err(|e| format!("SSH 握手失败: {e}"))?;
     verify_known_host(&sess, host, port)?;
     let ok = match auth {
@@ -667,6 +784,322 @@ fn parse_content_range_total(h: Option<&reqwest::header::HeaderValue>) -> Option
     s.rsplit('/').next()?.parse::<u64>().ok()
 }
 
+// ---------- 命令源 ----------
+
+/// 命令读端:非阻塞轮询,便于停止标志及时生效
+struct SshReader {
+    ch: ssh2::Channel,
+    stop: Arc<AtomicBool>,
+    exit: Arc<Mutex<Option<i32>>>,
+}
+
+pub(crate) fn is_retryable(e: &std::io::Error) -> bool {
+    matches!(
+        e.kind(),
+        std::io::ErrorKind::WouldBlock
+            | std::io::ErrorKind::TimedOut
+            | std::io::ErrorKind::Interrupted
+    )
+}
+
+impl Read for SshReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if self.stop.load(Ordering::Relaxed) {
+            return Ok(0);
+        }
+        match self.ch.read(buf) {
+            Ok(0) => {
+                // 读完后补取退出码(非阻塞模式下可能还要等一拍)
+                for _ in 0..20 {
+                    if let Ok(code) = self.ch.exit_status() {
+                        if let Ok(mut slot) = self.exit.lock() {
+                            *slot = Some(code);
+                        }
+                        break;
+                    }
+                    let _ = self.ch.wait_close();
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+                Ok(0)
+            }
+            Ok(n) => Ok(n),
+            Err(e) if is_retryable(&e) => {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                Err(std::io::Error::from(std::io::ErrorKind::WouldBlock))
+            }
+            Err(e) => Err(e),
+        }
+    }
+}
+
+/// 本机 stdout/stderr 合并读端(两个转发线程写入同一通道)
+struct MergedReader {
+    rx: crossbeam_channel::Receiver<Vec<u8>>,
+    buf: Vec<u8>,
+    pos: usize,
+}
+
+impl Read for MergedReader {
+    fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
+        if out.is_empty() {
+            return Ok(0);
+        }
+        loop {
+            if self.pos < self.buf.len() {
+                let n = (self.buf.len() - self.pos).min(out.len());
+                out[..n].copy_from_slice(&self.buf[self.pos..self.pos + n]);
+                self.pos += n;
+                return Ok(n);
+            }
+            match self.rx.recv_timeout(std::time::Duration::from_millis(100)) {
+                Ok(chunk) => {
+                    self.buf = chunk;
+                    self.pos = 0;
+                }
+                Err(crossbeam_channel::RecvTimeoutError::Timeout) => continue,
+                Err(crossbeam_channel::RecvTimeoutError::Disconnected) => return Ok(0),
+            }
+        }
+    }
+}
+
+fn spawn_pipe_reader(mut r: impl Read + Send + 'static, tx: crossbeam_channel::Sender<Vec<u8>>) {
+    let _ = std::thread::Builder::new()
+        .name("cmd-out".into())
+        .spawn(move || {
+            let mut buf = vec![0u8; 32 << 10];
+            loop {
+                match r.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        if tx.send(buf[..n].to_vec()).is_err() {
+                            break;
+                        }
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                    Err(_) => break,
+                }
+            }
+        });
+}
+
+fn spawn_error(prog: &str, e: &std::io::Error) -> String {
+    match e.kind() {
+        std::io::ErrorKind::NotFound => {
+            format!("未找到命令 {prog}(请确认已安装,并在 PATH 中)")
+        }
+        std::io::ErrorKind::PermissionDenied => format!("没有执行权限:{prog}"),
+        _ => format!("无法启动命令 {prog}:{e}"),
+    }
+}
+
+fn spawn_local(argv: Vec<String>) -> Result<Opened, String> {
+    let prog = argv
+        .first()
+        .filter(|s| !s.trim().is_empty())
+        .ok_or("命令为空")?;
+    let mut cmd = std::process::Command::new(prog);
+    cmd.args(&argv[1..])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NO_WINDOW:GUI 进程拉起控制台程序时不闪黑框
+        cmd.creation_flags(0x0800_0000);
+    }
+    let mut child = cmd.spawn().map_err(|e| spawn_error(prog, &e))?;
+    let (tx, rx) = crossbeam_channel::unbounded::<Vec<u8>>();
+    if let Some(out) = child.stdout.take() {
+        spawn_pipe_reader(out, tx.clone());
+    }
+    if let Some(err) = child.stderr.take() {
+        spawn_pipe_reader(err, tx.clone());
+    }
+    drop(tx);
+    Ok(Opened::Stream(StreamHandle {
+        reader: Box::new(MergedReader {
+            rx,
+            buf: Vec::new(),
+            pos: 0,
+        }),
+        child: Some(child),
+        stop: Arc::new(AtomicBool::new(false)),
+        exit: Arc::new(Mutex::new(None)),
+    }))
+}
+
+/// 执行一条短命令并返回 stdout(用于 adb pidof 之类的取值)
+fn capture_local(argv: &[String]) -> Result<String, String> {
+    let prog = argv
+        .first()
+        .filter(|s| !s.trim().is_empty())
+        .ok_or("取值命令为空")?;
+    let mut cmd = std::process::Command::new(prog);
+    cmd.args(&argv[1..]).stdin(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    let out = cmd.output().map_err(|e| spawn_error(prog, &e))?;
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        let err = err.trim();
+        return Err(if err.is_empty() {
+            format!("取值命令失败(code={})", out.status.code().unwrap_or(-1))
+        } else {
+            format!("取值命令失败:{err}")
+        });
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+fn capture_ssh(target: &ExecTarget, argv: &[String]) -> Result<String, String> {
+    let ExecTarget::Ssh {
+        host,
+        port,
+        user,
+        auth,
+    } = target
+    else {
+        return Err("不是 SSH 目标".into());
+    };
+    let sess = ssh_connect_t(host, *port, user, auth, 15_000)?;
+    let remote = argv
+        .iter()
+        .map(|s| crate::command::shell_quote(s))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let mut ch = sess
+        .channel_session()
+        .map_err(|e| format!("SSH 通道创建失败:{e}"))?;
+    ch.handle_extended_data(ssh2::ExtendedData::Merge)
+        .map_err(|e| format!("SSH stderr 合并失败:{e}"))?;
+    ch.exec(&remote)
+        .map_err(|e| format!("远端取值命令执行失败:{e}"))?;
+    let mut buf = String::new();
+    ch.read_to_string(&mut buf)
+        .map_err(|e| format!("远端取值命令读取失败:{e}"))?;
+    let _ = ch.wait_close();
+    Ok(buf)
+}
+
+/// 命令流会话:不限时 + 非阻塞读 + keepalive(空闲时不报超时)
+fn ssh_connect_stream(
+    host: &str,
+    port: u16,
+    user: &str,
+    auth: &SshAuth,
+) -> Result<ssh2::Session, String> {
+    let sess = ssh_connect_t(host, port, user, auth, 0)?;
+    sess.set_blocking(false);
+    sess.set_keepalive(true, 30);
+    Ok(sess)
+}
+
+/// 打开命令源:先求值(如 PID),再 spawn 子进程 / 建立 SSH exec 通道
+pub fn open_command(p: &SourceParams, plan: &CommandPlan) -> Result<Opened, String> {
+    let SourceParams::Command { target, .. } = p else {
+        return Err("不是命令源".into());
+    };
+    let mut argv = plan.argv.clone();
+    for r in &plan.resolve {
+        let out = match target {
+            ExecTarget::Local => capture_local(&r.argv)?,
+            t => capture_ssh(t, &r.argv)?,
+        };
+        let value = out.split_whitespace().next().unwrap_or("").to_string();
+        if value.is_empty() {
+            return Err(format!(
+                "取值失败:{} 没有输出(目标是否在运行?参数是否正确?)",
+                r.key
+            ));
+        }
+        let token = format!("${{{}}}", r.key);
+        for a in &mut argv {
+            *a = a.replace(&token, &value);
+        }
+    }
+    if let Some(a) = argv.iter().find(|a| a.contains("${")) {
+        return Err(format!("命令中有未解析的占位符:{a}"));
+    }
+    match target {
+        ExecTarget::Local => spawn_local(argv),
+        ExecTarget::Ssh {
+            host,
+            port,
+            user,
+            auth,
+        } => {
+            let remote = if plan.raw {
+                argv.join(" ")
+            } else {
+                argv.iter()
+                    .map(|s| crate::command::shell_quote(s))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            };
+            let sess = ssh_connect_stream(host, *port, user, auth)?;
+            let mut ch = sess
+                .channel_session()
+                .map_err(|e| format!("SSH 通道创建失败:{e}"))?;
+            ch.handle_extended_data(ssh2::ExtendedData::Merge)
+                .map_err(|e| format!("SSH stderr 合并失败:{e}"))?;
+            ch.exec(&remote)
+                .map_err(|e| format!("远端命令执行失败:{e}"))?;
+            let stop = Arc::new(AtomicBool::new(false));
+            let exit = Arc::new(Mutex::new(None));
+            Ok(Opened::Stream(StreamHandle {
+                reader: Box::new(SshReader {
+                    ch,
+                    stop: stop.clone(),
+                    exit: exit.clone(),
+                }),
+                child: None,
+                stop,
+                exit,
+            }))
+        }
+    }
+}
+
+// ---------- 小工具 ----------
+
+/// 按字符截断并补省略号(标题/最近打开用)
+fn shorten(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    let mut out: String = s.chars().take(max.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
+fn auth_has_secret(auth: &SshAuth) -> bool {
+    match auth {
+        SshAuth::Password(p) => !p.is_empty(),
+        SshAuth::KeyText { key, passphrase } => {
+            !key.is_empty() || passphrase.as_ref().is_some_and(|s| !s.is_empty())
+        }
+        SshAuth::KeyFile { passphrase, .. } => passphrase.as_ref().is_some_and(|s| !s.is_empty()),
+        SshAuth::Agent => false,
+    }
+}
+
+fn scrub_auth(auth: &mut SshAuth) {
+    match auth {
+        SshAuth::Password(p) => *p = String::new(),
+        SshAuth::KeyText { key, passphrase } => {
+            *key = String::new();
+            *passphrase = None;
+        }
+        SshAuth::KeyFile { passphrase, .. } => *passphrase = None,
+        SshAuth::Agent => {}
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -775,5 +1208,65 @@ mod tests {
             }
             _ => panic!("类型不应改变"),
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn command_stream_merges_stderr_and_reports_exit() {
+        let argv: Vec<String> = vec![
+            "/bin/sh".into(),
+            "-c".into(),
+            "printf 'a\\nb\\n'; printf 'e\\n' 1>&2; exit 3".into(),
+        ];
+        let plan = CommandPlan {
+            argv: argv.clone(),
+            resolve: Vec::new(),
+            raw: true,
+        };
+        let params = SourceParams::Command {
+            target: ExecTarget::Local,
+            argv,
+            preset: None,
+            values: Default::default(),
+            restart: false,
+            raw: true,
+        };
+        let mut o = open_command(&params, &plan).expect("启动命令");
+        let Opened::Stream(s) = &mut o else {
+            panic!("应为流式句柄")
+        };
+        let mut buf = String::new();
+        s.reader.read_to_string(&mut buf).expect("读取输出");
+        assert!(buf.contains("a\n"), "{buf}");
+        assert!(buf.contains("e\n"), "stderr 未合并: {buf}");
+        let code = s
+            .child
+            .take()
+            .and_then(|mut c| c.wait().ok())
+            .and_then(|st| st.code());
+        assert_eq!(code, Some(3));
+    }
+
+    #[test]
+    fn command_reports_missing_program() {
+        let argv = vec!["logview-no-such-command-xyz".to_string()];
+        let plan = CommandPlan {
+            argv: argv.clone(),
+            resolve: Vec::new(),
+            raw: true,
+        };
+        let params = SourceParams::Command {
+            target: ExecTarget::Local,
+            argv,
+            preset: None,
+            values: Default::default(),
+            restart: false,
+            raw: true,
+        };
+        let err = match open_command(&params, &plan) {
+            Err(e) => e,
+            Ok(_) => panic!("不存在的命令不应启动成功"),
+        };
+        assert!(err.contains("未找到命令"), "{err}");
     }
 }

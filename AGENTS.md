@@ -117,3 +117,10 @@ prototype.figcraft   figcraft 原型源文件(旧 egui 版设计稿);icon.png �
 - 提交信息中文,格式:`<类型>: <一句话摘要>` + 空行 + 要点列表;类型用 feat/fix/refactor/docs/chore
 - `Cargo.lock` 入库(应用型仓库)
 - `target/`、`.DS_Store` 已在 `.gitignore`
+
+## 0.3.0 实现补充(GPUI 时期)
+
+- UI 已迁移到 GPUI / gpui-kit 自绘;上文 egui 相关 API 记录仅作历史参考,冲突时以源码与 README 为准。
+- 第四种日志源「命令」:`command.rs` 负责预设数据模型(argv 模板 / 字段 / 预解析 / 级别配置关联)与 argv 展开;`source.rs::open_command` 负责本地 `spawn` 与 SSH `exec`;`tail.rs` 以流式模式消费(stdout+stderr 合并、退出码、退避重试)。
+- SSH 命令入口在既有 SSH 对话框内(「文件 | 命令」分页),本地命令从欢迎页「命令」进入;两者共用 `CmdFields` 与同一套预设。
+- 命令源无文件语义:「加载全部」禁用,「跳到末尾」= 清空缓冲后继续;SSH 命令复用文件源的钥匙串条目(`用户@主机:端口`)。

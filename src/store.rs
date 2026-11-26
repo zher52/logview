@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::command::{builtin_presets, CommandPreset};
 use crate::level::{builtin_configs, LevelConfig};
 use crate::source::{SourceParams, SshAuth};
 
@@ -56,6 +57,9 @@ pub struct Settings {
     /// 删除 URL 最近打开记录时是否同时清除系统钥匙串里的对应凭据(默认开启)
     #[serde(default = "default_true")]
     pub recents_purge_creds: bool,
+    /// 命令预设(内置 + 用户自定义;升级时按 id 补齐缺失的内置项)
+    #[serde(default = "builtin_presets")]
+    pub command_presets: Vec<CommandPreset>,
     /// 自定义快捷键:动作 id → 规格(如 "secondary+shift+k");缺省 = 默认绑定
     #[serde(default)]
     pub shortcuts: std::collections::BTreeMap<String, String>,
@@ -193,10 +197,6 @@ impl Settings {
             .cloned()
             .unwrap_or_else(|| default_shortcut(action).to_string())
     }
-
-    pub fn enabled_count(&self) -> usize {
-        self.configs.iter().filter(|c| c.enabled).count()
-    }
 }
 
 impl Default for Settings {
@@ -234,6 +234,7 @@ impl Default for Settings {
             ssh_hosts: Vec::new(),
             recents_limit: default_recents_limit(),
             recents_purge_creds: default_true(),
+            command_presets: builtin_presets(),
             shortcuts: Default::default(),
             cred_notice: None,
         }
@@ -256,6 +257,12 @@ pub fn load() -> Settings {
     for b in builtin_configs() {
         if !s.configs.iter().any(|c| c.id == b.id) {
             s.configs.push(b);
+        }
+    }
+    // 命令预设同样按 id 补齐:用户自定义的保留,内置的新增项追加
+    for p in builtin_presets() {
+        if !s.command_presets.iter().any(|c| c.id == p.id) {
+            s.command_presets.push(p);
         }
     }
     migrate_secrets(&mut s);

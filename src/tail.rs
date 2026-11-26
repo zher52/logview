@@ -4,8 +4,10 @@
 //! tail worker:每标签一个线程,轮询增量读取,推送 Append/Replace/Truncated 消息
 
 use crossbeam_channel::{Receiver, Sender};
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
+use crate::command::CommandPlan;
 use crate::source::{self, Opened, SourceParams};
 
 #[derive(Clone)]
@@ -37,13 +39,23 @@ pub enum Msg {
     Truncated {
         size: u64,
     },
-    NoFollow {
-        size: u64,
-    },
+    NoFollow,
     Error {
         msg: String,
         fatal: bool,
     },
+    /// 命令/远端命令已退出;`retry_in` 为自动重试倒计时(秒)
+    Exited {
+        code: Option<i32>,
+        retry_in: Option<u64>,
+    },
+}
+
+/// 命令输出:读线程 → 控制循环
+enum ReaderMsg {
+    Chunk(Vec<u8>),
+    Eof,
+    Fail(String),
 }
 
 const CHUNK: usize = 1 << 20; // 单次读取 1MB
@@ -70,6 +82,7 @@ pub fn debug_on() -> bool {
 
 pub fn spawn(
     params: SourceParams,
+    plan: Option<CommandPlan>,
     poll_ms: u64,
     initial_cap: u64,
     tail_cap: u64,
@@ -78,18 +91,24 @@ pub fn spawn(
     let (msg_tx, msg_rx) = crossbeam_channel::unbounded();
     let _ = std::thread::Builder::new()
         .name("tail-worker".into())
-        .spawn(move || worker(params, poll_ms, initial_cap, tail_cap, cmd_rx, msg_tx));
+        .spawn(move || worker(params, plan, poll_ms, initial_cap, tail_cap, cmd_rx, msg_tx));
     (cmd_tx, msg_rx)
 }
 
 fn worker(
     params: SourceParams,
+    plan: Option<CommandPlan>,
     poll_ms: u64,
     initial_cap: u64,
     tail_cap: u64,
     cmd_rx: Receiver<Cmd>,
     tx: Sender<Msg>,
 ) {
+    // 命令源是单向流,走独立循环(无 size/seek 概念)
+    if matches!(params, SourceParams::Command { .. }) {
+        worker_stream(params, plan, cmd_rx, tx);
+        return;
+    }
     let mut o = match source::open(&params) {
         Ok(o) => o,
         Err(e) => {
@@ -119,7 +138,7 @@ fn worker(
 
     let mut paused = false;
     let mut offset: u64 = 0;
-    let mut size: u64 = 0;
+    let mut size: u64;
     let mut err_streak = 0u32;
 
     // ---- 初始加载:头部 initial_cap 字节 ----
@@ -138,12 +157,12 @@ fn worker(
             Err(e) => {
                 err_streak += 1;
                 let _ = tx.send(Msg::Error {
-                    msg: format!("{e}"),
+                    msg: e.to_string(),
                     fatal: false,
                 });
                 if err_streak >= 5 {
                     let _ = tx.send(Msg::Error {
-                        msg: format!("{e}"),
+                        msg: e.to_string(),
                         fatal: true,
                     });
                     return;
@@ -202,7 +221,7 @@ fn worker(
 
     // ---- HTTP 不支持 Range:无法跟随 ----
     if !supports_range {
-        let _ = tx.send(Msg::NoFollow { size });
+        let _ = tx.send(Msg::NoFollow);
     }
 
     // ---- 跟随主循环 ----
@@ -359,5 +378,217 @@ fn worker(
                 }
             }
         }
+    }
+}
+
+// ---------- 命令流 worker ----------
+
+/// 退出后重试的退避秒数:1,2,4,8,16,30…
+fn backoff(attempt: u32) -> u64 {
+    (1u64 << attempt.min(5)).min(30)
+}
+
+/// 可被 Stop 打断的等待;返回 false 表示收到 Stop
+fn interruptible_sleep(secs: u64, cmd_rx: &Receiver<Cmd>) -> bool {
+    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
+    while std::time::Instant::now() < deadline {
+        match cmd_rx.recv_timeout(Duration::from_millis(200)) {
+            Ok(Cmd::Stop) => return false,
+            Ok(_) => {}
+            Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
+            Err(_) => return false,
+        }
+    }
+    true
+}
+
+/// 回收子进程:最多等 2s,超时后 kill 再等
+fn reap(mut c: std::process::Child) -> Option<i32> {
+    for _ in 0..100 {
+        match c.try_wait() {
+            Ok(Some(st)) => return st.code(),
+            Ok(None) => std::thread::sleep(Duration::from_millis(20)),
+            Err(_) => return None,
+        }
+    }
+    let _ = c.kill();
+    c.wait().ok().and_then(|s| s.code())
+}
+
+/// 命令源主循环:读线程 + 控制循环,支持暂停丢弃、清屏、退出提示与自动重连
+fn worker_stream(
+    params: SourceParams,
+    plan: Option<CommandPlan>,
+    cmd_rx: Receiver<Cmd>,
+    tx: Sender<Msg>,
+) {
+    let restart = matches!(&params, SourceParams::Command { restart: true, .. });
+    let mut attempt: u32 = 0;
+
+    loop {
+        let Some(plan) = plan.clone() else {
+            let _ = tx.send(Msg::Error {
+                msg: "命令源缺少执行计划".into(),
+                fatal: true,
+            });
+            return;
+        };
+        let started = std::time::Instant::now();
+        let mut handle = match source::open_command(&params, &plan) {
+            Ok(Opened::Stream(h)) => h,
+            Ok(_) => {
+                let _ = tx.send(Msg::Error {
+                    msg: "命令源返回了非流式句柄".into(),
+                    fatal: true,
+                });
+                return;
+            }
+            Err(e) => {
+                if restart && attempt < 6 {
+                    let secs = backoff(attempt);
+                    let _ = tx.send(Msg::Exited {
+                        code: None,
+                        retry_in: Some(secs),
+                    });
+                    let _ = tx.send(Msg::Error {
+                        msg: e,
+                        fatal: false,
+                    });
+                    attempt += 1;
+                    if !interruptible_sleep(secs, &cmd_rx) {
+                        return;
+                    }
+                    continue;
+                }
+                let _ = tx.send(Msg::Error {
+                    msg: e,
+                    fatal: true,
+                });
+                return;
+            }
+        };
+
+        let exit_slot = handle.exit.clone();
+        let stop = handle.stop.clone();
+        let mut child = handle.child.take();
+        let reader = std::mem::replace(&mut handle.reader, Box::new(std::io::empty()));
+
+        // 读线程:阻塞读由 MergedReader/非阻塞 SSH 读端负责,这里只管攒批转发
+        let (rtx, rrx) = crossbeam_channel::bounded::<ReaderMsg>(64);
+        {
+            let stop = stop.clone();
+            let _ = std::thread::Builder::new()
+                .name("cmd-read".into())
+                .spawn(move || {
+                    let mut r = reader;
+                    let mut buf = vec![0u8; 64 << 10];
+                    loop {
+                        if stop.load(Ordering::Relaxed) {
+                            return;
+                        }
+                        match r.read(&mut buf) {
+                            Ok(0) => {
+                                let _ = rtx.send(ReaderMsg::Eof);
+                                return;
+                            }
+                            Ok(n) => {
+                                if rtx.send(ReaderMsg::Chunk(buf[..n].to_vec())).is_err() {
+                                    return;
+                                }
+                            }
+                            Err(e) if source::is_retryable(&e) => {
+                                std::thread::sleep(Duration::from_millis(20));
+                            }
+                            Err(e) => {
+                                let _ = rtx.send(ReaderMsg::Fail(e.to_string()));
+                                return;
+                            }
+                        }
+                    }
+                });
+        }
+
+        let mut paused = false;
+        let mut received: u64 = 0;
+        loop {
+            crossbeam_channel::select! {
+                recv(cmd_rx) -> m => match m {
+                    Ok(Cmd::Stop) | Err(_) => {
+                        stop.store(true, Ordering::Relaxed);
+                        if let Some(c) = child.take() {
+                            let _ = reap(c);
+                        }
+                        return;
+                    }
+                    Ok(Cmd::Pause(p)) => paused = p,
+                    // 命令没有历史可回放:从头加载不可用,忽略
+                    Ok(Cmd::SeekStart) => {}
+                    Ok(Cmd::SeekEnd) => {
+                        received = 0;
+                        let _ = tx.send(Msg::Replace {
+                            data: Vec::new(),
+                            offset: 0,
+                            size: 0,
+                        });
+                    }
+                },
+                recv(rrx) -> m => match m {
+                    Ok(ReaderMsg::Chunk(d)) => {
+                        received += d.len() as u64;
+                        // 暂停期间继续读(避免反压卡住子进程),但丢弃内容
+                        if !paused
+                            && tx
+                                .send(Msg::Append {
+                                    data: d,
+                                    offset: received,
+                                    size: 0,
+                                    at: Some(now_ms()),
+                                })
+                                .is_err()
+                        {
+                            stop.store(true, Ordering::Relaxed);
+                            if let Some(c) = child.take() {
+                                let _ = reap(c);
+                            }
+                            return;
+                        }
+                    }
+                    Ok(ReaderMsg::Eof) => break,
+                    Ok(ReaderMsg::Fail(e)) => {
+                        let _ = tx.send(Msg::Error { msg: e, fatal: false });
+                        break;
+                    }
+                    Err(_) => break,
+                },
+                default(Duration::from_millis(200)) => {}
+            }
+        }
+
+        let code = match child.take() {
+            Some(c) => reap(c),
+            None => exit_slot.lock().ok().and_then(|v| *v),
+        };
+        if started.elapsed().as_secs() > 30 {
+            attempt = 0;
+        }
+
+        if restart && attempt < 6 {
+            let secs = backoff(attempt);
+            let _ = tx.send(Msg::Exited {
+                code,
+                retry_in: Some(secs),
+            });
+            attempt += 1;
+            if !interruptible_sleep(secs, &cmd_rx) {
+                stop.store(true, Ordering::Relaxed);
+                return;
+            }
+            continue;
+        }
+        let _ = tx.send(Msg::Exited {
+            code,
+            retry_in: None,
+        });
+        return;
     }
 }

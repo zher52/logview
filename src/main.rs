@@ -9,6 +9,7 @@ mod app_view;
 mod assets;
 mod code;
 mod code_input;
+mod command;
 mod level;
 mod lines;
 mod links;

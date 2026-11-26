@@ -2,14 +2,15 @@
 
 **Rust + GPUI 自绘 UI · 无 WebView · 参考 Chrome DevTools 控制台风格 · 目标全平台(macOS / Windows / Linux)**
 
-打开本地 / SSH 远端 / HTTP 链接的日志文件,正则分析日志级别并着色筛选,支持高亮与过滤检索、自动追加(tail -f)、行内链接识别。
+打开本地 / SSH 远端 / HTTP 链接的日志文件,或直接运行命令(`adb logcat`、`journalctl -f`、`docker logs`…)把输出当日志看,正则分析日志级别并着色筛选,支持高亮与过滤检索、自动追加(tail -f)、行内链接识别。
 
 ## 功能特性
 
-- [x] **三种日志源**
+- [x] **四种日志源**
   - 本地文件:`fs.stat` 轮询 + seek 增量读
   - SSH 远端:SFTP 分块读,支持密码 / 私钥文件 / 私钥文本 / 系统 agent 认证
   - HTTP URL:`Range` 请求增量拉取,内置 SSRF 防护(见[安全说明](#安全说明))
+  - 命令:本地直接执行或经 SSH 执行,stdout/stderr 合并入标签;内置 `adb logcat`(全量 / 包名 / 标签)、`tail -F`、`journalctl -f`、`docker logs -f`、`kubectl logs -f` 预设,预设是设置文件里的数据,可自定义;退出码提示与可选自动重试,适配设备重连、远端服务重启
 - [x] **级别分析(正则,默认 + 自定义多配置)**
   - 内置 5 套配置:通用单词 / logfmt(`level=xxx`)/ 方括号 `[LEVEL]` / 方括号单字母 `[D]/[I]/[W]/[E]`(默认启用),单字母级别 `T/D/I/W/E/V/F`(默认关闭,防止英文 "I" 误报;启用后 `D/xxx`、裸 `W` 等格式均可识别)
   - 自定义配置数量不限,按列表顺序判定、首中即停;规则可固定级别或 `Auto`(捕获组文本自动映射:`err→ERROR`、`warning→WARN`、**单字母 `d/i/w/e/t/v/f`→对应级别**…)
@@ -58,10 +59,21 @@ cargo build --release            # 产物 target/release/logview
 | 本地 | 文件路径 | 也可点「浏览…」调系统文件对话框 |
 | SSH | 主机 / 端口 / 用户名 / 认证方式 / 远端路径 | 认证方式:密码、私钥文件(服务器本地路径)、私钥文本(粘贴 PEM)、系统 agent |
 | HTTP | URL / 认证方式(无 / Basic / Bearer / API Key / 自定义请求头) | 需公网地址(见安全说明);跟随依赖服务器支持 `Range` |
+| 命令 | 预设 / 参数(本地)或 主机 + 认证 + 预设 / 参数(SSH) | 内置 adb / tail / journalctl / docker / kubectl 预设,也可改 argv 自定义;SSH 命令在现有 SSH 对话框里切「命令」分页 |
 
 「记住连接」勾选后,凭据写入**操作系统钥匙串**(macOS Keychain / Windows 凭据管理器 / Linux Secret Service);设置文件只保存主机、端口、用户名、路径等非敏感字段,永不写入密码或 token。钥匙串不可用时凭据仅在本次会话内存中生效,下次连接需重新输入。旧版本保存的明文凭据会在启动时自动迁移:迁移成功则清除文件中的明文;迁移失败同样清除明文并退回手动输入。SSH 私钥正文(粘贴 PEM)体积可能超过 Windows 凭据单条上限,不写入钥匙串。
 
 URL 源的凭据分两档:**保存凭据**(写入钥匙串)与**仅记录历史**(默认,只留脱敏后的地址)。SSH 主机输入框聚焦即展开已保存的服务器列表,设置「连接」里可增删改这些主机,也可从系统 ssh 客户端配置批量导入。最近打开最多保留的条数在「设置 → 连接 → 最近打开」调整(默认 50 条);删除 URL 记录时默认同时清除其钥匙串凭据。
+
+### 命令源
+
+欢迎页点「命令」,或打开 SSH 对话框后切到「命令」分页。两者共用同一套预设与表单。
+
+- **预设即数据**:内置预设写在 `settings.json` 的 `command_presets` 里(首次启动自动写入,后续新增内置项按 id 追加),可以直接改 argv、加自己的命令,不需要改代码。参数形如 `["adb", "-s", "${serial}", "logcat", "-v", "threadtime"]`,值为空的参数会连同紧邻的开关一起丢弃。
+- **本地命令按 argv 直接执行**,不经 shell;可执行文件按 `PATH` 查找,找不到会给出明确提示。
+- **SSH 命令由远端登录 shell 执行**(`sh -c`),参数逐个单引号转义,因此可以用管道、重定向;这也意味着它和你在终端里敲命令等价,不提供 argv 级别的最小权限保证。
+- **语义**:stderr 合并进同一标签;进程退出时标签底部显示退出码,勾选「退出后重试」后按退避自动重开(适合 `adb logcat` 设备重连、`docker logs -f` 容器重启)。「加载全部」对命令源禁用(没有文件可回溯),「跳到末尾」= 清空缓冲后继续。
+- **认证**:SSH 命令复用 SSH 文件源的认证方式与钥匙串条目(同一 `用户@主机:端口`),无需重复输入。
 
 ### 级别配置
 
@@ -118,7 +130,7 @@ URL 源的凭据分两档:**保存凭据**(写入钥匙串)与**仅记录历史*
 
 设置文件位置:macOS `~/Library/Application Support/logview/settings.json` · Linux `~/.config/logview/settings.json` · Windows `%APPDATA%\logview\settings.json`
 
-内容:级别配置 `configs`、级别颜色 `colors` 与 `colors_light`(暗/亮主题各 7 个 hex,顺序 TRACE…FATAL/无级别;级别 chips 与日志行共用同一来源保证一致)、**搜索高亮颜色 `highlight_dark`/`highlight_light`**(暗/亮主题各一,在设置「颜色管理」表格中与级别配色一起编辑)、**`ui_font_size`/`log_font_size` 字号**(界面元素按基准比例缩放,日志行高随字号变化)、**`ui_font_family`/`log_font_family` 字体**(留空 = 跟随系统;填系统已安装的字体名,界面与日志可分别指定)、**`primary_color` 主题色**(空 = antd 蓝,暗色主题自动用深色变体)、`poll_ms` 轮询间隔、`max_lines` 行数上限(超出环形丢弃最旧行并计数)、`initial_mb`/`tail_mb` 初始与尾部加载上限、`show_line_numbers`、`recents` 最近打开、`recents_limit` 最近打开保存条数(默认 50,范围 1–500)、`recents_purge_creds` 删除 URL 记录时是否清除对应钥匙串凭据(默认开启)、`ssh_hosts` 已保存的 SSH 主机(只含名称/主机/端口/用户名,不含凭据)。
+内容:级别配置 `configs`、级别颜色 `colors` 与 `colors_light`(暗/亮主题各 7 个 hex,顺序 TRACE…FATAL/无级别;级别 chips 与日志行共用同一来源保证一致)、**搜索高亮颜色 `highlight_dark`/`highlight_light`**(暗/亮主题各一,在设置「颜色管理」表格中与级别配色一起编辑)、**`ui_font_size`/`log_font_size` 字号**(界面元素按基准比例缩放,日志行高随字号变化)、**`ui_font_family`/`log_font_family` 字体**(留空 = 跟随系统;填系统已安装的字体名,界面与日志可分别指定)、**`primary_color` 主题色**(空 = antd 蓝,暗色主题自动用深色变体)、`poll_ms` 轮询间隔、`max_lines` 行数上限(超出环形丢弃最旧行并计数)、`initial_mb`/`tail_mb` 初始与尾部加载上限、`show_line_numbers`、`recents` 最近打开、`recents_limit` 最近打开保存条数(默认 50,范围 1–500)、`recents_purge_creds` 删除 URL 记录时是否清除对应钥匙串凭据(默认开启)、`ssh_hosts` 已保存的 SSH 主机(只含名称/主机/端口/用户名,不含凭据)、`command_presets` 命令预设(名称 / 本地或 SSH / argv 模板 / 字段 / 预解析步骤 / 关联级别配置;不含凭据)。
 
 ## 安全说明
 
@@ -131,6 +143,8 @@ URL 源的凭据分两档:**保存凭据**(写入钥匙串)与**仅记录历史*
 5. 响应大小有上限
 
 因此**内网 HTTP 日志地址无法访问**;此类场景请使用 SSH 源或本地路径。
+
+**命令源**:本地命令不经过 shell,直接 `exec` 预设里的 argv;SSH 命令交给远端登录 shell 执行,工具只做单引号转义,不做命令白名单——预设由使用者自己维护,运行前请确认命令内容。命令继承本进程环境变量(本地)或登录 shell 环境(SSH),不会读取 `settings.json` 里的其他凭据。
 
 **凭据**:密码/口令/token 默认只存于本次会话内存(用于保持连接与「SSH 内打开路径」);勾选「记住连接」后由 `keyring` 写入系统钥匙串(服务名 `logview`,条目按 `ssh|用户@主机:端口` / `http|URL` 聚合为一条 JSON),设置文件始终不含凭据。启动时会把旧版明文凭据自动迁移进钥匙串并立即改写配置文件;钥匙串不可用(如 Linux 无 Secret Service)时退回仅内存 + 手动输入,不落盘。SSH 私钥正文不写入钥匙串(Windows 单条 2560 字节上限),建议改用私钥文件方式。清理入口:设置「连接 → 已保存的 URL 凭据」可逐条删除(同时删钥匙串条目);欢迎页最近打开对单条点「×」或点「清除」(两步确认,确认前可取消)时,若「删除 URL 记录时清除凭据」开启,对应 URL 条目会被一并删除。SSH 凭据不随最近记录或已保存主机删除,目前需在系统钥匙串中手动移除。
 
@@ -145,7 +159,8 @@ UI 主线程(GPUI + gpui-kit;自绘虚拟滚动,只渲染可见行)
 Tail Worker 线程 × 每标签(轮询 size → 分块增量读,1MB/块,每周期 ≤8MB)
    ├─ LocalSource  fs::metadata + File::seek/read
    ├─ SshSource    ssh2::Session + SFTP stat/open/seek(断线报错,5 次重试后标致命)
-   └─ HttpSource   reqwest blocking + Range(固定已校验 IP;手动重定向逐跳复检)
+   ├─ HttpSource   reqwest blocking + Range(固定已校验 IP;手动重定向逐跳复检)
+   └─ Command      本地 child process / SSH exec(合并 stdout+stderr,退出码 + 退避重试)
 ```
 
 | 模块 | 职责 |
@@ -160,11 +175,12 @@ Tail Worker 线程 × 每标签(轮询 size → 分块增量读,1MB/块,每周�
 | `search.rs` | 检索状态机与匹配器(文本/正则,高亮区间) |
 | `links.rs` | URL/路径识别与重叠消解、JSON 行探测 |
 | `ssrf.rs` | URL 安全校验与网段表 |
-| `source.rs` | 三种源 open/meta/read_at、SSH 连接、HTTP client 固定 IP 与重定向 |
+| `command.rs` | 命令预设数据模型(argv 模板 / 字段 / 预解析 / 级别配置关联)、argv 展开与内置预设 |
+| `source.rs` | 三种文件源 open/meta/read_at、命令源 spawn(本地 / SSH exec)、SSH 连接、HTTP client 固定 IP 与重定向 |
 | `ssh_config.rs` | 解析系统 ssh 客户端配置,导入已保存的 SSH 主机(跳过通配与 Match) |
 | `secrets.rs` | 凭据存取:系统钥匙串优先,不可用退回仅内存 |
 | `store.rs` | settings.json 读写、旧版明文凭据迁移 |
-| `tail.rs` | worker 协议与轮询循环、初始/尾部/全量加载、轮换 |
+| `tail.rs` | worker 协议与轮询循环、初始/尾部/全量加载、轮换;命令源为流式模式(合并读取、退出重试) |
 
 ## 开发
 
@@ -202,6 +218,7 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 
 - [x] macOS .app 打包与文件关联(`./scripts/make_app.sh`,支持 Finder 右键打开)
 - [ ] Windows / Linux 打包与关联脚本(msi/AppImage + `.desktop` `Exec=logview %f`)
+- [x] 命令源(本地 / SSH 执行命令,内置 adb / journalctl / docker / kubectl / tail 预设)
 - [ ] 行内 ANSI 颜色解析
 - [ ] 长行折行模式(当前横向滚动)
 - [ ] SSH 已连接实例复用(路径链接免重连)
@@ -210,6 +227,10 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 ## FAQ
 
 **界面中文显示异常?** 界面与日志字体可在「设置 → 外观与显示 → 字号与字体」分别指定,留空则跟随系统。若中文显示为方块,说明所选字体不含中文字形:改回「跟随系统」或安装中文字体即可。
+
+**`adb logcat` 没有输出?** 先确认设备连接(`adb devices`)。预设的「设备序列号」留空时由 adb 自行选择;多设备并存请填序列号。`adb` 不在 `PATH` 时,把预设第一项改成可执行文件的绝对路径。
+
+**命令源为什么没有「加载全部」?** 命令的输出是流,没有可回溯的文件;需要历史时用 `journalctl -n`、`docker logs --tail` 之类参数在命令里取。
 
 **SSH 打开后报认证失败?** 检查用户名/凭据;私钥文件路径指**服务器本地**路径;agent 方式依赖运行环境的 `SSH_AUTH_SOCK`。
 

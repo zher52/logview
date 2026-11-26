@@ -16,6 +16,21 @@
 - 许可证采用 GNU AGPL-3.0（SPDX：`AGPL-3.0-only`）。
 - 统一 rustfmt 格式。
 
+## [0.3.0] - 2026-11-26
+
+### Added
+
+- 第四种日志源「命令」:本地直接执行,或经 SSH 远端执行,stdout/stderr 合并入标签。
+- 命令预设数据模型(`command_presets`):argv 模板、字段、预解析步骤(如 `adb shell pidof`)、关联级别配置;内置 adb logcat(全量/包名/标签)、`tail -F`、`journalctl -f`、`docker logs -f`、`kubectl logs -f`,新增内置项按 id 自动追加。
+- 命令源退出码提示与可选自动重试(退避),适配设备重连与服务重启;SSH 命令复用主机凭据与钥匙串条目。
+- 内置 `adb logcat -v threadtime` 级别配置。
+- 命令流与本地进程测试(当前共 69 项)。
+
+### Changed
+
+- SSH 打开对话框增加「文件 | 命令」分页,命令与目标主机在同一处填写;欢迎页新增「命令」入口。
+- 命令源禁用「加载全部」(流式无回溯),「跳到末尾」改为清空缓冲后继续。
+
 ## [0.2.0] - 2026-11-26
 
 ### Added

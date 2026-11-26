@@ -73,7 +73,23 @@ impl Secret {
                 header_value: non_empty_opt(header_value),
                 ..Secret::default()
             },
-            SourceParams::Local { .. } => Secret::default(),
+            SourceParams::Command {
+                target:
+                    crate::source::ExecTarget::Ssh {
+                        host,
+                        port,
+                        user,
+                        auth,
+                    },
+                ..
+            } => Secret::from_params(&SourceParams::Ssh {
+                host: host.clone(),
+                port: *port,
+                user: user.clone(),
+                auth: auth.clone(),
+                path: String::new(),
+            }),
+            SourceParams::Command { .. } | SourceParams::Local { .. } => Secret::default(),
         }
     }
 
@@ -124,7 +140,30 @@ impl Secret {
                 let c = fill_opt(header_value, &self.header_value);
                 a || b || c
             }
-            SourceParams::Local { .. } => false,
+            SourceParams::Command {
+                target:
+                    crate::source::ExecTarget::Ssh {
+                        host,
+                        port,
+                        user,
+                        auth,
+                    },
+                ..
+            } => {
+                let mut s = SourceParams::Ssh {
+                    host: host.clone(),
+                    port: *port,
+                    user: user.clone(),
+                    auth: auth.clone(),
+                    path: String::new(),
+                };
+                let ok = self.apply(&mut s);
+                if let SourceParams::Ssh { auth: a, .. } = s {
+                    *auth = a;
+                }
+                ok
+            }
+            SourceParams::Command { .. } | SourceParams::Local { .. } => false,
         }
     }
 }
@@ -144,7 +183,7 @@ pub fn key_of(p: &SourceParams) -> Option<String> {
             host, port, user, ..
         } => Some(ssh_key(user, host, *port)),
         SourceParams::Http { url, .. } => Some(http_key(url)),
-        SourceParams::Local { .. } => None,
+        SourceParams::Command { .. } | SourceParams::Local { .. } => None,
     }
 }
 

@@ -10,6 +10,7 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 
 use gpui_kit::base::input::{Editor, EditorState, InputHighlighter, InputHighlighterFactory};
 use gpui_kit::base::ElementExt as _;
@@ -34,12 +35,13 @@ use gpui_kit::{
 };
 use gpui_kit::{AnyElement, ClipboardItem, PathPromptOptions};
 
+use crate::command::{self, CommandPlan, CommandPreset, PresetField};
 use crate::level::{level_names, Engine, LevelConfig, LEVEL_COUNT, SEP};
 use crate::lines::LineStore;
 use crate::links::{self, LinkKind};
 use crate::search::{self, Matcher, SearchState};
 use crate::secrets::{self, Secret};
-use crate::source::{SourceParams, SshAuth};
+use crate::source::{ExecTarget, SourceParams, SshAuth};
 use crate::store::{self, Recent, Settings};
 use crate::tail;
 use crate::tail::{Cmd, Msg};
@@ -106,6 +108,10 @@ pub struct Tab {
     settings: bool,
     /// 代码文件标签页(Some = 只读语法高亮视图,可切换编辑)
     code: Option<CodeDoc>,
+    /// 命令源(单向流):无大小/历史概念,部分按钮语义不同
+    stream: bool,
+    /// 命令退出提示(文案, 是否异常);有新输出时清除
+    exit_note: Option<(String, bool)>,
 }
 
 /// 代码文件标签页的状态
@@ -138,14 +144,30 @@ impl Tab {
     }
 
     fn open(settings: &Settings, params: SourceParams) -> Tab {
+        let plan = command_plan(settings, &params);
         let (tx, rx) = tail::spawn(
             params.clone(),
+            plan,
             settings.poll_ms,
             settings.initial_mb << 20,
             settings.tail_mb << 20,
         );
         let title = params.label();
-        let enabled_ids = Self::default_enabled(settings);
+        let mut enabled_ids = Self::default_enabled(settings);
+        // 命令预设声明的日志格式(如 Android logcat)自动启用对应级别配置
+        if let SourceParams::Command {
+            preset: Some(id), ..
+        } = &params
+        {
+            if let Some(p) = command::find(&settings.command_presets, id) {
+                if let Some(lc) = &p.level_config_id {
+                    if !enabled_ids.iter().any(|x| x == lc) {
+                        enabled_ids.push(lc.clone());
+                    }
+                }
+            }
+        }
+        let stream = matches!(&params, SourceParams::Command { .. });
         Tab {
             id: 0,
             title,
@@ -184,6 +206,8 @@ impl Tab {
             welcome: false,
             settings: false,
             code: None,
+            stream,
+            exit_note: None,
         }
     }
 
@@ -230,6 +254,8 @@ impl Tab {
             welcome: true,
             settings: false,
             code: None,
+            stream: false,
+            exit_note: None,
         }
     }
 
@@ -296,14 +322,8 @@ impl Tab {
     fn compile_search(&mut self) {
         let st = SearchState {
             query: self.query.clone(),
-            mode: if self.filter_mode {
-                search::Mode::Filter
-            } else {
-                search::Mode::Highlight
-            },
             regex: self.regex,
             case_sensitive: self.case_sensitive,
-            rev: 0,
         };
         match search::compile(&st) {
             Ok(m) => {
@@ -411,6 +431,7 @@ enum Dialog {
     None,
     Ssh(SshForm),
     Url(UrlForm),
+    Cmd(CmdForm),
 }
 
 /// SSH 连接配置弹窗状态
@@ -427,6 +448,10 @@ struct SshForm {
     /// 认证失败后重试的目标标签页 id(Some = 重新提交时替换该标签页内容)
     retry: Option<u64>,
     err: Option<String>,
+    /// 0 = 打开文件,1 = 执行命令
+    mode: usize,
+    /// 命令模式的预设/字段
+    cmd: CmdFields,
 }
 
 impl SshForm {
@@ -448,7 +473,109 @@ impl SshForm {
             remember: false,
             retry: None,
             err: None,
+            mode: 0,
+            cmd: CmdFields::new(window, cx),
         }
+    }
+}
+
+/// 命令表单的字段部分(本机命令弹窗与 SSH 命令模式共用)
+#[derive(Clone)]
+struct CmdFields {
+    /// 0 = 自定义;n = 预设列表第 n-1 项
+    preset: usize,
+    /// 当前预设的字段输入框
+    inputs: Vec<(PresetField, Entity<InputState>)>,
+    /// 自定义命令行
+    text: Entity<InputState>,
+    /// 退出后自动重试
+    restart: bool,
+}
+
+impl CmdFields {
+    fn new(window: &mut Window, cx: &mut Context<AppView>) -> CmdFields {
+        CmdFields {
+            preset: 0,
+            inputs: Vec::new(),
+            text: cx
+                .new(|cx| InputState::new(window, cx).placeholder("例如 adb logcat -v threadtime")),
+            restart: false,
+        }
+    }
+}
+
+/// 本机命令弹窗
+struct CmdForm {
+    fields: CmdFields,
+    err: Option<String>,
+}
+
+/// 按预设重建字段输入框(填默认值)
+fn build_preset_inputs(
+    presets: &[CommandPreset],
+    local: bool,
+    preset: usize,
+    window: &mut Window,
+    cx: &mut Context<AppView>,
+) -> Vec<(PresetField, Entity<InputState>)> {
+    let list = command::presets_for(presets, local);
+    let Some(p) = preset.checked_sub(1).and_then(|i| list.get(i)).copied() else {
+        return Vec::new();
+    };
+    p.fields
+        .iter()
+        .map(|f| {
+            let ph = f.placeholder.clone();
+            let e = cx.new(|cx| {
+                let s = InputState::new(window, cx);
+                if ph.is_empty() {
+                    s
+                } else {
+                    s.placeholder(SharedString::from(ph))
+                }
+            });
+            let d = f.default.clone();
+            e.update(cx, |s, cx| s.set_value(d, window, cx));
+            (f.clone(), e)
+        })
+        .collect()
+}
+
+/// 从参数回填命令表单(认证失败重试、凭据提示时用)
+#[allow(clippy::too_many_arguments)]
+fn fill_command_fields(
+    presets: &[CommandPreset],
+    local: bool,
+    preset_id: &Option<String>,
+    values: &BTreeMap<String, String>,
+    argv: &[String],
+    raw: bool,
+    fields: &mut CmdFields,
+    window: &mut Window,
+    cx: &mut Context<AppView>,
+) {
+    let list = command::presets_for(presets, local);
+    let idx = preset_id
+        .as_ref()
+        .and_then(|id| list.iter().position(|p| &p.id == id));
+    fields.preset = idx.map(|i| i + 1).unwrap_or(0);
+    fields.inputs = build_preset_inputs(presets, local, fields.preset, window, cx);
+    if idx.is_some() {
+        for (f, e) in &fields.inputs {
+            if let Some(v) = values.get(&f.key) {
+                let v = v.clone();
+                e.update(cx, |s, cx| s.set_value(v, window, cx));
+            }
+        }
+    } else {
+        let text = if raw {
+            argv.join(" ")
+        } else {
+            command::display(argv)
+        };
+        fields
+            .text
+            .update(cx, |s, cx| s.set_value(text, window, cx));
     }
 }
 
@@ -1228,7 +1355,7 @@ impl AppView {
         if !params.needs_secret() {
             return None;
         }
-        let key = secrets::key_of(params)?;
+        let key = key_of_params(params)?;
         match secrets::load(&key) {
             Ok(Some(sec)) if sec.apply(params) => None,
             Ok(_) => Some("未找到已保存的凭据,连接时需重新输入".into()),
@@ -1239,7 +1366,7 @@ impl AppView {
     /// 记录最近打开:设置文件里永远只存脱敏参数;勾选「记住连接」时把凭据写入系统钥匙串
     fn record_recent_opt(&mut self, params: SourceParams, remember: bool) {
         let secret = Secret::from_params(&params);
-        let key = secrets::key_of(&params);
+        let key = key_of_params(&params);
         let mut remembered = false;
         if remember {
             if let Some(k) = key.as_deref() {
@@ -2261,7 +2388,38 @@ impl AppView {
                 form.err = Some(msg);
                 self.dialog = Dialog::Url(form);
             }
-            SourceParams::Local { .. } => return,
+            SourceParams::Command {
+                target: ExecTarget::Ssh {
+                    host, port, user, ..
+                },
+                argv,
+                preset,
+                values,
+                raw,
+                ..
+            } => {
+                let mut form = SshForm::new(window, cx);
+                form.host.update(cx, |s, cx| s.set_value(host, window, cx));
+                form.port
+                    .update(cx, |s, cx| s.set_value(port.to_string(), window, cx));
+                form.user.update(cx, |s, cx| s.set_value(user, window, cx));
+                form.mode = 1;
+                fill_command_fields(
+                    &self.settings.command_presets,
+                    false,
+                    &preset,
+                    &values,
+                    &argv,
+                    raw,
+                    &mut form.cmd,
+                    window,
+                    cx,
+                );
+                form.remember = secrets::available();
+                form.err = Some(msg);
+                self.dialog = Dialog::Ssh(form);
+            }
+            SourceParams::Command { .. } | SourceParams::Local { .. } => return,
         }
         self.cred_notice = None;
     }
@@ -2276,6 +2434,83 @@ impl AppView {
     fn open_url_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let form = UrlForm::new(window, cx);
         self.dialog = Dialog::Url(form);
+    }
+
+    /// 打开本机命令弹窗
+    fn open_cmd_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.dialog = Dialog::Cmd(CmdForm {
+            fields: CmdFields::new(window, cx),
+            err: None,
+        });
+    }
+
+    fn cmd_set_preset(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let presets = self.settings.command_presets.clone();
+        if let Dialog::Cmd(f) = &mut self.dialog {
+            f.fields.preset = i;
+            f.fields.inputs = build_preset_inputs(&presets, true, i, window, cx);
+            f.err = None;
+        }
+    }
+
+    fn cmd_toggle_restart(&mut self) {
+        if let Dialog::Cmd(f) = &mut self.dialog {
+            f.fields.restart = !f.fields.restart;
+        }
+    }
+
+    /// 提交本机命令:与打开文件一致,优先占用当前空白标签页
+    fn cmd_submit(&mut self, cx: &mut Context<Self>) {
+        let res = {
+            let Dialog::Cmd(f) = &self.dialog else {
+                return;
+            };
+            command_params(
+                &f.fields,
+                &self.settings.command_presets,
+                true,
+                ExecTarget::Local,
+                cx,
+            )
+        };
+        let params = match res {
+            Ok(p) => p,
+            Err(e) => {
+                if let Dialog::Cmd(f) = &mut self.dialog {
+                    f.err = Some(e);
+                }
+                return;
+            }
+        };
+        let target = self.active;
+        if self.tabs.get(target).map_or(false, |t| t.welcome) {
+            self.open_in_tab(target, params, false);
+            self.dialog = Dialog::None;
+        } else {
+            self.open_source(params, false);
+        }
+    }
+
+    fn ssh_set_mode(&mut self, i: usize) {
+        if let Dialog::Ssh(f) = &mut self.dialog {
+            f.mode = i;
+            f.err = None;
+        }
+    }
+
+    fn ssh_cmd_set_preset(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let presets = self.settings.command_presets.clone();
+        if let Dialog::Ssh(f) = &mut self.dialog {
+            f.cmd.preset = i;
+            f.cmd.inputs = build_preset_inputs(&presets, false, i, window, cx);
+            f.err = None;
+        }
+    }
+
+    fn ssh_cmd_toggle_restart(&mut self) {
+        if let Dialog::Ssh(f) = &mut self.dialog {
+            f.cmd.restart = !f.cmd.restart;
+        }
     }
 
     /// 认证失败:弹出对应的连接表单,预填目标与错误提示(凭据留空待重填),
@@ -2339,7 +2574,40 @@ impl AppView {
                 f.err = Some(err);
                 self.dialog = Dialog::Url(f);
             }
-            SourceParams::Local { .. } => {}
+            SourceParams::Command {
+                target: ExecTarget::Ssh {
+                    host, port, user, ..
+                },
+                argv,
+                preset,
+                values,
+                raw,
+                ..
+            } => {
+                let mut f = SshForm::new(window, cx);
+                f.retry = Some(tab_id);
+                f.host
+                    .update(cx, |s, cx| s.set_value(host.clone(), window, cx));
+                f.port
+                    .update(cx, |s, cx| s.set_value(port.to_string(), window, cx));
+                f.user
+                    .update(cx, |s, cx| s.set_value(user.clone(), window, cx));
+                f.mode = 1;
+                fill_command_fields(
+                    &self.settings.command_presets,
+                    false,
+                    &preset,
+                    &values,
+                    &argv,
+                    *raw,
+                    &mut f.cmd,
+                    window,
+                    cx,
+                );
+                f.err = Some(err);
+                self.dialog = Dialog::Ssh(f);
+            }
+            SourceParams::Command { .. } | SourceParams::Local { .. } => {}
         }
     }
 
@@ -2620,35 +2888,82 @@ impl AppView {
 
     /// 提交 SSH 表单:在当前空白页打开,否则新开标签页
     fn ssh_submit(&mut self, cx: &mut Context<Self>) {
-        let Some(Dialog::Ssh(f)) = Some(&self.dialog) else {
-            return;
+        let (
+            host,
+            port_txt,
+            user,
+            password,
+            path,
+            auth_password,
+            remember,
+            retry,
+            mode,
+            cmd_fields,
+        ) = {
+            let Dialog::Ssh(f) = &self.dialog else {
+                return;
+            };
+            let get = |e: &Entity<InputState>| e.read(cx).value().to_string();
+            (
+                get(&f.host),
+                get(&f.port),
+                get(&f.user),
+                get(&f.password),
+                get(&f.path),
+                f.auth_password,
+                f.remember,
+                f.retry,
+                f.mode,
+                f.cmd.clone(),
+            )
         };
-        let get = |e: &Entity<InputState>| e.read(cx).value().to_string();
-        let host = get(&f.host);
-        let port_txt = get(&f.port);
-        let user = get(&f.user);
-        let password = get(&f.password);
-        let path = get(&f.path);
-        let auth_password = f.auth_password;
-        let remember = f.remember;
-        let retry = f.retry;
-        let err = validate_ssh(&host, &user, &path, &port_txt);
+        let err = if mode == 0 {
+            validate_ssh(&host, &user, &path, &port_txt)
+        } else {
+            validate_ssh_conn(&host, &user, &port_txt)
+        };
         if let Some(e) = err {
             if let Dialog::Ssh(f) = &mut self.dialog {
                 f.err = Some(e);
             }
             return;
         }
-        let params = SourceParams::Ssh {
-            host: host.trim().to_string(),
-            port: port_txt.trim().parse().unwrap_or(22),
-            user: user.trim().to_string(),
-            auth: if auth_password {
-                SshAuth::Password(password)
-            } else {
-                SshAuth::Agent
-            },
-            path,
+        let port = port_txt.trim().parse().unwrap_or(22);
+        let auth = if auth_password {
+            SshAuth::Password(password)
+        } else {
+            SshAuth::Agent
+        };
+        let params = if mode == 0 {
+            SourceParams::Ssh {
+                host: host.trim().to_string(),
+                port,
+                user: user.trim().to_string(),
+                auth,
+                path,
+            }
+        } else {
+            let target = ExecTarget::Ssh {
+                host: host.trim().to_string(),
+                port,
+                user: user.trim().to_string(),
+                auth,
+            };
+            match command_params(
+                &cmd_fields,
+                &self.settings.command_presets,
+                false,
+                target,
+                cx,
+            ) {
+                Ok(p) => p,
+                Err(e) => {
+                    if let Dialog::Ssh(f) = &mut self.dialog {
+                        f.err = Some(e);
+                    }
+                    return;
+                }
+            }
         };
         // 认证失败重试:在原标签页重新打开,不再新开标签
         if let Some(id) = retry {
@@ -2977,6 +3292,7 @@ impl AppView {
             Dialog::None => None,
             Dialog::Ssh(_) => Some(self.render_ssh_dialog(window, cx)),
             Dialog::Url(_) => Some(self.render_url_dialog(cx)),
+            Dialog::Cmd(_) => Some(self.render_cmd_dialog(cx)),
         }
     }
 
@@ -2990,6 +3306,7 @@ impl AppView {
         };
         let auth_password = f.auth_password;
         let remember = f.remember;
+        let mode = f.mode;
         let query = f.host.read(cx).value().trim().to_lowercase();
         // 服务器输入框获得焦点即展开已保存服务器列表,失焦(含选中后焦点移走)收起
         let host_focus = f.host.read(cx).presentation().focus_handle().clone();
@@ -3128,10 +3445,39 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("远程路径", pal))
-                .child(div().flex_1().child(Input::new(&path_e).small()))
+                .child(label("方式", pal))
+                .child(segmented(
+                    cx,
+                    "ssh-mode",
+                    &["文件", "命令"],
+                    mode,
+                    pal,
+                    |v, i| v.ssh_set_mode(i),
+                ))
                 .into_any_element(),
         );
+        if mode == 0 {
+            rows.push(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(label("远程路径", pal))
+                    .child(div().flex_1().child(Input::new(&path_e).small()))
+                    .into_any_element(),
+            );
+        } else {
+            rows.extend(command_rows(
+                cx,
+                &self.settings.command_presets,
+                false,
+                &f.cmd,
+                pal,
+                "远端命令由登录 shell 执行,可用管道与重定向。",
+                |v, i, w, cx| v.ssh_cmd_set_preset(i, w, cx),
+                |v| v.ssh_cmd_toggle_restart(),
+            ));
+        }
         rows.push(
             div()
                 .flex()
@@ -3210,10 +3556,71 @@ impl AppView {
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
-                dlg_btn("ssh-ok", "连接", true, pal)
+                dlg_btn("ssh-ok", if mode == 0 { "连接" } else { "运行" }, true, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.ssh_submit(cx))),
             );
         dlg_shell("dlg-ssh", header, body, footer, pal, ui_font)
+    }
+
+    /// 本机命令弹窗
+    fn render_cmd_dialog(&self, cx: &mut Context<Self>) -> AnyElement {
+        let light = !cx.theme().mode.is_dark();
+        let pal = theme::palette(light);
+        let ui_font = self.ui_font(cx);
+        let Dialog::Cmd(f) = &self.dialog else {
+            return div().into_any_element();
+        };
+        let err = f.err.clone();
+        let mut rows = command_rows(
+            cx,
+            &self.settings.command_presets,
+            true,
+            &f.fields,
+            pal,
+            "本机命令不经过 shell:管道与重定向不生效,参数按引号拆分。",
+            |v, i, w, cx| v.cmd_set_preset(i, w, cx),
+            |v| v.cmd_toggle_restart(),
+        );
+        if let Some(e) = err {
+            rows.push(
+                div()
+                    .pl(px(96.0))
+                    .text_size(px(theme::scaled(12.0)))
+                    .text_color(theme::hex(pal.error))
+                    .child(e)
+                    .into_any_element(),
+            );
+        }
+
+        let header = dlg_header(
+            "运行命令",
+            pal,
+            cx.listener(|v, _e, _w, _cx| v.close_dialog()),
+        );
+        let body = div()
+            .flex()
+            .flex_col()
+            .gap(px(10.0))
+            .px(px(16.0))
+            .py(px(14.0))
+            .children(rows);
+        let footer = div()
+            .flex()
+            .justify_end()
+            .gap(px(8.0))
+            .px(px(16.0))
+            .py(px(10.0))
+            .border_t_1()
+            .border_color(theme::hex(pal.split))
+            .child(
+                dlg_btn("cmd-cancel", "取消", false, pal)
+                    .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
+            )
+            .child(
+                dlg_btn("cmd-ok", "运行", true, pal)
+                    .on_click(cx.listener(|v, _e, _w, cx| v.cmd_submit(cx))),
+            );
+        dlg_shell("dlg-cmd", header, body, footer, pal, ui_font)
     }
 
     /// URL(HTTP)输入弹窗
@@ -3640,6 +4047,13 @@ impl AppView {
                 "URL",
                 pal,
                 move |v, _e, window, cx| v.open_url_dialog(window, cx),
+                cx,
+            ))
+            .child(link(
+                "welcome-cmd",
+                "命令",
+                pal,
+                move |v, _e, window, cx| v.open_cmd_dialog(window, cx),
                 cx,
             ))
             .child(link(
@@ -4632,7 +5046,7 @@ impl AppView {
             list = list.child(div().pt(px(6.0)).child(add));
             // 导入 / 导出 / 恢复内置默认:放在左栏底部,避免被配置详情掩盖
             let imp = dlg_btn("cfg-import", "导入 JSON", false, pal)
-                .on_click(cx.listener(|v, _e, window, cx| v.import_configs(cx)));
+                .on_click(cx.listener(|v, _e, _window, cx| v.import_configs(cx)));
             let exp = dlg_btn("cfg-export", "导出 JSON", false, pal)
                 .on_click(cx.listener(|v, _e, _w, cx| v.export_configs(cx)));
             let rst = dlg_btn("cfg-reset", "恢复内置默认", false, pal)
@@ -5298,6 +5712,7 @@ impl AppView {
                         at,
                     } => {
                         let dropped_before = tab.store.dropped;
+                        tab.exit_note = None;
                         let len_before = tab.store.len();
                         tab.store.push_bytes(&data, &tab.engine, at);
                         tab.store.bytes_loaded = offset;
@@ -5354,7 +5769,17 @@ impl AppView {
                     }
                     Msg::Partial { loaded, total } => tab.loading = Some((loaded, total)),
                     Msg::Complete => tab.loading = None,
-                    Msg::NoFollow { .. } => tab.no_follow = true,
+                    Msg::NoFollow => tab.no_follow = true,
+                    Msg::Exited { code, retry_in } => {
+                        let note = match (code, retry_in) {
+                            (Some(c), Some(s)) => format!("命令退出(code={c}),{s}s 后重试"),
+                            (Some(c), None) => format!("命令已退出(code={c})"),
+                            (None, Some(s)) => format!("命令结束,{s}s 后重试"),
+                            (None, None) => "命令已退出".to_string(),
+                        };
+                        let bad = code.map_or(false, |c| c != 0) || retry_in.is_some();
+                        tab.exit_note = Some((note, bad));
+                    }
                     Msg::Error { msg, fatal } => {
                         tab.err = Some(msg.clone());
                         if fatal {
@@ -5873,6 +6298,10 @@ impl AppView {
     /// 从头部全量加载:与 egui 版一致,只发 SeekStart,不改跟随/暂停状态
     fn load_all(&mut self) {
         if let Some(t) = self.active_tab_mut() {
+            // 命令流无历史可回放
+            if t.stream {
+                return;
+            }
             let _ = t.cmd_tx.send(Cmd::SeekStart);
             t.tail_banner = None;
         }
@@ -7006,13 +7435,23 @@ impl AppView {
                 segs.push((format!("已丢弃 {}", t.store.dropped), theme::hex(pal.text3)));
             }
             segs.push((
-                format!(
-                    "{}/{}",
-                    fmt_size(t.store.bytes_loaded),
-                    fmt_size(t.store.total_size)
-                ),
+                if t.stream {
+                    format!("已接收 {}", fmt_size(t.store.bytes_loaded))
+                } else {
+                    format!(
+                        "{}/{}",
+                        fmt_size(t.store.bytes_loaded),
+                        fmt_size(t.store.total_size)
+                    )
+                },
                 theme::hex(pal.text3),
             ));
+            if let Some((note, bad)) = &t.exit_note {
+                segs.push((
+                    note.clone(),
+                    theme::hex(if *bad { pal.warning } else { pal.text3 }),
+                ));
+            }
             if let Some((loaded, total)) = loading {
                 let pct = if total > 0 {
                     loaded as f64 / total as f64 * 100.0
@@ -7537,11 +7976,242 @@ fn validate_ssh(host: &str, user: &str, path: &str, port_txt: &str) -> Option<St
     if path.trim().is_empty() {
         return Some("请填写远程日志路径(例如 /var/log/app.log)".to_string());
     }
+    validate_ssh_conn(host, user, port_txt)
+}
+
+/// SSH 命令模式:不需要远程路径
+fn validate_ssh_conn(host: &str, user: &str, port_txt: &str) -> Option<String> {
+    if host.trim().is_empty() || user.trim().is_empty() {
+        return Some("请填写主机与用户名".to_string());
+    }
     match port_txt.trim().parse::<u16>() {
         Ok(p) if p > 0 => None,
         Ok(_) => Some("端口需为 1–65535".to_string()),
         Err(e) => Some(format!("端口无效: {e}")),
     }
+}
+
+/// 由参数生成命令执行计划(预设按当前字段值重新展开,避免沿用旧 PID)
+fn command_plan(settings: &Settings, params: &SourceParams) -> Option<CommandPlan> {
+    let SourceParams::Command {
+        argv,
+        preset,
+        values,
+        raw,
+        ..
+    } = params
+    else {
+        return None;
+    };
+    match preset
+        .as_ref()
+        .and_then(|id| command::find(&settings.command_presets, id))
+    {
+        Some(p) => command::plan(p, values).ok(),
+        None => Some(CommandPlan {
+            argv: argv.clone(),
+            resolve: Vec::new(),
+            raw: *raw,
+        }),
+    }
+}
+
+/// 参数对应的钥匙串 key:SSH 命令复用主机凭据(与文件源同一个条目)
+fn key_of_params(p: &SourceParams) -> Option<String> {
+    secrets::key_of(p).or_else(|| match p {
+        SourceParams::Command {
+            target: ExecTarget::Ssh {
+                host, port, user, ..
+            },
+            ..
+        } => Some(secrets::ssh_key(user, host, *port)),
+        _ => None,
+    })
+}
+
+/// 命令表单 → 源参数
+fn command_params(
+    fields: &CmdFields,
+    presets: &[CommandPreset],
+    local: bool,
+    target: ExecTarget,
+    cx: &Context<AppView>,
+) -> Result<SourceParams, String> {
+    let restart = fields.restart;
+    if fields.preset == 0 {
+        let text = fields.text.read(cx).value().trim().to_string();
+        if text.is_empty() {
+            return Err("请填写命令".into());
+        }
+        let argv = if local {
+            command::split_argv(&text)?
+        } else {
+            vec![text]
+        };
+        if argv.is_empty() {
+            return Err("请填写命令".into());
+        }
+        return Ok(SourceParams::Command {
+            target,
+            argv,
+            preset: None,
+            values: BTreeMap::new(),
+            restart,
+            raw: !local,
+        });
+    }
+    let list = command::presets_for(presets, local);
+    let p = list.get(fields.preset - 1).ok_or("预设不存在")?;
+    let mut values = BTreeMap::new();
+    for (f, e) in &fields.inputs {
+        values.insert(f.key.clone(), e.read(cx).value().to_string());
+    }
+    let plan = command::plan(p, &values)?;
+    Ok(SourceParams::Command {
+        target,
+        argv: plan.argv,
+        preset: Some(p.id.clone()),
+        values,
+        restart,
+        raw: false,
+    })
+}
+
+/// 命令表单行(预设 chips + 字段/自定义命令 + 自动重试)
+#[allow(clippy::too_many_arguments)]
+fn command_rows(
+    cx: &Context<AppView>,
+    presets: &[CommandPreset],
+    local: bool,
+    fields: &CmdFields,
+    pal: &'static Palette,
+    hint: &'static str,
+    on_preset: impl Fn(&mut AppView, usize, &mut Window, &mut Context<AppView>) + Clone + 'static,
+    on_restart: impl Fn(&mut AppView) + 'static,
+) -> Vec<AnyElement> {
+    let list = command::presets_for(presets, local);
+    let mut names: Vec<String> = vec!["自定义".into()];
+    names.extend(list.iter().map(|p| p.name.clone()));
+    let sel = fields.preset.min(names.len().saturating_sub(1));
+
+    let mut chips = div().flex().flex_wrap().gap(px(4.0));
+    for (i, name) in names.iter().enumerate() {
+        let f = on_preset.clone();
+        chips = chips.child(
+            div()
+                .id(SharedString::from(format!("cmd-preset-{local}-{i}")))
+                .cursor(CursorStyle::PointingHand)
+                .px(px(10.0))
+                .py(px(3.0))
+                .rounded(px(4.0))
+                .text_size(px(theme::scaled(12.0)))
+                .bg(if i == sel {
+                    theme::hex(pal.bg_selected)
+                } else {
+                    gpui_kit::transparent_black()
+                })
+                .text_color(if i == sel {
+                    theme::hex(pal.text1)
+                } else {
+                    theme::hex(pal.text2)
+                })
+                .child(SharedString::from(name.clone()))
+                .on_click(cx.listener(move |v, _e, w, cx| f(v, i, w, cx))),
+        );
+    }
+
+    fn label(text: &str, pal: &'static Palette) -> AnyElement {
+        div()
+            .w(px(88.0))
+            .flex_shrink_0()
+            .text_right()
+            .text_size(px(theme::scaled(12.0)))
+            .text_color(theme::hex(pal.text2))
+            .child(text.to_string())
+            .into_any_element()
+    }
+
+    let mut rows: Vec<AnyElement> = vec![div()
+        .flex()
+        .items_center()
+        .gap(px(8.0))
+        .child(div().w(px(88.0)).flex_shrink_0())
+        .child(chips)
+        .into_any_element()];
+
+    if sel == 0 {
+        rows.push(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.0))
+                .child(label("命令", pal))
+                .child(div().flex_1().child(Input::new(&fields.text).small()))
+                .into_any_element(),
+        );
+    } else if let Some(p) = list.get(sel - 1) {
+        for (f, e) in &fields.inputs {
+            rows.push(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(label(&f.label, pal))
+                    .child(div().flex_1().child(Input::new(e).small()))
+                    .into_any_element(),
+            );
+        }
+        let mut values = BTreeMap::new();
+        for (f, e) in &fields.inputs {
+            values.insert(f.key.clone(), e.read(cx).value().to_string());
+        }
+        if let Ok(plan) = command::plan(p, &values) {
+            rows.push(
+                div()
+                    .pl(px(96.0))
+                    .text_size(px(theme::scaled(11.0)))
+                    .text_color(theme::hex(pal.text3))
+                    .child(format!("将执行:{}", command::display(&plan.argv)))
+                    .into_any_element(),
+            );
+        }
+    }
+
+    rows.push(
+        div()
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .child(div().w(px(88.0)).flex_shrink_0())
+            .child(
+                switch_el(
+                    if local {
+                        "cmd-restart"
+                    } else {
+                        "ssh-cmd-restart"
+                    },
+                    fields.restart,
+                    pal,
+                )
+                .on_click(cx.listener(move |v, _e, _w, _cx| on_restart(v))),
+            )
+            .child(
+                div()
+                    .text_size(px(theme::scaled(12.0)))
+                    .text_color(theme::hex(pal.text2))
+                    .child("退出后自动重试(断线、设备重连)"),
+            )
+            .into_any_element(),
+    );
+    rows.push(
+        div()
+            .pl(px(96.0))
+            .text_size(px(theme::scaled(11.0)))
+            .text_color(theme::hex(pal.text3))
+            .child(hint)
+            .into_any_element(),
+    );
+    rows
 }
 
 /// 日志地址校验:不能为空,且必须是 http/https
