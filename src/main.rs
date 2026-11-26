@@ -10,6 +10,7 @@ mod assets;
 mod code;
 mod code_input;
 mod command;
+mod i18n;
 mod level;
 mod lines;
 mod links;
@@ -41,11 +42,12 @@ fn main() {
             gpui_kit::init(cx);
             // 围栏代码块着色:给 base 的 Text View 注入全局 highlighter
             code::install_code_block_highlighter(cx);
-            // 组件库文案(颜色选择器等)跟随中文界面
-            gpui_kit::component::set_locale("zh-CN");
             cx.activate(true);
 
             let settings = store::load();
+            // 界面语言:组件库文案与自绘文案共用同一设置
+            i18n::set(i18n::Lang::from_code(&settings.language));
+            gpui_kit::component::set_locale(i18n::lang().locale());
             // 窗口标题(任务栏 / Mission Control / 窗口菜单):不设置时为空
             let mut titlebar = gpui_kit::component::TitleBar::title_bar_options();
             titlebar.title = Some(APP_NAME.into());

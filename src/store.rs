@@ -31,6 +31,9 @@ pub struct Settings {
     /// 日志字体族(空 = 跟随系统等宽字体)
     #[serde(default)]
     pub log_font_family: String,
+    /// 界面语言:"zh" / "en"(默认中文)
+    #[serde(default = "default_language")]
+    pub language: String,
     /// 日志行默认自动换行(新标签页的初始值;标签页内可单独切换)
     #[serde(default = "default_wrap")]
     pub wrap: bool,
@@ -82,6 +85,10 @@ fn default_wrap() -> bool {
 
 fn default_ui_font_size() -> f32 {
     13.0
+}
+
+fn default_language() -> String {
+    "zh".into()
 }
 
 fn default_log_font_size() -> f32 {
@@ -212,6 +219,7 @@ impl Default for Settings {
             log_font_size: default_log_font_size(),
             ui_font_family: String::new(),
             log_font_family: String::new(),
+            language: default_language(),
             wrap: true,
             colors: [
                 "#75757e", "#8c8c8c", "#95de64", "#ffc53d", "#ff7875", "#ff7875", "#d9d9d9",

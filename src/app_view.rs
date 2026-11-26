@@ -36,6 +36,7 @@ use gpui_kit::{
 use gpui_kit::{AnyElement, ClipboardItem, PathPromptOptions};
 
 use crate::command::{self, CommandPlan, CommandPreset, PresetField};
+use crate::i18n;
 use crate::level::{level_names, Engine, LevelConfig, LEVEL_COUNT, SEP};
 use crate::lines::LineStore;
 use crate::links::{self, LinkKind};
@@ -3307,6 +3308,20 @@ impl AppView {
         self.settings_apply(false, cx);
     }
 
+    /// 切换界面语言:同步 gpui-kit 组件文案并重绘
+    fn toggle_language(&mut self, cx: &mut Context<Self>) {
+        let next = if i18n::lang() == i18n::Lang::En {
+            "zh"
+        } else {
+            "en"
+        };
+        self.settings.language = next.to_string();
+        i18n::set(i18n::Lang::from_code(next));
+        gpui_kit::component::set_locale(i18n::lang().locale());
+        self.settings_apply(false, cx);
+        cx.notify();
+    }
+
     // ---- 弹层渲染 ----
 
     fn render_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
@@ -3555,7 +3570,7 @@ impl AppView {
         }
 
         let header = dlg_header(
-            "SSH 连接",
+            i18n::t("SSH 连接"),
             pal,
             cx.listener(|v, _e, _w, _cx| v.close_dialog()),
         );
@@ -3575,12 +3590,21 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("ssh-cancel", "取消", false, pal)
+                dlg_btn("ssh-cancel", i18n::t("取消"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
-                dlg_btn("ssh-ok", if mode == 0 { "连接" } else { "运行" }, true, pal)
-                    .on_click(cx.listener(|v, _e, _w, cx| v.ssh_submit(cx))),
+                dlg_btn(
+                    "ssh-ok",
+                    if mode == 0 {
+                        i18n::t("连接")
+                    } else {
+                        i18n::t("运行")
+                    },
+                    true,
+                    pal,
+                )
+                .on_click(cx.listener(|v, _e, _w, cx| v.ssh_submit(cx))),
             );
         dlg_shell("dlg-ssh", header, body, footer, pal, ui_font)
     }
@@ -3616,7 +3640,7 @@ impl AppView {
         }
 
         let header = dlg_header(
-            "运行命令",
+            i18n::t("运行命令"),
             pal,
             cx.listener(|v, _e, _w, _cx| v.close_dialog()),
         );
@@ -3636,11 +3660,11 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("cmd-cancel", "取消", false, pal)
+                dlg_btn("cmd-cancel", i18n::t("取消"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
-                dlg_btn("cmd-ok", "运行", true, pal)
+                dlg_btn("cmd-ok", i18n::t("运行"), true, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.cmd_submit(cx))),
             );
         dlg_shell("dlg-cmd", header, body, footer, pal, ui_font)
@@ -3701,7 +3725,7 @@ impl AppView {
                     .child("不一致时可能存在中间人攻击。选择「记住」后,密钥变化将直接拒绝连接。"),
             );
         let header = dlg_header(
-            "确认主机密钥",
+            i18n::t("确认主机密钥"),
             pal,
             cx.listener(|v, _e, _w, _cx| v.host_key_respond(false, false)),
         );
@@ -3714,15 +3738,15 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("hk-cancel", "取消", false, pal)
+                dlg_btn("hk-cancel", i18n::t("取消"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(false, false))),
             )
             .child(
-                dlg_btn("hk-once", "仅本次信任", false, pal)
+                dlg_btn("hk-once", i18n::t("仅本次信任"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(true, false))),
             )
             .child(
-                dlg_btn("hk-remember", "信任并记住", true, pal)
+                dlg_btn("hk-remember", i18n::t("信任并记住"), true, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(true, true))),
             );
         dlg_shell("dlg-hostkey", header, body, footer, pal, ui_font)
@@ -3965,7 +3989,7 @@ impl AppView {
         }
 
         let header = dlg_header(
-            "打开 URL",
+            i18n::t("打开 URL"),
             pal,
             cx.listener(|v, _e, _w, _cx| v.close_dialog()),
         );
@@ -3985,11 +4009,11 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("url-cancel", "取消", false, pal)
+                dlg_btn("url-cancel", i18n::t("取消"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
-                dlg_btn("url-ok", "打开", true, pal)
+                dlg_btn("url-ok", i18n::t("打开"), true, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.url_submit(cx))),
             );
         dlg_shell("dlg-url", header, body, footer, pal, ui_font)
@@ -4867,6 +4891,18 @@ impl AppView {
                     .into_any_element(),
             ),
         ));
+        // 界面语言:切换后立即重绘(仅影响已迁移文案与组件库 locale)
+        appearance.push((
+            "界面语言 language English".into(),
+            settings_row(
+                pal,
+                i18n::t("界面语言"),
+                Some(i18n::t("切换中文 / English(部分文案仍在迁移)").into()),
+                switch_el("set-lang-en", i18n::lang() == i18n::Lang::En, pal)
+                    .on_click(cx.listener(|v, _e, _w, cx| v.toggle_language(cx)))
+                    .into_any_element(),
+            ),
+        ));
         let typography: Vec<(String, AnyElement)> = vec![
             (
                 "界面字号 字号 font size".into(),
@@ -5184,15 +5220,15 @@ impl AppView {
                     .on_click(cx.listener(move |v, _e, window, cx| v.select_config(i, window, cx)));
                 list = list.child(item);
             }
-            let add = dlg_btn("cfg-add", "＋ 新建配置", false, pal)
+            let add = dlg_btn("cfg-add", i18n::t("＋ 新建配置"), false, pal)
                 .on_click(cx.listener(|v, _e, window, cx| v.add_config(window, cx)));
             list = list.child(div().pt(px(6.0)).child(add));
             // 导入 / 导出 / 恢复内置默认:放在左栏底部,避免被配置详情掩盖
-            let imp = dlg_btn("cfg-import", "导入 JSON", false, pal)
+            let imp = dlg_btn("cfg-import", i18n::t("导入 JSON"), false, pal)
                 .on_click(cx.listener(|v, _e, _window, cx| v.import_configs(cx)));
-            let exp = dlg_btn("cfg-export", "导出 JSON", false, pal)
+            let exp = dlg_btn("cfg-export", i18n::t("导出 JSON"), false, pal)
                 .on_click(cx.listener(|v, _e, _w, cx| v.export_configs(cx)));
-            let rst = dlg_btn("cfg-reset", "恢复内置默认", false, pal)
+            let rst = dlg_btn("cfg-reset", i18n::t("恢复内置默认"), false, pal)
                 .on_click(cx.listener(|v, _e, window, cx| v.reset_all_builtins(window, cx)));
             list = list.child(
                 div()
@@ -5262,15 +5298,17 @@ impl AppView {
                     ));
                 if !*built_in {
                     head = head.child(
-                        dlg_btn("cfg-del", "删除配置", false, pal)
+                        dlg_btn("cfg-del", i18n::t("删除配置"), false, pal)
                             .on_click(cx.listener(|v, _e, window, cx| v.del_config(window, cx))),
                     );
                 } else {
-                    head = head.child(dlg_btn("cfg-reset-one", "恢复默认", false, pal).on_click(
-                        cx.listener(move |v, _e, window, cx| {
-                            v.reset_builtin_config(sel, window, cx)
-                        }),
-                    ));
+                    head = head.child(
+                        dlg_btn("cfg-reset-one", i18n::t("恢复默认"), false, pal).on_click(
+                            cx.listener(move |v, _e, window, cx| {
+                                v.reset_builtin_config(sel, window, cx)
+                            }),
+                        ),
+                    );
                 }
                 detail = detail.child(head);
 
@@ -5383,7 +5421,7 @@ impl AppView {
                         .px(px(12.0))
                         .py(px(8.0))
                         .child(
-                            dlg_btn("rule-add", "＋ 添加规则", false, pal)
+                            dlg_btn("rule-add", i18n::t("＋ 添加规则"), false, pal)
                                 .on_click(cx.listener(|v, _e, window, cx| v.add_rule(window, cx))),
                         )
                         .into_any_element(),
@@ -5507,7 +5545,13 @@ impl AppView {
             (3, "最近打开", recents_cfg),
             (4, "键盘快捷键", shortcut_entries),
         ];
-        let page_titles = ["外观与显示", "日志与性能", "分析配置", "连接", "快捷键"];
+        let page_titles = [
+            i18n::t("外观与显示"),
+            i18n::t("日志与性能"),
+            i18n::t("分析配置"),
+            i18n::t("连接"),
+            i18n::t("快捷键"),
+        ];
         let page_descs = [
             "界面行号换行、字号字体与颜色管理",
             "自动追加、加载大小与内存上限",
