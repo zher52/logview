@@ -328,6 +328,42 @@ const EN: &[(&str, &str)] = &[
         "系统钥匙串不可用,凭据仅本次会话有效",
         "System keychain unavailable; credentials are valid for this session only",
     ),
+    ("已暂停", "Paused"),
+    ("跟进中", "Following"),
+    ("+{n} 新行", "+{n} new lines"),
+    ("匹配 {n} 行", "{n} matching lines"),
+    ("正则错误:{e}", "Regex error: {e}"),
+    (
+        "已加载头部 {loaded} / {total}(文件更大)",
+        "Loaded first {loaded} of {total} (file is larger)",
+    ),
+    (
+        "已跳至末尾,从字节 {off} / {total} 开始 — 新日志将自动追加",
+        "Jumped to end, starting at byte {off} of {total}; new logs will follow automatically",
+    ),
+    (
+        "没有与「{query}」匹配的设置项",
+        "No settings match \"{query}\"",
+    ),
+    (
+        "{n} 项设置匹配「{query}」",
+        "{n} settings match \"{query}\"",
+    ),
+    ("{name}:{n} 行(点击{action})", "{name}: {n} lines (click to {action})"),
+    ("已与「{desc}」互换快捷键", "Swapped shortcut with \"{desc}\""),
+    ("已设为 {shortcut}", "Set to {shortcut}"),
+    (
+        "分析配置:{on}/{total} 已启用,点击选择",
+        "Analysis: {on}/{total} enabled; click to choose",
+    ),
+    ("将执行:{cmd}", "Will run: {cmd}"),
+    ("端口无效: {e}", "Invalid port: {e}"),
+    ("保存失败:{e}", "Save failed: {e}"),
+    ("{host}:{port} · 用户 {user}", "{host}:{port} · user {user}"),
+    ("{status} · {n} 条规则{suffix}", "{status} · {n} rules{suffix}"),
+    ("已启用", "Enabled"),
+    ("未启用", "Disabled"),
+    ("{n} 条规则{suffix}", "{n} rules{suffix}"),
 ];
 
 #[cfg(test)]

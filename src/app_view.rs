@@ -4582,7 +4582,14 @@ impl AppView {
                             div()
                                 .text_size(px(theme::scaled(11.0)))
                                 .text_color(theme::hex(pal.text3))
-                                .child(format!("{host}:{port} · 用户 {user}")),
+                                .child(i18n::tf(
+                                    "{host}:{port} · 用户 {user}",
+                                    &[
+                                        ("host", host.to_string()),
+                                        ("port", port.to_string()),
+                                        ("user", user.to_string()),
+                                    ],
+                                )),
                         ),
                 )
                 .child(
@@ -5172,11 +5179,27 @@ impl AppView {
                 .child(i18n::t("编辑"))
                 .on_click(cx.listener(move |v, _e, window, cx| v.open_config_page(i, window, cx)))
                 .into_any_element();
-            let meta = format!(
-                "{} · {} 条规则{}",
-                if *enabled { "已启用" } else { "未启用" },
-                rules_n,
-                if *built_in { i18n::t(" · 内置") } else { "" }
+            let meta = i18n::tf(
+                "{status} · {n} 条规则{suffix}",
+                &[
+                    (
+                        "status",
+                        if *enabled {
+                            i18n::t("已启用").to_string()
+                        } else {
+                            i18n::t("未启用").to_string()
+                        },
+                    ),
+                    ("n", rules_n.to_string()),
+                    (
+                        "suffix",
+                        if *built_in {
+                            i18n::t(" · 内置").to_string()
+                        } else {
+                            String::new()
+                        },
+                    ),
+                ],
             );
             cfg_entries.push((
                 format!("{name} 配置 分析规则 正则"),
@@ -5267,10 +5290,19 @@ impl AppView {
                                 div()
                                     .text_size(px(theme::scaled(10.5)))
                                     .text_color(theme::hex(pal.text3))
-                                    .child(format!(
-                                        "{} 条规则{}",
-                                        rules_n,
-                                        if *built_in { i18n::t(" · 内置") } else { "" }
+                                    .child(i18n::tf(
+                                        "{n} 条规则{suffix}",
+                                        &[
+                                            ("n", rules_n.to_string()),
+                                            (
+                                                "suffix",
+                                                if *built_in {
+                                                    i18n::t(" · 内置").to_string()
+                                                } else {
+                                                    String::new()
+                                                },
+                                            ),
+                                        ],
                                     )),
                             ),
                     )
@@ -5680,9 +5712,15 @@ impl AppView {
         };
         let head_desc = if searching {
             if matched == 0 {
-                format!("没有与「{}」匹配的设置项", query)
+                i18n::tf(
+                    "没有与「{query}」匹配的设置项",
+                    &[("query", query.to_string())],
+                )
             } else {
-                format!("{} 项设置匹配「{}」", matched, query)
+                i18n::tf(
+                    "{n} 项设置匹配「{query}」",
+                    &[("n", matched.to_string()), ("query", query.to_string())],
+                )
             }
         } else {
             page_descs[tab_sel].to_string()
@@ -6685,7 +6723,7 @@ impl AppView {
                 t.rebuild_matched();
                 self.rows_cache.invalidate();
             }
-            Err(e) => t.err = Some(format!("保存失败:{e}")),
+            Err(e) => t.err = Some(i18n::tf("保存失败:{e}", &[("e", e.to_string())])),
         }
         cx.notify();
     }
@@ -6803,8 +6841,10 @@ impl AppView {
         if let Some(d) = self.settings_panel.as_mut() {
             d.capture = None;
             d.sc_notice = Some(match conflict {
-                Some((_, desc)) => format!("已与「{desc}」互换快捷键"),
-                None => format!("已设为 {}", shortcut_label(&spec)),
+                Some((_, desc)) => {
+                    i18n::tf("已与「{desc}」互换快捷键", &[("desc", desc.to_string())])
+                }
+                None => i18n::tf("已设为 {shortcut}", &[("shortcut", shortcut_label(&spec))]),
             });
         }
         cx.notify();
@@ -7290,15 +7330,20 @@ impl AppView {
                 ChipStyle::Short => format!("{head} · {}", counts[idx]),
                 ChipStyle::Letter => head,
             };
-            let tip = SharedString::from(format!(
-                "{}:{} 行(点击{})",
-                names[idx],
-                counts[idx],
-                if on {
-                    i18n::t("隐藏")
-                } else {
-                    i18n::t("显示")
-                }
+            let tip = SharedString::from(i18n::tf(
+                "{name}:{n} 行(点击{action})",
+                &[
+                    ("name", names[idx].to_string()),
+                    ("n", counts[idx].to_string()),
+                    (
+                        "action",
+                        if on {
+                            i18n::t("隐藏").to_string()
+                        } else {
+                            i18n::t("显示").to_string()
+                        },
+                    ),
+                ],
             ));
             let mut chip = div()
                 .id(SharedString::from(format!("chip-{idx}")))
@@ -7380,8 +7425,10 @@ impl AppView {
                     .text_color(theme::hex(pal.text3)),
             )
             .tooltip(move |window, cx| {
-                let tip =
-                    SharedString::from(format!("分析配置:{cfg_on}/{cfg_total} 已启用,点击选择"));
+                let tip = SharedString::from(i18n::tf(
+                    "分析配置:{on}/{total} 已启用,点击选择",
+                    &[("on", cfg_on.to_string()), ("total", cfg_total.to_string())],
+                ));
                 gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
                     div().text_size(px(theme::scaled(11.0))).child(tip.clone())
                 })
@@ -7468,10 +7515,9 @@ impl AppView {
                     .border_color(theme::hex(pal.split))
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.text3))
-                    .child(format!(
-                        "已加载头部 {} / {}(文件更大)",
-                        fmt_mb(loaded),
-                        fmt_mb(total)
+                    .child(i18n::tf(
+                        "已加载头部 {loaded} / {total}(文件更大)",
+                        &[("loaded", fmt_mb(loaded)), ("total", fmt_mb(total))],
                     ))
                     .child(
                         banner_btn("ban-all", i18n::t("加载全部"))
@@ -7497,9 +7543,9 @@ impl AppView {
                     .border_color(theme::hex(pal.split))
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.text3))
-                    .child(format!(
-                        "已跳至末尾,从字节 {} / {} 开始 — 新日志将自动追加",
-                        off, total
+                    .child(i18n::tf(
+                        "已跳至末尾,从字节 {off} / {total} 开始 — 新日志将自动追加",
+                        &[("off", off.to_string()), ("total", total.to_string())],
                     ))
                     .child(
                         banner_btn("ban-head", "从头加载")
@@ -7757,17 +7803,23 @@ impl AppView {
                 ));
             }
             if paused {
-                segs.push(("已暂停".into(), theme::hex(pal.warning)));
+                segs.push((i18n::t("已暂停").into(), theme::hex(pal.warning)));
             } else if follow {
-                segs.push(("跟进中".into(), theme::hex(pal.primary)));
+                segs.push((i18n::t("跟进中").into(), theme::hex(pal.primary)));
             } else if pending_new > 0 {
-                segs.push((format!("+{} 新行", pending_new), theme::hex(pal.primary)));
+                segs.push((
+                    i18n::tf("+{n} 新行", &[("n", pending_new.to_string())]),
+                    theme::hex(pal.primary),
+                ));
             }
             if !filter_mode && t.query_active() && match_err.is_none() {
-                segs.push((format!("匹配 {} 行", matched_n), theme::hex(pal.text2)));
+                segs.push((
+                    i18n::tf("匹配 {n} 行", &[("n", matched_n.to_string())]),
+                    theme::hex(pal.text2),
+                ));
             }
             if let Some(e) = match_err {
-                segs.push((format!("正则错误:{}", e), theme::hex(pal.error)));
+                segs.push((i18n::tf("正则错误:{e}", &[("e", e)]), theme::hex(pal.error)));
             }
             if let Some(e) = err_text {
                 segs.push((e, theme::hex(pal.error)));
@@ -8273,7 +8325,7 @@ fn validate_ssh_conn(host: &str, user: &str, port_txt: &str) -> Option<String> {
     match port_txt.trim().parse::<u16>() {
         Ok(p) if p > 0 => None,
         Ok(_) => Some(i18n::t("端口需为 1–65535").to_string()),
-        Err(e) => Some(format!("端口无效: {e}")),
+        Err(e) => Some(i18n::tf("端口无效: {e}", &[("e", e.to_string())])),
     }
 }
 
@@ -8457,7 +8509,10 @@ fn command_rows(
                     .pl(px(96.0))
                     .text_size(px(theme::scaled(11.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child(format!("将执行:{}", command::display(&plan.argv)))
+                    .child(i18n::tf(
+                        "将执行:{cmd}",
+                        &[("cmd", command::display(&plan.argv))],
+                    ))
                     .into_any_element(),
             );
         }
