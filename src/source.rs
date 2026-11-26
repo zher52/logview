@@ -608,7 +608,7 @@ fn host_key_algo(key: &[u8]) -> String {
             .ok()
             .map(str::to_owned)
     })()
-    .unwrap_or_else(|| "未知算法".into())
+    .unwrap_or_else(|| i18n::t("未知算法").into())
 }
 
 fn host_key_fingerprint(key: &[u8]) -> String {
@@ -625,19 +625,23 @@ fn known_hosts_path() -> Option<PathBuf> {
 
 /// 把当前会话的主机密钥追加到 known_hosts(保留已有条目)
 fn trust_host(sess: &ssh2::Session, host: &str, port: u16) -> Result<(), String> {
-    let path = known_hosts_path().ok_or("找不到用户目录,无法写入 known_hosts")?;
+    let path =
+        known_hosts_path().ok_or(i18n::t("找不到用户目录,无法写入 known_hosts").to_string())?;
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("创建 ~/.ssh 失败:{e}"))?;
+        std::fs::create_dir_all(dir)
+            .map_err(|e| i18n::tf("创建 ~/.ssh 失败:{e}", &[("e", e.to_string())]))?;
     }
     let mut known_hosts = sess
         .known_hosts()
-        .map_err(|e| format!("known_hosts 初始化失败:{e}"))?;
+        .map_err(|e| i18n::tf("known_hosts 初始化失败:{e}", &[("e", e.to_string())]))?;
     if path.is_file() {
         known_hosts
             .read_file(&path, ssh2::KnownHostFileKind::OpenSSH)
-            .map_err(|e| format!("读取 known_hosts 失败:{e}"))?;
+            .map_err(|e| i18n::tf("读取 known_hosts 失败:{e}", &[("e", e.to_string())]))?;
     }
-    let (key, kind) = sess.host_key().ok_or("无法获取服务器主机密钥")?;
+    let (key, kind) = sess
+        .host_key()
+        .ok_or(i18n::t("无法获取服务器主机密钥").to_string())?;
     // 非默认端口需写成 [host]:port,与 OpenSSH 一致
     let name = if port == 22 {
         host.to_string()
@@ -651,10 +655,10 @@ fn trust_host(sess: &ssh2::Session, host: &str, port: u16) -> Result<(), String>
             "added by logview",
             ssh2::KnownHostKeyFormat::from(kind),
         )
-        .map_err(|e| format!("写入 known_hosts 失败:{e}"))?;
+        .map_err(|e| i18n::tf("写入 known_hosts 失败:{e}", &[("e", e.to_string())]))?;
     known_hosts
         .write_file(&path, ssh2::KnownHostFileKind::OpenSSH)
-        .map_err(|e| format!("保存 known_hosts 失败:{e}"))?;
+        .map_err(|e| i18n::tf("保存 known_hosts 失败:{e}", &[("e", e.to_string())]))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
@@ -683,19 +687,22 @@ fn verify_known_host(
                 .read_file(&path, ssh2::KnownHostFileKind::OpenSSH)
                 .is_err()
         {
-            return Err(format!(
-                "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取"
+            return Err(i18n::tf(
+                "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取",
+                &[("host", host.to_string()), ("port", port.to_string())],
             ));
         }
     }
     match known_hosts.check_port(host, port, key) {
         ssh2::CheckResult::Match => Ok(()),
-        ssh2::CheckResult::Mismatch => Err(format!(
+        ssh2::CheckResult::Mismatch => Err(i18n::tf(
             "SSH 主机密钥与 known_hosts 记录不一致({host}:{port}),可能存在中间人攻击;\
-             确认服务器换过密钥后请先更新 known_hosts"
+             确认服务器换过密钥后请先更新 known_hosts",
+            &[("host", host.to_string()), ("port", port.to_string())],
         )),
-        ssh2::CheckResult::Failure => Err(format!(
-            "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取"
+        ssh2::CheckResult::Failure => Err(i18n::tf(
+            "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取",
+            &[("host", host.to_string()), ("port", port.to_string())],
         )),
         ssh2::CheckResult::NotFound => {
             let info = HostKeyInfo {
@@ -839,7 +846,10 @@ fn build_http_auth(p: &SourceParams) -> Result<Option<HttpAuthHeader>, String> {
                 name.to_ascii_lowercase().as_str(),
                 "host" | "content-length" | "transfer-encoding" | "connection"
             ) {
-                return Err(format!("不允许设置请求头: {name}"));
+                return Err(i18n::tf(
+                    "不允许设置请求头: {name}",
+                    &[("name", name.to_string())],
+                ));
             }
             let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
                 .map_err(|e| i18n::tf("请求头名称无效: {e}", &[("e", e.to_string())]))?;
@@ -887,19 +897,19 @@ fn http_get(
                 .headers()
                 .get(reqwest::header::LOCATION)
                 .and_then(|h| h.to_str().ok())
-                .ok_or("重定向缺少 Location")?
+                .ok_or(i18n::t("重定向缺少 Location"))?
                 .to_owned();
             cur = v
                 .url
                 .join(&loc)
-                .map_err(|_| "重定向 Location 无效".to_string())?;
+                .map_err(|_| i18n::t("重定向 Location 无效").to_string())?;
             *v = validate_url(cur.as_str())?;
             *client = http_client(v)?;
             continue;
         }
         return Ok(resp);
     }
-    Err("重定向次数过多".into())
+    Err(i18n::t("重定向次数过多").into())
 }
 
 fn total_from_headers(resp: &reqwest::blocking::Response, v: &Validated) -> Option<u64> {

@@ -8,6 +8,8 @@
 
 use std::ops::Range;
 
+use crate::i18n;
+
 use gpui_kit::base::input::{
     EditorState, FoldRange, HighlightStyleResolver, InputEdit, InputHighlighter,
 };
@@ -472,9 +474,12 @@ pub fn stub_missing_images(md: &str, base_dir: &std::path::Path) -> String {
             if full.is_file() {
                 whole.to_string()
             } else if alt.is_empty() {
-                format!("⚠ 图片缺失:{decoded}")
+                i18n::tf("⚠ 图片缺失:{decoded}", &[("decoded", decoded)])
             } else {
-                format!("⚠ 图片缺失:{decoded}({alt})")
+                i18n::tf(
+                    "⚠ 图片缺失:{decoded}({alt})",
+                    &[("decoded", decoded), ("alt", alt.to_string())],
+                )
             }
         });
         out.push_str(&replaced);

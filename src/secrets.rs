@@ -15,6 +15,7 @@ use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
 
+use crate::i18n;
 use crate::source::{SourceParams, SshAuth};
 
 /// 钥匙串服务名:条目形如 (服务=logview, 账号=ssh|user@host:port)
@@ -188,15 +189,17 @@ pub fn key_of(p: &SourceParams) -> Option<String> {
 }
 
 fn entry(key: &str) -> Result<keyring::Entry, String> {
-    keyring::Entry::new(SERVICE, key).map_err(|e| format!("初始化系统钥匙串失败: {e}"))
+    keyring::Entry::new(SERVICE, key)
+        .map_err(|e| i18n::tf("初始化系统钥匙串失败: {e}", &[("e", e.to_string())]))
 }
 
 /// 写入(覆盖)一条凭据
 pub fn save(key: &str, s: &Secret) -> Result<(), String> {
-    let txt = serde_json::to_string(s).map_err(|e| format!("凭据序列化失败: {e}"))?;
+    let txt = serde_json::to_string(s)
+        .map_err(|e| i18n::tf("凭据序列化失败: {e}", &[("e", e.to_string())]))?;
     entry(key)?
         .set_password(&txt)
-        .map_err(|e| format!("写入系统钥匙串失败: {e}"))
+        .map_err(|e| i18n::tf("写入系统钥匙串失败: {e}", &[("e", e.to_string())]))
 }
 
 /// 读取一条凭据;条目不存在返回 Ok(None),后端异常返回 Err
@@ -204,9 +207,9 @@ pub fn load(key: &str) -> Result<Option<Secret>, String> {
     match entry(key)?.get_password() {
         Ok(txt) => serde_json::from_str(&txt)
             .map(Some)
-            .map_err(|e| format!("已保存的凭据无法解析: {e}")),
+            .map_err(|e| i18n::tf("已保存的凭据无法解析: {e}", &[("e", e.to_string())])),
         Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(format!("读取系统钥匙串失败: {e}")),
+        Err(e) => Err(i18n::tf("读取系统钥匙串失败: {e}", &[("e", e.to_string())])),
     }
 }
 
@@ -214,7 +217,10 @@ pub fn load(key: &str) -> Result<Option<Secret>, String> {
 pub fn delete(key: &str) -> Result<(), String> {
     match entry(key)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(format!("删除系统钥匙串条目失败: {e}")),
+        Err(e) => Err(i18n::tf(
+            "删除系统钥匙串条目失败: {e}",
+            &[("e", e.to_string())],
+        )),
     }
 }
 

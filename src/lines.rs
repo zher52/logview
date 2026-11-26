@@ -160,7 +160,7 @@ mod tests {
         assert_eq!(st.lines[2].at, None);
         // reset_with / 分隔行一律不带时间
         st.reset_with(b"d\n", 0, &eng);
-        st.insert_separator("── 轮换 ──");
+        st.insert_separator(crate::i18n::t("── 轮换 ──"));
         assert_eq!(st.lines[0].at, None);
         assert_eq!(st.lines[1].at, None);
     }

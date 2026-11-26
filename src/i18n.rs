@@ -574,6 +574,80 @@ const EN: &[(&str, &str)] = &[
     ("请填写命令", "Enter a command"),
     ("条", "items"),
     ("行", "lines"),
+    ("未知算法", "unknown algorithm"),
+    (
+        "找不到用户目录,无法写入 known_hosts",
+        "Cannot locate the home directory; cannot write known_hosts",
+    ),
+    ("创建 ~/.ssh 失败:{e}", "Failed to create ~/.ssh: {e}"),
+    ("known_hosts 初始化失败:{e}", "Failed to initialize known_hosts: {e}"),
+    ("读取 known_hosts 失败:{e}", "Failed to read known_hosts: {e}"),
+    ("无法获取服务器主机密钥", "Cannot obtain the server host key"),
+    ("写入 known_hosts 失败:{e}", "Failed to write known_hosts: {e}"),
+    ("保存 known_hosts 失败:{e}", "Failed to save known_hosts: {e}"),
+    (
+        "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取",
+        "SSH host key verification failed ({host}:{port}): cannot read known_hosts",
+    ),
+    (
+        "SSH 主机密钥与 known_hosts 记录不一致({host}:{port}),可能存在中间人攻击;确认服务器换过密钥后请先更新 known_hosts",
+        "SSH host key does not match known_hosts ({host}:{port}); a man-in-the-middle attack is possible. If the server key changed, update known_hosts first.",
+    ),
+    ("重定向缺少 Location", "Redirect is missing Location"),
+    ("重定向 Location 无效", "Invalid redirect Location"),
+    ("重定向次数过多", "Too many redirects"),
+    (
+        "命令源需通过 open_command 打开",
+        "Command sources must be opened via open_command",
+    ),
+    (
+        "服务器忽略 Range 请求,无法增量读取",
+        "Server ignored the Range request; incremental reads are unavailable",
+    ),
+    ("不允许设置请求头: {name}", "Header not allowed: {name}"),
+    ("URL 无效: {e}", "Invalid URL: {e}"),
+    (
+        "仅允许 http/https 协议(收到: {s})",
+        "Only http/https is allowed (got: {s})",
+    ),
+    (
+        "不支持携带用户名/密码的 URL",
+        "URLs with embedded username/password are not supported",
+    ),
+    ("URL 缺少主机名", "URL is missing a host"),
+    ("URL 缺少端口", "URL is missing a port"),
+    (
+        "拒绝 localhost/.local 地址(SSRF 防护)",
+        "localhost/.local addresses are blocked (SSRF protection)",
+    ),
+    ("DNS 解析失败: {e}", "DNS resolution failed: {e}"),
+    ("DNS 解析无结果", "DNS returned no results"),
+    (
+        "拒绝内网/环回/保留地址 {ip}(SSRF 防护,仅允许公网地址)",
+        "Blocked internal/loopback/reserved address {ip} (SSRF protection; public addresses only)",
+    ),
+    ("⚠ 图片缺失:{decoded}", "⚠ Image missing: {decoded}"),
+    (
+        "⚠ 图片缺失:{decoded}({alt})",
+        "⚠ Image missing: {decoded} ({alt})",
+    ),
+    (
+        "无法定位用户主目录,未导入",
+        "Cannot locate the home directory; nothing imported",
+    ),
+    ("读取 {path} 失败: {e}", "Failed to read {path}: {e}"),
+    ("初始化系统钥匙串失败: {e}", "Failed to initialize the system keychain: {e}"),
+    ("凭据序列化失败: {e}", "Failed to serialize credentials: {e}"),
+    ("写入系统钥匙串失败: {e}", "Failed to write to the system keychain: {e}"),
+    (
+        "已保存的凭据无法解析: {e}",
+        "Saved credentials could not be parsed: {e}",
+    ),
+    ("读取系统钥匙串失败: {e}", "Failed to read from the system keychain: {e}"),
+    (
+        "删除系统钥匙串条目失败: {e}",
+        "Failed to delete the system keychain entry: {e}",
+    ),
 ];
 
 #[cfg(test)]
