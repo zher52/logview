@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 zher52
+
 //! 命令源:预设模板、占位符展开、本机 argv 拆分、远端命令引用
 //!
 //! 预设是「数据」:一条 argv 模板 + 若干字段。展开后交给 `source::open_command`
