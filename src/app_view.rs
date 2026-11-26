@@ -7334,20 +7334,21 @@ impl AppView {
             let color = lv[idx];
             let on = !hidden[idx];
             // 级别 tag:文字用级别配置色、底色用主题背景色;选中时底部画级别色指示线
-            let head: String = names[idx]
+            let lname = i18n::t(names[idx]);
+            let head: String = lname
                 .chars()
                 .next()
                 .map(|c| c.to_string())
                 .unwrap_or_default();
             let label = match chip_style {
-                ChipStyle::Full => format!("{} · {}", names[idx], counts[idx]),
+                ChipStyle::Full => format!("{} · {}", lname, counts[idx]),
                 ChipStyle::Short => format!("{head} · {}", counts[idx]),
                 ChipStyle::Letter => head,
             };
             let tip = SharedString::from(i18n::tf(
                 "{name}:{n} 行(点击{action})",
                 &[
-                    ("name", names[idx].to_string()),
+                    ("name", lname.to_string()),
                     ("n", counts[idx].to_string()),
                     (
                         "action",

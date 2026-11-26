@@ -79,6 +79,7 @@ pub fn tf(template: &'static str, args: &[(&str, String)]) -> String {
 
 /// 中文原文 → 英文;逐步补齐,未收录的条目自动回退中文
 const EN: &[(&str, &str)] = &[
+    ("无级别", "None"),
     ("取消", "Cancel"),
     ("连接", "Connect"),
     ("运行", "Run"),
