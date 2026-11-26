@@ -1,66 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 zher52
 
-//! 检索:关键字(文本)/正则 × 大小写开关 × 高亮/过滤两种模式
+//! 检索:关键字(文本)/正则 × 大小写开关;高亮/过滤模式由 UI 层维护
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
-    Highlight, // 全部行可见,匹配处加高亮,支持跳转
-    Filter,    // 只显示匹配行
-}
-
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SearchState {
     pub query: String,
-    pub mode: Mode,
     pub regex: bool,
     pub case_sensitive: bool,
-    pub rev: u64,
-}
-
-impl Default for SearchState {
-    fn default() -> Self {
-        Self {
-            query: String::new(),
-            mode: Mode::Highlight,
-            regex: false,
-            case_sensitive: false,
-            rev: 0,
-        }
-    }
-}
-
-impl SearchState {
-    pub fn active(&self) -> bool {
-        !self.query.is_empty()
-    }
-    fn bump(&mut self) {
-        self.rev += 1;
-    }
-    /// TextEdit 直接改写 query 后调用,标记需要重编译
-    pub fn mark_changed(&mut self) {
-        self.bump();
-    }
-    pub fn set_query(&mut self, q: String) {
-        if self.query != q {
-            self.query = q;
-            self.bump();
-        }
-    }
-    pub fn set_mode(&mut self, m: Mode) {
-        if self.mode != m {
-            self.mode = m;
-            self.bump();
-        }
-    }
-    pub fn toggle_regex(&mut self) {
-        self.regex = !self.regex;
-        self.bump();
-    }
-    pub fn toggle_case(&mut self) {
-        self.case_sensitive = !self.case_sensitive;
-        self.bump();
-    }
 }
 
 #[derive(Clone)]
@@ -163,8 +110,11 @@ mod tests {
         let m = compile(&state("error")).unwrap().unwrap();
         assert!(m.matches("an ERROR occurred"));
 
-        let mut st = state("error");
-        st.case_sensitive = true;
+        let st = SearchState {
+            query: "error".into(),
+            case_sensitive: true,
+            ..Default::default()
+        };
         let m = compile(&st).unwrap().unwrap();
         assert!(!m.matches("an ERROR occurred"));
         assert!(m.matches("an error occurred"));
@@ -172,47 +122,38 @@ mod tests {
 
     #[test]
     fn text_spans_cover_all_occurrences() {
-        let mut st = state("abc");
-        st.case_sensitive = true;
+        let st = SearchState {
+            query: "abc".into(),
+            case_sensitive: true,
+            ..Default::default()
+        };
         let m = compile(&st).unwrap().unwrap();
         let mut spans = Vec::new();
         m.spans("abcABCabc", &mut spans);
         assert_eq!(spans, vec![(0, 3), (6, 9)]);
 
-        st.case_sensitive = false;
-        let m = compile(&st).unwrap().unwrap();
+        let m = compile(&state("abc")).unwrap().unwrap();
         m.spans("abcABCabc", &mut spans);
         assert_eq!(spans, vec![(0, 3), (3, 6), (6, 9)]);
     }
 
     #[test]
     fn regex_spans_and_invalid_pattern() {
-        let mut st = state(r"\d+");
-        st.regex = true;
+        let st = SearchState {
+            query: r"\d+".into(),
+            regex: true,
+            ..Default::default()
+        };
         let m = compile(&st).unwrap().unwrap();
         let mut spans = Vec::new();
         m.spans("a1b22", &mut spans);
         assert_eq!(spans, vec![(1, 2), (3, 5)]);
 
-        st.query = "(".into();
-        assert!(compile(&st).is_err());
-    }
-
-    #[test]
-    fn revision_only_changes_on_edit() {
-        let mut st = SearchState::default();
-        st.set_query("a".into());
-        let rev = st.rev;
-        st.set_query("a".into());
-        assert_eq!(st.rev, rev);
-
-        st.toggle_regex();
-        assert!(st.rev > rev);
-        let rev = st.rev;
-        st.mark_changed();
-        assert!(st.rev > rev);
-
-        st.set_mode(Mode::Filter);
-        assert!(st.rev > rev);
+        let bad = SearchState {
+            query: "(".into(),
+            regex: true,
+            ..Default::default()
+        };
+        assert!(compile(&bad).is_err());
     }
 }

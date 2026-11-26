@@ -128,10 +128,6 @@ impl LineStore {
     pub fn len(&self) -> usize {
         self.lines.len()
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.lines.is_empty()
-    }
 }
 
 /// 本地时区偏移(秒)。每帧取一次即可,避免逐行查询时区(DST 切换也能跟上)
