@@ -394,9 +394,11 @@ mod tests {
     #[test]
     fn legacy_highlight_defaults_are_migrated() {
         // 紫罗兰旧默认对比不足 → 迁移;用户自选色保持不动
-        let mut s = Settings::default();
-        s.highlight_dark = "#4a3f7a".into();
-        s.highlight_light = "#e6ddff".into();
+        let mut s = Settings {
+            highlight_dark: "#4a3f7a".into(),
+            highlight_light: "#e6ddff".into(),
+            ..Settings::default()
+        };
         migrate_highlight(&mut s);
         let d = Settings::default();
         assert_eq!(s.highlight_dark, d.highlight_dark);

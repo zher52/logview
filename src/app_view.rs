@@ -371,7 +371,7 @@ impl Tab {
             return false;
         }
         if self.filter_mode {
-            return self.matcher.as_ref().map_or(true, |m| m.matches(text));
+            return self.matcher.as_ref().is_none_or(|m| m.matches(text));
         }
         true
     }
@@ -404,10 +404,8 @@ impl Tab {
         self.enabled_ids.retain(|id| ids.contains(&id.as_str()));
         // 新增的配置使用设置里的默认启用值(已见过的配置保持标签页自己的选择)
         for c in configs {
-            if !self.known_ids.iter().any(|k| k == &c.id) {
-                if c.enabled {
-                    self.enabled_ids.push(c.id.clone());
-                }
+            if !self.known_ids.iter().any(|k| k == &c.id) && c.enabled {
+                self.enabled_ids.push(c.id.clone());
             }
         }
         self.known_ids = configs.iter().map(|c| c.id.clone()).collect();
@@ -1437,7 +1435,7 @@ impl AppView {
         if i >= self.tabs.len() {
             return;
         }
-        let was_settings = self.tabs.get(i).map_or(false, |t| t.settings);
+        let was_settings = self.tabs.get(i).is_some_and(|t| t.settings);
         let closed_id = self.tabs.get(i).map(|t| t.id);
         if let Some(t) = self.tabs.get(i) {
             let _ = t.cmd_tx.send(Cmd::Stop);
@@ -2124,7 +2122,7 @@ impl AppView {
         let same_len = self
             .settings_panel
             .as_ref()
-            .map_or(false, |d| d.rule_inputs.len() == rules.len());
+            .is_some_and(|d| d.rule_inputs.len() == rules.len());
         if !same_len {
             self.rebuild_rule_inputs(window, cx);
             return;
@@ -2140,13 +2138,13 @@ impl AppView {
             let regex = rule.regex.clone();
             let flags = rule.flags.clone();
             re.update(cx, |s, cx| {
-                if s.value().to_string() != regex {
+                if s.value() != regex {
                     s.set_value(regex.clone(), window, cx);
                 }
                 s.set_decorations(crate::code_input::decorations(&regex, light), cx);
             });
             fl.update(cx, |s, cx| {
-                if s.value().to_string() != flags {
+                if s.value() != flags {
                     s.set_value(flags.clone(), window, cx);
                 }
             });
@@ -2203,11 +2201,7 @@ impl AppView {
         self.sync_rule_inputs(cx);
         let idx = self.settings_panel.as_ref().map(|d| d.sel_config);
         let Some(idx) = idx else { return };
-        let del_ok = self
-            .settings
-            .configs
-            .get(idx)
-            .map_or(false, |c| !c.built_in);
+        let del_ok = self.settings.configs.get(idx).is_some_and(|c| !c.built_in);
         if del_ok {
             self.settings.configs.remove(idx);
             if let Some(d) = self.settings_panel.as_mut() {
@@ -2355,7 +2349,7 @@ impl AppView {
             self.prompt_credentials(params, msg, window, cx);
             return;
         }
-        if self.tabs.get(ti).map_or(false, |t| t.welcome) {
+        if self.tabs.get(ti).is_some_and(|t| t.welcome) {
             self.open_in_tab(ti, params, false);
         } else {
             self.open_source(params, false);
@@ -2510,7 +2504,7 @@ impl AppView {
             }
         };
         let target = self.active;
-        if self.tabs.get(target).map_or(false, |t| t.welcome) {
+        if self.tabs.get(target).is_some_and(|t| t.welcome) {
             self.open_in_tab(target, params, false);
             self.dialog = Dialog::None;
         } else {
@@ -2623,9 +2617,9 @@ impl AppView {
                 fill_command_fields(
                     &self.settings.command_presets,
                     false,
-                    &preset,
-                    &values,
-                    &argv,
+                    preset,
+                    values,
+                    argv,
                     *raw,
                     &mut f.cmd,
                     window,
@@ -3009,7 +3003,7 @@ impl AppView {
             }
         }
         let target = self.active;
-        if self.tabs.get(target).map_or(false, |t| t.welcome) {
+        if self.tabs.get(target).is_some_and(|t| t.welcome) {
             self.open_in_tab(target, params, remember);
             self.dialog = Dialog::None;
         } else {
@@ -3176,7 +3170,7 @@ impl AppView {
             }
         }
         let target = self.active;
-        if self.tabs.get(target).map_or(false, |t| t.welcome) {
+        if self.tabs.get(target).is_some_and(|t| t.welcome) {
             self.open_in_tab(target, params, remember);
             self.dialog = Dialog::None;
         } else {
@@ -3209,7 +3203,7 @@ impl AppView {
             cx.notify();
             return;
         }
-        let all: Vec<Recent> = self.settings.recents.drain(..).collect();
+        let all: Vec<Recent> = std::mem::take(&mut self.settings.recents);
         for r in &all {
             self.purge_recent_cred(r);
         }
@@ -4497,7 +4491,7 @@ impl AppView {
         let searching = !query.is_empty();
         let saved_recent = d
             .saved_at
-            .map_or(false, |t| t.elapsed() < Duration::from_secs(3));
+            .is_some_and(|t| t.elapsed() < Duration::from_secs(3));
         let search_e = d.search.clone();
         let poll_e = d.poll_ms.clone();
         let max_e = d.max_lines.clone();
@@ -4929,8 +4923,7 @@ impl AppView {
         ];
 
         // —— 外观与显示 ——
-        let mut appearance: Vec<(String, AnyElement)> = Vec::new();
-        appearance.push((
+        let mut appearance: Vec<(String, AnyElement)> = vec![(
             "显示行号 行号 line numbers".into(),
             settings_row(
                 pal,
@@ -4940,7 +4933,7 @@ impl AppView {
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_show_line_numbers(cx)))
                     .into_any_element(),
             ),
-        ));
+        )];
         appearance.push((
             "显示时间戳 时间戳 timestamp time 输出时间".into(),
             settings_row(
@@ -5646,7 +5639,8 @@ impl AppView {
         }
 
         // —— 分组数据:按分类/分组组织,搜索时跨分类过滤 ——
-        let groups_all: Vec<(usize, &'static str, Vec<(String, AnyElement)>)> = vec![
+        type SettingsGroup = (usize, &'static str, Vec<(String, AnyElement)>);
+        let groups_all: Vec<SettingsGroup> = vec![
             (0, i18n::t("界面"), appearance),
             (0, i18n::t("字号与字体"), typography),
             (0, i18n::t("颜色管理"), color_rows),
@@ -6012,11 +6006,7 @@ impl AppView {
         let mut active_view_reset = false;
         for ti in 0..self.tabs.len() {
             let mut grew = 0usize;
-            loop {
-                let m = match self.tabs[ti].msg_rx.try_recv() {
-                    Ok(m) => m,
-                    Err(_) => break,
-                };
+            while let Ok(m) = self.tabs[ti].msg_rx.try_recv() {
                 let tab = &mut self.tabs[ti];
                 match m {
                     Msg::Append {
@@ -6098,7 +6088,7 @@ impl AppView {
                             }
                             (None, None) => i18n::t("命令已退出").to_string(),
                         };
-                        let bad = code.map_or(false, |c| c != 0) || retry_in.is_some();
+                        let bad = code.is_some_and(|c| c != 0) || retry_in.is_some();
                         tab.exit_note = Some((note, bad));
                     }
                     Msg::Error { msg, fatal } => {
@@ -6145,13 +6135,13 @@ impl AppView {
         // - 跟随中但视图已离开底部超过 2 行,连续 2 次轮询才解除跟随(去抖)
         // - 不自动恢复:回到底部后由用户点「继续/跳到末尾」显式恢复(egui 同)
         let now = Instant::now();
-        let following = self.tabs.get(self.active).map_or(false, |t| t.follow);
+        let following = self.tabs.get(self.active).is_some_and(|t| t.follow);
         if following && (active_grew > 0 || active_view_reset) {
             self.scroll_to_end();
             self.off_bottom_frames = 0;
             self.suppress_follow_until = Some(now + Duration::from_millis(1000));
         } else if following {
-            let in_grace = self.suppress_follow_until.map_or(false, |u| now < u);
+            let in_grace = self.suppress_follow_until.is_some_and(|u| now < u);
             if in_grace || self.at_bottom() {
                 self.off_bottom_frames = 0;
             } else {
@@ -6337,7 +6327,7 @@ impl AppView {
                         .unwrap_or_else(|| theme::hex(pal.text1)),
                 ),
             };
-            let selected = sel.map_or(false, |(a, b)| {
+            let selected = sel.is_some_and(|(a, b)| {
                 let li = li as usize;
                 li >= a && li <= b
             });
@@ -6991,14 +6981,14 @@ impl AppView {
         let err_text = cur.and_then(|t| t.err.clone()).map(|e| i18n::td(&e));
         let match_err = cur.and_then(|t| t.match_err.clone());
         let has_tabs = !self.tabs.is_empty();
-        let is_welcome = cur.map_or(false, |t| t.welcome);
-        let is_settings = cur.map_or(false, |t| t.settings);
+        let is_welcome = cur.is_some_and(|t| t.welcome);
+        let is_settings = cur.is_some_and(|t| t.settings);
 
         // —— 代码文件视图:语言标记、只读/编辑切换、保存 ——
         let code_doc = cur.and_then(|t| t.code.as_ref());
         let is_code = code_doc.is_some();
         // Markdown:只读态渲染预览,编辑态显示源码(不设单独切换按钮)
-        let is_md = code_doc.map_or(false, |d| d.lang == Some(crate::code::Lang::Markdown));
+        let is_md = code_doc.is_some_and(|d| d.lang == Some(crate::code::Lang::Markdown));
         let code_bar: Option<AnyElement> = code_doc.map(|d| {
             let editing = d.editing;
             let lang = d.lang.map(|l| l.label()).unwrap_or(i18n::t("纯文本"));
@@ -7161,7 +7151,7 @@ impl AppView {
                     .into_any_element(),
             )
         });
-        let wrap_on = cur.map_or(false, |t| t.wrap);
+        let wrap_on = cur.is_some_and(|t| t.wrap);
         let cfg_on = cur.map_or(0, |t| t.enabled_count());
         let cfg_total = self.settings.configs.len();
 
@@ -7821,7 +7811,7 @@ impl AppView {
                 i18n::tf("轮询 {ms}ms", &[("ms", self.settings.poll_ms.to_string())]),
                 theme::hex(pal.text3),
             ));
-            if cur.map_or(false, |t| t.relevel.is_some()) {
+            if cur.is_some_and(|t| t.relevel.is_some()) {
                 segs.push((i18n::t("重新分析级别中…").into(), theme::hex(pal.warning)));
             }
             if no_follow {
