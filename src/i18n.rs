@@ -386,6 +386,31 @@ const EN: &[(&str, &str)] = &[
     ("从头加载", "Load from start"),
     ("已复制路径", "Path copied"),
     ("请填写主机与用户名", "Enter a host and username"),
+    ("命令流不支持大小/随机读取", "Command streams do not support size or random access"),
+    ("命令流不支持随机读取", "Command streams do not support random access"),
+    (
+        "服务器忽略 Range 请求,无法增量读取",
+        "The server ignored the Range request; incremental reading is unavailable",
+    ),
+    (
+        "SSH 认证失败(检查用户名/密码/密钥/agent)",
+        "SSH authentication failed (check username, password, key or agent)",
+    ),
+    ("URL 缺少主机名", "The URL is missing a hostname"),
+    ("重定向缺少 Location", "Redirect is missing a Location header"),
+    ("重定向 Location 无效", "Redirect Location is invalid"),
+    ("重定向次数过多", "Too many redirects"),
+    ("不是 SSH 目标", "Not an SSH target"),
+    ("不是命令源", "Not a command source"),
+    (
+        "命令源需通过 open_command 打开",
+        "Command sources must be opened via open_command",
+    ),
+    ("命令为空", "Command is empty"),
+    ("无法获取服务器主机密钥", "Unable to obtain the server host key"),
+    ("未知算法", "Unknown algorithm"),
+    ("命令源缺少执行计划", "Command source is missing an execution plan"),
+    ("命令源返回了非流式句柄", "Command source returned a non-streaming handle"),
 ];
 
 #[cfg(test)]

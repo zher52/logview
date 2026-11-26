@@ -18,7 +18,7 @@
 
 | 层 | 选择 |
 |---|---|
-| UI | `gpui-kit 0.11`（GPUI / gpui-component），组件与主题令牌，locale 固定 `zh-CN` |
+| UI | `gpui-kit 0.11`（GPUI / gpui-component），组件与主题令牌，locale 跟随界面语言（`zh-CN` / `en`） |
 | 并发 | 每标签一个 worker 线程；`crossbeam-channel` 传递命令与消息 |
 | 网络 | `reqwest` blocking + rustls；`ssh2`（libssh2）blocking |
 | 凭据 | `keyring`（macOS / Windows / Linux 原生后端） |
@@ -61,6 +61,7 @@ src/
 ├── store.rs       settings.json 读写(含 configs、ssh_hosts、command_presets)、旧数据迁移
 ├── secrets.rs     系统钥匙串存取(不可用时退回仅内存)
 ├── ssh_config.rs  解析系统 ssh 配置,导入已保存主机(跳过通配与 Match)
+├── i18n.rs       中英文词典与 t/td/tf 取词（中文原文为 key，缺失回退中文）
 ├── code_input.rs  正则输入框的词法着色
 └── code.rs        代码/配置语法高亮、Markdown 渲染辅助、大小限制常量
 ```
@@ -134,7 +135,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 
 - 错误：面向用户的消息用中文 `String`，可操作；worker 通过 `Msg::Error` 上报。
 - 注释：模块顶部 `//!` 一句话职责；非直观逻辑写中文行内注释。
-- 命名：类型/文件与职责对应；UI 文案中文，协议字段英文。
+- 命名：类型/文件与职责对应；UI 以中文为源文案，经 `i18n` 词典切换英文，协议字段英文。
 - 依赖：新增依赖需说明理由；UI 层锁定 `gpui-kit 0.11`，升级需同步适配 API。
 - 许可：新增源文件头部加
   ```rust
