@@ -2,8 +2,12 @@
 name = "logview"
 version = "0.2.0"
 edition = "2021"
+rust-version = "1.92"
 description = "日志查看器(GPUI 版):本地/SSH/HTTP 日志源,正则级别分析、检索过滤、自动追加、链接识别"
 license = "MIT"
+readme = "README.md"
+keywords = ["log", "viewer", "gpui", "tail", "ssh"]
+categories = ["gui", "command-line-utilities"]
 
 [dependencies]
 gpui-kit = "0.11"

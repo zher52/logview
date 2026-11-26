@@ -1,0 +1,5 @@
+[toolchain]
+# 依赖链要求 1.92+(Linux 的 keyring → zbus → oo7);使用 stable 可自动获得修复。
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "default"

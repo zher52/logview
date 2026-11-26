@@ -1,0 +1,15 @@
+# 统一行尾与文本/二进制判定，避免 Windows 提交把整仓改成 CRLF
+* text=auto eol=lf
+
+*.sh   text eol=lf
+*.rs   text eol=lf
+*.md   text eol=lf
+*.toml text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# 二进制资源：不做行尾/Diff 文本处理
+*.png     binary
+*.icns    binary
+*.figcraft binary
+*.log     text eol=lf

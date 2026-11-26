@@ -1,0 +1,37 @@
+name: 功能建议
+description: 描述使用场景与期望能力
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景
+      description: 你在什么情况下需要这个能力?
+      placeholder: 例如:排查 nginx 日志时需要按 upstream 耗时排序
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案
+      description: 当前如何绕过?是否考虑过其他做法?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 影响面
+      options:
+        - label: 需要新增依赖
+        - label: 涉及 SSH / HTTP / 凭据等安全相关代码
+        - label: 影响跨平台行为
+        - label: 可以提交 PR

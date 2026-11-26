@@ -1,0 +1,77 @@
+name: 缺陷报告
+description: 报告可复现的问题(安全漏洞请勿用此模板)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量提供可复现步骤；**不要粘贴真实凭据或未脱敏的日志**。
+        安全漏洞请改用 Security → Report a vulnerability。
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      description: 应用版本或 commit(设置页/`git rev-parse --short HEAD`)
+      placeholder: "0.2.0 / f76864b"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux (X11)
+        - Linux (Wayland)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: 日志源类型
+      options:
+        - 本地文件
+        - SSH 远端
+        - HTTP URL
+        - 与应用无关(界面/交互)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开 ...
+        2. 点击 ...
+        3. 滚动/检索 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 如有报错或崩溃,请附脱敏后的片段
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充信息
+      description: 主题/字号设置、日志行数量、是否开启自动追加等
+    validations:
+      required: false

@@ -2,6 +2,10 @@
 
 本文件供 AI 编码代理(以及新加入的开发者)快速了解本仓库的结构、约定与注意事项。改动代码前请先阅读。
 
+> ⚠️ **部分内容已过期**：以下关于 egui / eframe、`app.rs` / `ui_viewer.rs` / `ui_open.rs` / `macos_open.rs`、
+> Phosphor 图标等的描述属于迁移前的实现；当前代码已改为 GPUI(`app_view.rs` + `gpui-kit`)。
+> 两者冲突时以 [README](README.md) 与源码为准；线程模型、安全约束、Git 约定仍然适用。
+
 ## 项目概述
 
 **LogView**:原生桌面日志查看器,Rust + egui 0.32 自绘 UI(**无 WebView**),交互参考 Chrome DevTools 控制台。支持本地 / SSH / HTTP 三种日志源、多套正则级别配置与着色筛选、高亮/过滤检索、自动追加(tail -f)、行内 URL/路径/JSON 识别并在新标签页打开。

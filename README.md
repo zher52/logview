@@ -35,7 +35,7 @@
 
 ## 快速开始
 
-要求 Rust 1.80+(`rustup` 安装)。首编较慢(gpui / ssh2 / reqwest / keyring),之后增量编译很快。
+要求 Rust **1.92+**(`rustup` 安装 stable;依赖链中 keyring → zbus → oo7 需要 1.92,macOS/Windows 自 1.91 起可编译)。首编较慢(gpui / ssh2 / reqwest / keyring),之后增量编译很快。
 
 ```bash
 cargo run                        # 启动,弹出"打开日志源"对话框
@@ -167,10 +167,14 @@ Tail Worker 线程 × 每标签(轮询 size → 分块增量读,1MB/块,每周�
 ## 开发
 
 ```bash
-cargo build          # 调试构建(依赖以 opt-level=2 编译,UI 流畅)
-cargo clippy         # lint
-./dev.sh             # 构建并运行(默认打开 sample/app.log;--tail / --settings / --diag / --tail-debug / --release)
+cargo build                      # 调试构建(依赖以 opt-level=2 编译,UI 流畅)
+cargo clippy --all-targets       # lint
+cargo test --locked              # 单元测试
+cargo run -- sample/app.log      # 运行并打开示例日志
 ```
+
+`dev.sh` / `package.sh` 属于维护者本机工作流,不在版本库中(已在 `.gitignore`);
+贡献流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 - UI 全部由 GPUI 自绘,组件来自 gpui-kit,配色令牌在 `theme.rs`(antd v5 令牌)
 - 逐行级别判定发生在 worker 追加时;配置变更后由 UI 分帧重判定(`relevel_step`,10 万行/帧)
@@ -180,9 +184,10 @@ cargo clippy         # lint
 
 ```bash
 cargo build --release            # 裸二进制 target/release/logview
-./package.sh                     # 生产打包:release 构建 →(macOS)日志查看器.app + 签名/体积校验
-./scripts/make_app.sh            # 仅生成 .app 并注册文件类型(版本号读 Cargo.toml)
+./scripts/make_app.sh            # (macOS)生成 日志查看器.app 并注册文件类型(版本号读 Cargo.toml)
 ```
+
+> 维护者本机的 `package.sh` 额外负责签名与体积校验,不入库;发布构建以 `scripts/make_app.sh` 为准。
 
 `make_app.sh` 生成 `.app` bundle 并在 `Info.plist` 声明文档类型(log/txt/out/err/json/csv),
 随后 `lsregister` 刷新注册 —— Finder 右键日志文件即可在「打开方式」中看到 **日志查看器**。
@@ -207,3 +212,26 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 **SSH 打开后报认证失败?** 检查用户名/凭据;私钥文件路径指**服务器本地**路径;agent 方式依赖运行环境的 `SSH_AUTH_SOCK`。
 
 **HTTP 打开后提示"不支持跟随"?** 该服务器不接受 `Range` 请求,只能整页查看,无自动追加。
+
+## 平台支持
+
+| 平台 | 状态 |
+|---|---|
+| macOS | 主要开发与验证平台;`.app` 打包与文件类型关联可用 |
+| Windows | 已纳入 CI 构建检查;交互与安装包未充分验证 |
+| Linux (X11 / Wayland) | 已纳入 CI 构建检查;`.desktop` / AppImage 打包待补 |
+
+Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.github/workflows/ci.yml`)。
+
+## 贡献
+
+- 开发环境、提交规范与 PR 清单:[CONTRIBUTING.md](CONTRIBUTING.md)
+- 安全问题请走私密渠道:[SECURITY.md](SECURITY.md)
+- 变更记录:[CHANGELOG.md](CHANGELOG.md)
+
+## 许可证
+
+本项目以 [MIT](LICENSE) 发布。
+
+- 内置图标来自 Ionicons(MIT);依赖与素材声明见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
+- 界面与日志字体从操作系统读取,不再分发字体文件。
