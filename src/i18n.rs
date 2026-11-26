@@ -277,6 +277,25 @@ const EN: &[(&str, &str)] = &[
         "Trusted the host key for {host}:{port} (this session only)",
     ),
     ("已取消连接 {host}:{port}", "Cancelled connection to {host}:{port}"),
+    ("已导出到 {path}", "Exported to {path}"),
+    ("导出失败:{e}", "Export failed: {e}"),
+    ("已导入 {n} 套配置", "Imported {n} config sets"),
+    (
+        "导入失败:文件不是有效的配置 JSON",
+        "Import failed: the file is not valid config JSON",
+    ),
+    ("导入失败:{e}", "Import failed: {e}"),
+    ("{n} 行", "{n} lines"),
+    ("已丢弃 {n}", "Dropped {n}"),
+    ("已接收 {size}", "Received {size}"),
+    ("加载中 {pct}%", "Loading {pct}%"),
+    ("轮询 {ms}ms", "Polling every {ms} ms"),
+    ("重新分析级别中…", "Re-analyzing levels…"),
+    ("该源不支持自动跟随", "This source does not support auto-follow"),
+    (
+        "从头加载全部(大文件可能耗时较久)",
+        "Load all from the start (may take a while for large files)",
+    ),
 ];
 
 #[cfg(test)]

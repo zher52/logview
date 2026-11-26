@@ -3234,8 +3234,8 @@ impl AppView {
         cx.spawn(async move |this, cx| {
             let Ok(Ok(Some(path))) = rx.await else { return };
             let msg = match std::fs::write(&path, &json) {
-                Ok(()) => format!("已导出到 {}", path.display()),
-                Err(e) => format!("导出失败:{e}"),
+                Ok(()) => i18n::tf("已导出到 {path}", &[("path", path.display().to_string())]),
+                Err(e) => i18n::tf("导出失败:{e}", &[("e", e.to_string())]),
             };
             this.update(cx, |v, cx| {
                 if let Some(d) = v.settings_panel.as_mut() {
@@ -3265,11 +3265,17 @@ impl AppView {
                 Ok(txt) => match serde_json::from_str::<Vec<LevelConfig>>(&txt) {
                     Ok(list) if !list.is_empty() => {
                         let n = list.len();
-                        (Some(list), format!("已导入 {n} 套配置"))
+                        (
+                            Some(list),
+                            i18n::tf("已导入 {n} 套配置", &[("n", n.to_string())]),
+                        )
                     }
-                    _ => (None, "导入失败:文件不是有效的配置 JSON".to_string()),
+                    _ => (
+                        None,
+                        i18n::t("导入失败:文件不是有效的配置 JSON").to_string(),
+                    ),
                 },
-                Err(e) => (None, format!("导入失败:{e}")),
+                Err(e) => (None, i18n::tf("导入失败:{e}", &[("e", e.to_string())])),
             };
             this.update(cx, |v, cx| {
                 if let Some(cfgs) = cfg {
@@ -7680,7 +7686,7 @@ impl AppView {
                     toolbar_icon_btn(
                         "btn-all",
                         "icons/load-all.svg",
-                        SharedString::from("从头加载全部(大文件可能耗时较久)"),
+                        SharedString::from(i18n::t("从头加载全部(大文件可能耗时较久)")),
                         false,
                         pal,
                     )
@@ -7698,13 +7704,19 @@ impl AppView {
         });
         let mut segs: Vec<(String, Hsla)> = Vec::new();
         if let Some(t) = cur {
-            segs.push((format!("{} 行", t.view.len()), theme::hex(pal.text2)));
+            segs.push((
+                i18n::tf("{n} 行", &[("n", t.view.len().to_string())]),
+                theme::hex(pal.text2),
+            ));
             if t.store.dropped > 0 {
-                segs.push((format!("已丢弃 {}", t.store.dropped), theme::hex(pal.text3)));
+                segs.push((
+                    i18n::tf("已丢弃 {n}", &[("n", t.store.dropped.to_string())]),
+                    theme::hex(pal.text3),
+                ));
             }
             segs.push((
                 if t.stream {
-                    format!("已接收 {}", fmt_size(t.store.bytes_loaded))
+                    i18n::tf("已接收 {size}", &[("size", fmt_size(t.store.bytes_loaded))])
                 } else {
                     format!(
                         "{}/{}",
@@ -7726,17 +7738,23 @@ impl AppView {
                 } else {
                     0.0
                 };
-                segs.push((format!("加载中 {:.0}%", pct), theme::hex(pal.primary)));
+                segs.push((
+                    i18n::tf("加载中 {pct}%", &[("pct", format!("{pct:.0}"))]),
+                    theme::hex(pal.primary),
+                ));
             }
             segs.push((
-                format!("轮询 {}ms", self.settings.poll_ms),
+                i18n::tf("轮询 {ms}ms", &[("ms", self.settings.poll_ms.to_string())]),
                 theme::hex(pal.text3),
             ));
             if cur.map_or(false, |t| t.relevel.is_some()) {
-                segs.push(("重新分析级别中…".into(), theme::hex(pal.warning)));
+                segs.push((i18n::t("重新分析级别中…").into(), theme::hex(pal.warning)));
             }
             if no_follow {
-                segs.push(("该源不支持自动跟随".into(), theme::hex(pal.warning)));
+                segs.push((
+                    i18n::t("该源不支持自动跟随").into(),
+                    theme::hex(pal.warning),
+                ));
             }
             if paused {
                 segs.push(("已暂停".into(), theme::hex(pal.warning)));
