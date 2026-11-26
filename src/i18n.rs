@@ -219,7 +219,6 @@ const EN: &[(&str, &str)] = &[
     ("删除", "Delete"),
     ("命令", "Command"),
     ("新配置", "New config"),
-    ("分析配置", "Analysis config"),
     ("服务器", "Server"),
     ("方式", "Method"),
     ("文件", "File"),
@@ -506,7 +505,6 @@ const EN: &[(&str, &str)] = &[
         "没有保存的 URL 凭据;在「打开 URL」里选「保存凭据」后会出现在这里",
         "No saved URL credentials yet; choose “Save credentials” in “Open URL” to add one.",
     ),
-    ("恢复默认", "Restore defaults"),
     ("检索框内跳到下一处命中", "Jump to the next match in the search box"),
     ("关闭弹层 / 取消快捷键录制", "Close popups / cancel shortcut recording"),
     ("固定绑定", "Fixed binding"),
@@ -521,9 +519,6 @@ const EN: &[(&str, &str)] = &[
     ("键盘快捷键", "Keyboard shortcuts"),
     ("没有匹配的设置项", "No matching settings"),
     ("搜索结果", "Search results"),
-    ("外观与显示", "Appearance"),
-    ("日志与性能", "Logs and performance"),
-    ("快捷键", "Shortcuts"),
     ("已自动保存", "Saved automatically"),
     ("更改即时生效", "Changes apply immediately"),
     ("所有更改立即生效并自动保存", "All changes apply immediately and are saved automatically"),
@@ -543,8 +538,6 @@ const EN: &[(&str, &str)] = &[
     ("↓ {n} 条新行", "↓ {n} new lines"),
     ("双击复制完整路径", "Double-click to copy the full path"),
     ("就绪", "Ready"),
-    ("导入 JSON", "Import JSON"),
-    ("导出 JSON", "Export JSON"),
     (
         "自动 = 取正则捕获组 1 的文本映射级别(err→ERROR、info→INFO 等);关闭后用所选固定级别。改动立即重分析全部标签。",
         "Auto = map capture group 1 text to a level (err→ERROR, info→INFO, ...); when off, use the fixed level. Changes re-analyze all tabs immediately.",
@@ -574,7 +567,6 @@ const EN: &[(&str, &str)] = &[
     ("请填写命令", "Enter a command"),
     ("条", "items"),
     ("行", "lines"),
-    ("未知算法", "unknown algorithm"),
     (
         "找不到用户目录,无法写入 known_hosts",
         "Cannot locate the home directory; cannot write known_hosts",
@@ -582,7 +574,6 @@ const EN: &[(&str, &str)] = &[
     ("创建 ~/.ssh 失败:{e}", "Failed to create ~/.ssh: {e}"),
     ("known_hosts 初始化失败:{e}", "Failed to initialize known_hosts: {e}"),
     ("读取 known_hosts 失败:{e}", "Failed to read known_hosts: {e}"),
-    ("无法获取服务器主机密钥", "Cannot obtain the server host key"),
     ("写入 known_hosts 失败:{e}", "Failed to write known_hosts: {e}"),
     ("保存 known_hosts 失败:{e}", "Failed to save known_hosts: {e}"),
     (
@@ -593,18 +584,6 @@ const EN: &[(&str, &str)] = &[
         "SSH 主机密钥与 known_hosts 记录不一致({host}:{port}),可能存在中间人攻击;确认服务器换过密钥后请先更新 known_hosts",
         "SSH host key does not match known_hosts ({host}:{port}); a man-in-the-middle attack is possible. If the server key changed, update known_hosts first.",
     ),
-    ("重定向缺少 Location", "Redirect is missing Location"),
-    ("重定向 Location 无效", "Invalid redirect Location"),
-    ("重定向次数过多", "Too many redirects"),
-    (
-        "命令源需通过 open_command 打开",
-        "Command sources must be opened via open_command",
-    ),
-    (
-        "服务器忽略 Range 请求,无法增量读取",
-        "Server ignored the Range request; incremental reads are unavailable",
-    ),
-    ("不允许设置请求头: {name}", "Header not allowed: {name}"),
     ("URL 无效: {e}", "Invalid URL: {e}"),
     (
         "仅允许 http/https 协议(收到: {s})",
@@ -614,7 +593,6 @@ const EN: &[(&str, &str)] = &[
         "不支持携带用户名/密码的 URL",
         "URLs with embedded username/password are not supported",
     ),
-    ("URL 缺少主机名", "URL is missing a host"),
     ("URL 缺少端口", "URL is missing a port"),
     (
         "拒绝 localhost/.local 地址(SSRF 防护)",
