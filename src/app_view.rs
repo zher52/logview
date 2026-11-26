@@ -541,7 +541,7 @@ fn build_preset_inputs(
                 if ph.is_empty() {
                     s
                 } else {
-                    s.placeholder(SharedString::from(ph))
+                    s.placeholder(SharedString::from(i18n::td(&ph)))
                 }
             });
             let d = f.default.clone();
@@ -4079,7 +4079,7 @@ impl AppView {
                 (
                     i,
                     c.id.clone(),
-                    c.name.clone(),
+                    i18n::td(&c.name),
                     c.built_in,
                     on_ids.iter().any(|id| id == &c.id),
                 )
@@ -4522,7 +4522,7 @@ impl AppView {
         let configs: Vec<(String, bool, bool, usize)> = settings
             .configs
             .iter()
-            .map(|c| (c.name.clone(), c.built_in, c.enabled, c.rules.len()))
+            .map(|c| (i18n::td(&c.name), c.built_in, c.enabled, c.rules.len()))
             .collect();
         let rules: Vec<(bool, u8)> = settings
             .configs
@@ -5562,6 +5562,7 @@ impl AppView {
         // —— 键盘快捷键(可重绑定;Enter/Esc 为固定绑定) ——
         let mut shortcut_entries: Vec<(String, AnyElement)> = Vec::new();
         for (action, desc) in store::SHORTCUT_ACTIONS {
+            let desc = i18n::td(desc);
             let spec = settings.shortcut(action);
             let capturing = d.capture.as_deref() == Some(action);
             let mut ctl = div().flex().items_center().gap(px(6.0));
@@ -5613,7 +5614,7 @@ impl AppView {
             );
             shortcut_entries.push((
                 format!("{desc} {spec}"),
-                settings_row(pal, desc, None, ctl.into_any_element()),
+                settings_row(pal, &desc, None, ctl.into_any_element()),
             ));
         }
         for (keys, desc) in [
@@ -6868,7 +6869,7 @@ impl AppView {
             d.capture = None;
             d.sc_notice = Some(match conflict {
                 Some((_, desc)) => {
-                    i18n::tf("已与「{desc}」互换快捷键", &[("desc", desc.to_string())])
+                    i18n::tf("已与「{desc}」互换快捷键", &[("desc", i18n::td(desc))])
                 }
                 None => i18n::tf("已设为 {shortcut}", &[("shortcut", shortcut_label(&spec))]),
             });
@@ -8456,7 +8457,7 @@ fn command_rows(
 ) -> Vec<AnyElement> {
     let list = command::presets_for(presets, local);
     let mut names: Vec<String> = vec![i18n::t("自定义").into()];
-    names.extend(list.iter().map(|p| p.name.clone()));
+    names.extend(list.iter().map(|p| i18n::td(&p.name)));
     let sel = fields.preset.min(names.len().saturating_sub(1));
 
     let mut chips = div().flex().flex_wrap().gap(px(4.0));
@@ -8521,7 +8522,7 @@ fn command_rows(
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .child(label(&f.label, pal))
+                    .child(label(&i18n::td(&f.label), pal))
                     .child(div().flex_1().child(Input::new(e).small()))
                     .into_any_element(),
             );

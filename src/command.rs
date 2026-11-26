@@ -10,6 +10,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+use crate::i18n;
+
 /// 预设里的一个字段(渲染成一行输入框)
 #[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub struct PresetField {
@@ -312,12 +314,12 @@ pub fn plan(
     for f in &preset.fields {
         let v = values.get(&f.key).map(|s| s.trim()).unwrap_or("");
         if v.is_empty() && !f.optional {
-            return Err(format!("请填写{}", f.label));
+            return Err(i18n::tf("请填写{label}", &[("label", i18n::td(&f.label))]));
         }
     }
     let argv = expand_argv(&preset.argv, values);
     if argv.is_empty() {
-        return Err("展开后的命令为空".into());
+        return Err(i18n::t("展开后的命令为空").into());
     }
     let resolve = preset
         .resolve
@@ -414,7 +416,7 @@ pub fn split_argv(text: &str) -> Result<Vec<String>, String> {
         }
     }
     if let Some(q) = quote {
-        return Err(format!("引号未闭合: {q}"));
+        return Err(i18n::tf("引号未闭合: {q}", &[("q", q.to_string())]));
     }
     if has {
         out.push(cur);

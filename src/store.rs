@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::command::{builtin_presets, CommandPreset};
+use crate::i18n;
 use crate::level::{builtin_configs, LevelConfig};
 use crate::source::{SourceParams, SshAuth};
 
@@ -308,8 +309,9 @@ fn migrate_secrets(s: &mut Settings) {
                 ..
             }
         ) {
-            s.cred_notice =
-                Some("存在以私钥正文保存的连接,无法迁移到钥匙串;建议改用私钥文件".to_string());
+            s.cred_notice = Some(
+                i18n::t("存在以私钥正文保存的连接,无法迁移到钥匙串;建议改用私钥文件").to_string(),
+            );
             continue;
         }
         let Some(key) = crate::secrets::key_of(&r.params) else {
@@ -323,7 +325,10 @@ fn migrate_secrets(s: &mut Settings) {
             Ok(()) => r.remembered = true,
             Err(e) => {
                 r.remembered = false;
-                s.cred_notice = Some(format!("{e};原明文凭据已移除,连接时需重新输入"));
+                s.cred_notice = Some(i18n::tf(
+                    "{e};原明文凭据已移除,连接时需重新输入",
+                    &[("e", e)],
+                ));
             }
         }
         r.params = r.params.sanitized();
