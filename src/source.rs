@@ -14,6 +14,7 @@ use base64::Engine as _;
 use sha2::{Digest, Sha256};
 
 use crate::command::CommandPlan;
+use crate::i18n;
 use crate::ssrf::{validate_url, Validated};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
@@ -374,7 +375,10 @@ pub fn open(p: &SourceParams, ask: HostKeyAsk) -> Result<Opened, String> {
     match p {
         SourceParams::Local { path } => {
             if !std::path::Path::new(path).is_file() {
-                return Err(format!("文件不存在或不是普通文件: {path}"));
+                return Err(i18n::tf(
+                    "文件不存在或不是普通文件: {path}",
+                    &[("path", path.to_string())],
+                ));
             }
             Ok(Opened::Local {
                 path: PathBuf::from(path),
@@ -423,7 +427,10 @@ pub fn open(p: &SourceParams, ask: HostKeyAsk) -> Result<Opened, String> {
             if status == reqwest::StatusCode::UNAUTHORIZED
                 || status == reqwest::StatusCode::FORBIDDEN
             {
-                return Err(format!("HTTP {status}(认证失败)"));
+                return Err(i18n::tf(
+                    "HTTP {status}(认证失败)",
+                    &[("status", status.to_string())],
+                ));
             }
             Err(format!("HTTP {status}"))
         }
@@ -433,17 +440,20 @@ pub fn open(p: &SourceParams, ask: HostKeyAsk) -> Result<Opened, String> {
 pub fn meta(o: &mut Opened) -> Result<SourceMeta, String> {
     match o {
         Opened::Local { path } => {
-            let m = std::fs::metadata(path).map_err(|e| format!("stat 失败: {e}"))?;
+            let m = std::fs::metadata(path)
+                .map_err(|e| i18n::tf("stat 失败: {e}", &[("e", e.to_string())]))?;
             Ok(SourceMeta {
                 size: m.len(),
                 supports_range: true,
             })
         }
         Opened::Ssh { sess, path, .. } => {
-            let sftp = sess.sftp().map_err(|e| format!("SFTP 通道失败: {e}"))?;
+            let sftp = sess
+                .sftp()
+                .map_err(|e| i18n::tf("SFTP 通道失败: {e}", &[("e", e.to_string())]))?;
             let st = sftp
                 .stat(std::path::Path::new(path))
-                .map_err(|e| format!("SFTP stat 失败: {e}"))?;
+                .map_err(|e| i18n::tf("SFTP stat 失败: {e}", &[("e", e.to_string())]))?;
             Ok(SourceMeta {
                 size: st.size.unwrap_or(0),
                 supports_range: true,
@@ -466,22 +476,22 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
     match o {
         Opened::Local { path } => {
             let total = std::fs::metadata(path.as_path())
-                .map_err(|e| format!("stat 失败: {e}"))?
+                .map_err(|e| i18n::tf("stat 失败: {e}", &[("e", e.to_string())]))?
                 .len();
             if off >= total {
                 return Ok((Vec::new(), total));
             }
-            let mut f =
-                std::fs::File::open(path.as_path()).map_err(|e| format!("打开失败: {e}"))?;
+            let mut f = std::fs::File::open(path.as_path())
+                .map_err(|e| i18n::tf("打开失败: {e}", &[("e", e.to_string())]))?;
             f.seek(SeekFrom::Start(off))
-                .map_err(|e| format!("seek 失败: {e}"))?;
+                .map_err(|e| i18n::tf("seek 失败: {e}", &[("e", e.to_string())]))?;
             let want = ((total - off) as usize).min(max);
             let mut buf = vec![0u8; want];
             let mut got = 0;
             while got < want {
                 let n = f
                     .read(&mut buf[got..])
-                    .map_err(|e| format!("读取失败: {e}"))?;
+                    .map_err(|e| i18n::tf("读取失败: {e}", &[("e", e.to_string())]))?;
                 if n == 0 {
                     break;
                 }
@@ -491,10 +501,12 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             Ok((buf, total))
         }
         Opened::Ssh { sess, path, .. } => {
-            let sftp = sess.sftp().map_err(|e| format!("SFTP 通道失败: {e}"))?;
+            let sftp = sess
+                .sftp()
+                .map_err(|e| i18n::tf("SFTP 通道失败: {e}", &[("e", e.to_string())]))?;
             let total = sftp
                 .stat(std::path::Path::new(path))
-                .map_err(|e| format!("SFTP stat 失败: {e}"))?
+                .map_err(|e| i18n::tf("SFTP stat 失败: {e}", &[("e", e.to_string())]))?
                 .size
                 .unwrap_or(0);
             if off >= total {
@@ -502,9 +514,9 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             }
             let mut f = sftp
                 .open(std::path::Path::new(path))
-                .map_err(|e| format!("SFTP open 失败: {e}"))?;
+                .map_err(|e| i18n::tf("SFTP open 失败: {e}", &[("e", e.to_string())]))?;
             f.seek(SeekFrom::Start(off))
-                .map_err(|e| format!("SFTP seek 失败: {e}"))?;
+                .map_err(|e| i18n::tf("SFTP seek 失败: {e}", &[("e", e.to_string())]))?;
             let want = ((total - off) as usize).min(max);
             let mut buf = vec![0u8; want];
             let mut got = 0;
@@ -513,7 +525,7 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
                     Ok(0) => break,
                     Ok(n) => got += n,
                     Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                    Err(e) => return Err(format!("SFTP 读取失败: {e}")),
+                    Err(e) => return Err(i18n::tf("SFTP 读取失败: {e}", &[("e", e.to_string())])),
                 }
             }
             buf.truncate(got);
@@ -545,7 +557,7 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             let mut limited = resp.take(max as u64);
             limited
                 .read_to_end(&mut buf)
-                .map_err(|e| format!("HTTP 读取失败: {e}"))?;
+                .map_err(|e| i18n::tf("HTTP 读取失败: {e}", &[("e", e.to_string())]))?;
             drop(limited);
             Ok((buf, total))
         }
@@ -691,9 +703,10 @@ fn verify_known_host(
                     }
                     Ok(())
                 }
-                HostKeyDecision::Reject => {
-                    Err(format!("已取消连接:{host}:{port} 的主机密钥未确认"))
-                }
+                HostKeyDecision::Reject => Err(i18n::tf(
+                    "已取消连接:{host}:{port} 的主机密钥未确认",
+                    &[("host", host.to_string()), ("port", port.to_string())],
+                )),
             }
         }
     }
@@ -718,12 +731,21 @@ fn ssh_connect_t(
     timeout_ms: u32,
     ask: HostKeyAsk,
 ) -> Result<ssh2::Session, String> {
-    let tcp = std::net::TcpStream::connect((host, port))
-        .map_err(|e| format!("SSH 连接失败 {host}:{port}: {e}"))?;
+    let tcp = std::net::TcpStream::connect((host, port)).map_err(|e| {
+        i18n::tf(
+            "SSH 连接失败 {host}:{port}: {e}",
+            &[
+                ("host", host.to_string()),
+                ("port", port.to_string()),
+                ("e", e.to_string()),
+            ],
+        )
+    })?;
     let mut sess = ssh2::Session::new().map_err(|e| e.to_string())?;
     sess.set_tcp_stream(tcp);
     sess.set_timeout(timeout_ms);
-    sess.handshake().map_err(|e| format!("SSH 握手失败: {e}"))?;
+    sess.handshake()
+        .map_err(|e| i18n::tf("SSH 握手失败: {e}", &[("e", e.to_string())]))?;
     verify_known_host(&sess, host, port, ask)?;
     let ok = match auth {
         SshAuth::Password(p) => sess.userauth_password(user, p).is_ok(),

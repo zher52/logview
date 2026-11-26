@@ -411,6 +411,30 @@ const EN: &[(&str, &str)] = &[
     ("未知算法", "Unknown algorithm"),
     ("命令源缺少执行计划", "Command source is missing an execution plan"),
     ("命令源返回了非流式句柄", "Command source returned a non-streaming handle"),
+    (
+        "文件不存在或不是普通文件: {path}",
+        "File does not exist or is not a regular file: {path}",
+    ),
+    ("HTTP {status}(认证失败)", "HTTP {status} (authentication failed)"),
+    ("stat 失败: {e}", "stat failed: {e}"),
+    ("SFTP 通道失败: {e}", "SFTP channel failed: {e}"),
+    ("SFTP stat 失败: {e}", "SFTP stat failed: {e}"),
+    ("SFTP open 失败: {e}", "SFTP open failed: {e}"),
+    ("SFTP seek 失败: {e}", "SFTP seek failed: {e}"),
+    ("SFTP 读取失败: {e}", "SFTP read failed: {e}"),
+    ("打开失败: {e}", "Open failed: {e}"),
+    ("seek 失败: {e}", "Seek failed: {e}"),
+    ("读取失败: {e}", "Read failed: {e}"),
+    ("HTTP 读取失败: {e}", "HTTP read failed: {e}"),
+    (
+        "SSH 连接失败 {host}:{port}: {e}",
+        "SSH connection failed {host}:{port}: {e}",
+    ),
+    ("SSH 握手失败: {e}", "SSH handshake failed: {e}"),
+    (
+        "已取消连接:{host}:{port} 的主机密钥未确认",
+        "Connection cancelled: the host key for {host}:{port} was not confirmed",
+    ),
 ];
 
 #[cfg(test)]
