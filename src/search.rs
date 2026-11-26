@@ -138,3 +138,78 @@ impl Matcher {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state(q: &str) -> SearchState {
+        SearchState {
+            query: q.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn empty_query_compiles_to_none() {
+        assert!(compile(&state("")).unwrap().is_none());
+    }
+
+    #[test]
+    fn text_match_respects_case_switch() {
+        let m = compile(&state("error")).unwrap().unwrap();
+        assert!(m.matches("an ERROR occurred"));
+
+        let mut st = state("error");
+        st.case_sensitive = true;
+        let m = compile(&st).unwrap().unwrap();
+        assert!(!m.matches("an ERROR occurred"));
+        assert!(m.matches("an error occurred"));
+    }
+
+    #[test]
+    fn text_spans_cover_all_occurrences() {
+        let mut st = state("abc");
+        st.case_sensitive = true;
+        let m = compile(&st).unwrap().unwrap();
+        let mut spans = Vec::new();
+        m.spans("abcABCabc", &mut spans);
+        assert_eq!(spans, vec![(0, 3), (6, 9)]);
+
+        st.case_sensitive = false;
+        let m = compile(&st).unwrap().unwrap();
+        m.spans("abcABCabc", &mut spans);
+        assert_eq!(spans, vec![(0, 3), (3, 6), (6, 9)]);
+    }
+
+    #[test]
+    fn regex_spans_and_invalid_pattern() {
+        let mut st = state(r"\d+");
+        st.regex = true;
+        let m = compile(&st).unwrap().unwrap();
+        let mut spans = Vec::new();
+        m.spans("a1b22", &mut spans);
+        assert_eq!(spans, vec![(1, 2), (3, 5)]);
+
+        st.query = "(".into();
+        assert!(compile(&st).is_err());
+    }
+
+    #[test]
+    fn revision_only_changes_on_edit() {
+        let mut st = SearchState::default();
+        st.set_query("a".into());
+        let rev = st.rev;
+        st.set_query("a".into());
+        assert_eq!(st.rev, rev);
+
+        st.toggle_regex();
+        assert!(st.rev > rev);
+        let rev = st.rev;
+        st.mark_changed();
+        assert!(st.rev > rev);
+
+        st.set_mode(Mode::Filter);
+        assert!(st.rev > rev);
+    }
+}

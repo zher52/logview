@@ -3,7 +3,7 @@
 use regex::Regex;
 use std::sync::OnceLock;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LinkKind {
     Url,
     Path,
@@ -108,4 +108,52 @@ pub fn is_json_line(text: &str) -> bool {
         return false;
     }
     serde_json::from_str::<serde_json::Value>(t).is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trims_trailing_punctuation_from_url() {
+        let text = "see https://example.com/x.";
+        let links = detect(text);
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].kind, LinkKind::Url);
+        assert_eq!(&text[links[0].start..links[0].end], "https://example.com/x");
+    }
+
+    #[test]
+    fn url_wins_over_overlapping_path() {
+        let text = "open https://example.com/a/b now";
+        let links = detect(text);
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].kind, LinkKind::Url);
+        assert_eq!(
+            &text[links[0].start..links[0].end],
+            "https://example.com/a/b"
+        );
+    }
+
+    #[test]
+    fn detects_posix_windows_and_relative_paths() {
+        let text = "/var/log/app.log C:\\Users\\me\\app.log logs/run.err";
+        let got: Vec<&str> = detect(text).iter().map(|l| &text[l.start..l.end]).collect();
+        assert!(got.contains(&"/var/log/app.log"), "{got:?}");
+        assert!(
+            got.iter()
+                .any(|p| p.contains(":\\") && p.ends_with("app.log")),
+            "{got:?}"
+        );
+        assert!(got.contains(&"logs/run.err"), "{got:?}");
+    }
+
+    #[test]
+    fn json_line_detection() {
+        assert!(is_json_line(r#"{"a":1}"#));
+        assert!(is_json_line("[1,2,3]"));
+        assert!(!is_json_line("{not json}"));
+        assert!(!is_json_line("plain text"));
+        assert!(!is_json_line("{"));
+    }
 }

@@ -95,3 +95,108 @@ fn banned_v6(ip: Ipv6Addr) -> bool {
     // fc00::/7 独有本地、fe80::/10 链路本地、2001:db8::/32 文档保留
     (s[0] & 0xfe00) == 0xfc00 || (s[0] & 0xffc0) == 0xfe80 || (s[0] == 0x2001 && s[1] == 0x0db8)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn v4(s: &str) -> IpAddr {
+        IpAddr::V4(s.parse().unwrap())
+    }
+    fn v6(s: &str) -> IpAddr {
+        IpAddr::V6(s.parse().unwrap())
+    }
+
+    #[test]
+    fn rejects_private_and_reserved_v4() {
+        for s in [
+            "0.0.0.0",
+            "10.1.2.3",
+            "100.64.0.1",
+            "127.0.0.1",
+            "169.254.1.1",
+            "172.16.0.1",
+            "172.31.255.255",
+            "192.0.0.8",
+            "192.0.2.1",
+            "192.168.1.1",
+            "198.18.0.1",
+            "198.51.100.7",
+            "203.0.113.9",
+            "224.0.0.1",
+            "240.0.0.1",
+            "255.255.255.255",
+        ] {
+            assert!(is_banned(v4(s)), "{s} 应被拒绝");
+        }
+    }
+
+    #[test]
+    fn allows_public_v4() {
+        for s in [
+            "1.1.1.1",
+            "8.8.8.8",
+            "93.184.216.34",
+            "172.32.0.1",
+            "192.169.0.1",
+        ] {
+            assert!(!is_banned(v4(s)), "{s} 应被允许");
+        }
+    }
+
+    #[test]
+    fn rejects_reserved_v6_and_mapped_private() {
+        for s in [
+            "::1",
+            "::",
+            "fc00::1",
+            "fd12:3456::1",
+            "fe80::1",
+            "2001:db8::1",
+        ] {
+            assert!(is_banned(v6(s)), "{s} 应被拒绝");
+        }
+        assert!(is_banned(v6("::ffff:10.0.0.1")), "IPv4-mapped 私网应被拒绝");
+    }
+
+    #[test]
+    fn allows_public_v6() {
+        assert!(!is_banned(v6("2606:4700:4700::1111")));
+    }
+
+    #[test]
+    fn rejects_non_http_scheme() {
+        assert!(validate_url("ftp://example.com/x").is_err());
+        assert!(validate_url("file:///etc/hosts").is_err());
+    }
+
+    #[test]
+    fn rejects_userinfo_in_url() {
+        assert!(validate_url("http://user:pw@example.com/").is_err());
+        assert!(validate_url("https://user@example.com/").is_err());
+    }
+
+    #[test]
+    fn rejects_local_hostnames() {
+        assert!(validate_url("http://localhost:8080/").is_err());
+        assert!(validate_url("http://foo.localhost/").is_err());
+        assert!(validate_url("http://printer.local/").is_err());
+    }
+
+    #[test]
+    fn rejects_private_literal_ip() {
+        assert!(validate_url("http://127.0.0.1/").is_err());
+        assert!(validate_url("http://10.0.0.5:8080/").is_err());
+        assert!(validate_url("http://[::1]/").is_err());
+    }
+
+    #[test]
+    fn pins_public_ip_and_default_port() {
+        let v = validate_url("https://8.8.8.8/x").expect("公网 IP 应通过");
+        assert_eq!(v.addr.port(), 443);
+        assert_eq!(v.addr.ip(), v4("8.8.8.8"));
+
+        let v = validate_url("http://1.1.1.1:8080/health").expect("带端口应通过");
+        assert_eq!(v.addr.port(), 8080);
+    }
+}
