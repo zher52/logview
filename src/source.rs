@@ -216,7 +216,7 @@ impl SourceParams {
 
     pub fn summary(&self) -> String {
         match self {
-            Self::Local { path } => format!("本地 {path}"),
+            Self::Local { path } => i18n::tf("本地 {path}", &[("path", path.clone())]),
             Self::Ssh {
                 host,
                 port,
@@ -231,10 +231,18 @@ impl SourceParams {
             Self::Command { target, argv, .. } => {
                 let cmd = crate::command::display(argv);
                 match target {
-                    ExecTarget::Local => format!("命令(本机) {cmd}"),
+                    ExecTarget::Local => i18n::tf("命令(本机) {cmd}", &[("cmd", cmd.clone())]),
                     ExecTarget::Ssh {
                         host, port, user, ..
-                    } => format!("命令 {user}@{host}:{port} {cmd}"),
+                    } => i18n::tf(
+                        "命令 {user}@{host}:{port} {cmd}",
+                        &[
+                            ("user", user.clone()),
+                            ("host", host.clone()),
+                            ("port", port.to_string()),
+                            ("cmd", cmd.clone()),
+                        ],
+                    ),
                 }
             }
         }
@@ -432,7 +440,7 @@ pub fn open(p: &SourceParams, ask: HostKeyAsk) -> Result<Opened, String> {
                     &[("status", status.to_string())],
                 ));
             }
-            Err(format!("HTTP {status}"))
+            Err(i18n::tf("HTTP {status}", &[("status", status.to_string())]))
         }
     }
 }
@@ -1021,11 +1029,17 @@ fn spawn_pipe_reader(mut r: impl Read + Send + 'static, tx: crossbeam_channel::S
 
 fn spawn_error(prog: &str, e: &std::io::Error) -> String {
     match e.kind() {
-        std::io::ErrorKind::NotFound => {
-            format!("未找到命令 {prog}(请确认已安装,并在 PATH 中)")
+        std::io::ErrorKind::NotFound => i18n::tf(
+            "未找到命令 {prog}(请确认已安装,并在 PATH 中)",
+            &[("prog", prog.to_string())],
+        ),
+        std::io::ErrorKind::PermissionDenied => {
+            i18n::tf("没有执行权限:{prog}", &[("prog", prog.to_string())])
         }
-        std::io::ErrorKind::PermissionDenied => format!("没有执行权限:{prog}"),
-        _ => format!("无法启动命令 {prog}:{e}"),
+        _ => i18n::tf(
+            "无法启动命令 {prog}:{e}",
+            &[("prog", prog.to_string()), ("e", e.to_string())],
+        ),
     }
 }
 
@@ -1071,7 +1085,7 @@ fn capture_local(argv: &[String]) -> Result<String, String> {
     let prog = argv
         .first()
         .filter(|s| !s.trim().is_empty())
-        .ok_or("取值命令为空")?;
+        .ok_or(i18n::t("取值命令为空").to_string())?;
     let mut cmd = std::process::Command::new(prog);
     cmd.args(&argv[1..]).stdin(std::process::Stdio::null());
     #[cfg(windows)]
@@ -1113,14 +1127,14 @@ fn capture_ssh(target: &ExecTarget, argv: &[String], ask: HostKeyAsk) -> Result<
         .join(" ");
     let mut ch = sess
         .channel_session()
-        .map_err(|e| format!("SSH 通道创建失败:{e}"))?;
+        .map_err(|e| i18n::tf("SSH 通道创建失败:{e}", &[("e", e.to_string())]))?;
     ch.handle_extended_data(ssh2::ExtendedData::Merge)
-        .map_err(|e| format!("SSH stderr 合并失败:{e}"))?;
+        .map_err(|e| i18n::tf("SSH stderr 合并失败:{e}", &[("e", e.to_string())]))?;
     ch.exec(&remote)
-        .map_err(|e| format!("远端取值命令执行失败:{e}"))?;
+        .map_err(|e| i18n::tf("远端取值命令执行失败:{e}", &[("e", e.to_string())]))?;
     let mut buf = String::new();
     ch.read_to_string(&mut buf)
-        .map_err(|e| format!("远端取值命令读取失败:{e}"))?;
+        .map_err(|e| i18n::tf("远端取值命令读取失败:{e}", &[("e", e.to_string())]))?;
     let _ = ch.wait_close();
     Ok(buf)
 }
@@ -1191,11 +1205,11 @@ pub fn open_command(
             let sess = ssh_connect_stream(host, *port, user, auth, ask)?;
             let mut ch = sess
                 .channel_session()
-                .map_err(|e| format!("SSH 通道创建失败:{e}"))?;
+                .map_err(|e| i18n::tf("SSH 通道创建失败:{e}", &[("e", e.to_string())]))?;
             ch.handle_extended_data(ssh2::ExtendedData::Merge)
-                .map_err(|e| format!("SSH stderr 合并失败:{e}"))?;
+                .map_err(|e| i18n::tf("SSH stderr 合并失败:{e}", &[("e", e.to_string())]))?;
             ch.exec(&remote)
-                .map_err(|e| format!("远端命令执行失败:{e}"))?;
+                .map_err(|e| i18n::tf("远端命令执行失败:{e}", &[("e", e.to_string())]))?;
             let stop = Arc::new(AtomicBool::new(false));
             let exit = Arc::new(Mutex::new(None));
             Ok(Opened::Stream(StreamHandle {
@@ -1419,7 +1433,10 @@ mod tests {
             Err(e) => e,
             Ok(_) => panic!("不存在的命令不应启动成功"),
         };
-        assert!(err.contains("未找到命令"), "{err}");
+        assert!(
+            err.contains("未找到命令") || err.contains("Command not found"),
+            "{err}"
+        );
     }
 
     #[test]

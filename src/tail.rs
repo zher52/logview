@@ -358,7 +358,10 @@ fn worker(
             Err(e) => {
                 err_streak += 1;
                 let _ = tx.send(Msg::Error {
-                    msg: format!("{e}(重试 {err_streak}/5)"),
+                    msg: crate::i18n::tf(
+                        "{e}(重试 {err_count}/5)",
+                        &[("e", e.clone()), ("err_count", err_streak.to_string())],
+                    ),
                     fatal: false,
                 });
                 if err_streak >= 5 {

@@ -447,6 +447,26 @@ const EN: &[(&str, &str)] = &[
         "Failed to resolve {key}: no output (is the target running? are the arguments correct?)",
     ),
     ("命令中有未解析的占位符:{a}", "Unresolved placeholder in command: {a}"),
+    ("本地 {path}", "Local {path}"),
+    ("命令(本机) {cmd}", "Command (local) {cmd}"),
+    ("命令 {user}@{host}:{port} {cmd}", "Command {user}@{host}:{port} {cmd}"),
+    (
+        "未找到命令 {prog}(请确认已安装,并在 PATH 中)",
+        "Command not found: {prog} (is it installed and on PATH?)",
+    ),
+    ("没有执行权限:{prog}", "Permission denied: {prog}"),
+    ("无法启动命令 {prog}:{e}", "Failed to start command {prog}: {e}"),
+    ("SSH 通道创建失败:{e}", "SSH channel failed: {e}"),
+    ("SSH stderr 合并失败:{e}", "SSH stderr merge failed: {e}"),
+    ("远端取值命令执行失败:{e}", "Remote value command failed: {e}"),
+    (
+        "远端取值命令读取失败:{e}",
+        "Failed to read remote value command output: {e}",
+    ),
+    ("远端命令执行失败:{e}", "Remote command execution failed: {e}"),
+    ("取值命令为空", "Value command is empty"),
+    ("{e}(重试 {err_count}/5)", "{e} (retry {err_count}/5)"),
+    ("日志查看器", "LogView"),
 ];
 
 #[cfg(test)]

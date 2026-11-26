@@ -50,7 +50,7 @@ fn main() {
             gpui_kit::component::set_locale(i18n::lang().locale());
             // 窗口标题(任务栏 / Mission Control / 窗口菜单):不设置时为空
             let mut titlebar = gpui_kit::component::TitleBar::title_bar_options();
-            titlebar.title = Some(APP_NAME.into());
+            titlebar.title = Some(crate::i18n::t(APP_NAME).into());
             let options = WindowOptions {
                 window_min_size: Some(size(px(960.0), px(600.0))),
                 titlebar: Some(titlebar),
