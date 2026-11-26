@@ -687,6 +687,13 @@ const EN: &[(&str, &str)] = &[
     ("打开设置", "Open settings"),
     ("复制选中行", "Copy selected row"),
     ("保存代码视图修改", "Save code view edits"),
+    ("HTTP {status}", "HTTP {status}"),
+    ("── 轮换 ──", "── rotation ──"),
+    ("关闭", "Close"),
+    (
+        "删除 URL 记录时清除凭据",
+        "Clear credentials when deleting URL history",
+    ),
 ];
 
 #[cfg(test)]
