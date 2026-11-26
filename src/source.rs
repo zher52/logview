@@ -443,6 +443,43 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
 
 // ---------- SSH ----------
 
+/// 比对 `~/.ssh/known_hosts` 中已有的主机密钥。
+///
+/// 已知主机的密钥不一致时直接拒绝连接(中间人风险);未知主机按首次连接处理,
+/// 不写入 known_hosts(TOFU 确认界面尚未实现,见 SECURITY.md)。
+fn verify_known_host(sess: &ssh2::Session, host: &str, port: u16) -> Result<(), String> {
+    let Some(home) = dirs::home_dir() else {
+        return Ok(());
+    };
+    let path = home.join(".ssh").join("known_hosts");
+    if !path.is_file() {
+        return Ok(());
+    }
+    let mut known_hosts = match sess.known_hosts() {
+        Ok(kh) => kh,
+        Err(_) => return Ok(()),
+    };
+    if known_hosts
+        .read_file(&path, ssh2::KnownHostFileKind::OpenSSH)
+        .is_err()
+    {
+        return Ok(());
+    }
+    let Some((key, _kind)) = sess.host_key() else {
+        return Ok(());
+    };
+    match known_hosts.check_port(host, port, key) {
+        ssh2::CheckResult::Match | ssh2::CheckResult::NotFound => Ok(()),
+        ssh2::CheckResult::Mismatch => Err(format!(
+            "SSH 主机密钥与 ~/.ssh/known_hosts 记录不一致({host}:{port}),可能存在中间人攻击;\
+             确认服务器换过密钥后请先更新 known_hosts"
+        )),
+        ssh2::CheckResult::Failure => Err(format!(
+            "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取"
+        )),
+    }
+}
+
 pub fn ssh_connect(
     host: &str,
     port: u16,
@@ -455,6 +492,7 @@ pub fn ssh_connect(
     sess.set_tcp_stream(tcp);
     sess.set_timeout(20_000);
     sess.handshake().map_err(|e| format!("SSH 握手失败: {e}"))?;
+    verify_known_host(&sess, host, port)?;
     let ok = match auth {
         SshAuth::Password(p) => sess.userauth_password(user, p).is_ok(),
         SshAuth::KeyText { key, passphrase } => sess
