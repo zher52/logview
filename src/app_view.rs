@@ -219,7 +219,7 @@ impl Tab {
         let enabled_ids = Self::default_enabled(settings);
         Tab {
             id: 0,
-            title: "新标签页".into(),
+            title: i18n::t("新标签页").into(),
             params: None,
             cmd_tx: tx,
             msg_rx: rx,
@@ -460,10 +460,10 @@ struct SshForm {
 impl SshForm {
     fn new(window: &mut Window, cx: &mut Context<AppView>) -> SshForm {
         let mut mk = |ph: &'static str| cx.new(|cx| InputState::new(window, cx).placeholder(ph));
-        let host = mk("主机名或 IP,输入时可搜索已保存的服务器");
+        let host = mk(i18n::t("主机名或 IP,输入时可搜索已保存的服务器"));
         let port = mk("22");
-        let user = mk("用户名");
-        let password = mk("密码(Agent 认证可留空)");
+        let user = mk(i18n::t("用户名"));
+        let password = mk(i18n::t("密码(Agent 认证可留空)"));
         let path = mk("/var/log/app.log");
         port.update(cx, |s, cx| s.set_value("22", window, cx));
         SshForm {
@@ -500,8 +500,9 @@ impl CmdFields {
         CmdFields {
             preset: 0,
             inputs: Vec::new(),
-            text: cx
-                .new(|cx| InputState::new(window, cx).placeholder("例如 adb logcat -v threadtime")),
+            text: cx.new(|cx| {
+                InputState::new(window, cx).placeholder(i18n::t("例如 adb logcat -v threadtime"))
+            }),
             restart: false,
         }
     }
@@ -611,11 +612,11 @@ impl UrlForm {
         UrlForm {
             url: mk("https://example.com/app.log"),
             auth: 0,
-            user: mk("用户名"),
-            password: mk("密码"),
+            user: mk(i18n::t("用户名")),
+            password: mk(i18n::t("密码")),
             token: mk("Bearer token"),
             header_name: mk("X-API-Key"),
-            header_value: mk("请求头值"),
+            header_value: mk(i18n::t("请求头值")),
             remember: false,
             retry: None,
             err: None,
@@ -1098,8 +1099,9 @@ impl AppView {
         paths: Vec<std::path::PathBuf>,
         settings: Settings,
     ) -> Self {
-        let search_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("检索:高亮 / 过滤(支持正则)"));
+        let search_input = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(i18n::t("检索:高亮 / 过滤(支持正则)"))
+        });
 
         // 字号来自设置:必须在首帧渲染前写入主题运行时值
         theme::set_font_sizes(settings.ui_font_size, settings.log_font_size);
@@ -2177,7 +2179,7 @@ impl AppView {
                     .map(|t| t.as_millis())
                     .unwrap_or(0)
             ),
-            name: "新配置".into(),
+            name: i18n::t("新配置").into(),
             enabled: true,
             built_in: false,
             rules: vec![crate::level::Rule {
@@ -3448,7 +3450,7 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("端口", pal))
+                .child(label(i18n::t("端口"), pal))
                 .child(div().w(px(90.0)).child(Input::new(&port_e).small()))
                 .child(div().w(px(10.0)))
                 .child(
@@ -3457,7 +3459,7 @@ impl AppView {
                         .text_right()
                         .text_size(px(theme::scaled(12.0)))
                         .text_color(theme::hex(pal.text2))
-                        .child("用户名"),
+                        .child(i18n::t("用户名")),
                 )
                 .child(div().flex_1().child(Input::new(&user_e).small()))
                 .into_any_element(),
@@ -3467,7 +3469,7 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("密码", pal))
+                .child(label(i18n::t("密码"), pal))
                 .child(
                     div().flex_1().child(
                         Input::new(&pass_e)
@@ -3487,7 +3489,7 @@ impl AppView {
                 .child(segmented(
                     cx,
                     "ssh-mode",
-                    &["文件", "命令"],
+                    &["文件", i18n::t("命令")],
                     mode,
                     pal,
                     |v, i| v.ssh_set_mode(i),
@@ -3521,11 +3523,11 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("认证", pal))
+                .child(label(i18n::t("认证"), pal))
                 .child(segmented(
                     cx,
                     "ssh-auth",
-                    &["密码", "Agent"],
+                    &[i18n::t("密码"), "Agent"],
                     if auth_password { 0 } else { 1 },
                     pal,
                     |v, i| v.ssh_set_auth(i == 0),
@@ -3590,14 +3592,14 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("ssh-cancel", i18n::t("取消"), false, pal)
+                dlg_btn("ssh-cancel", i18n::t(i18n::t("取消")), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
                 dlg_btn(
                     "ssh-ok",
                     if mode == 0 {
-                        i18n::t("连接")
+                        i18n::t(i18n::t("连接"))
                     } else {
                         i18n::t("运行")
                     },
@@ -3660,7 +3662,7 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("cmd-cancel", i18n::t("取消"), false, pal)
+                dlg_btn("cmd-cancel", i18n::t(i18n::t("取消")), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
@@ -3709,7 +3711,7 @@ impl AppView {
             .px(px(16.0))
             .py(px(14.0))
             .max_w(px(560.0))
-            .child(field("主机", host, false))
+            .child(field(i18n::t("主机"), host, false))
             .child(field("算法", algo, false))
             .child(field("指纹", fp, true))
             .child(
@@ -3738,7 +3740,7 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("hk-cancel", i18n::t("取消"), false, pal)
+                dlg_btn("hk-cancel", i18n::t(i18n::t("取消")), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(false, false))),
             )
             .child(
@@ -3844,7 +3846,7 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("认证", pal))
+                .child(label(i18n::t("认证"), pal))
                 .child(segmented(
                     cx,
                     "url-auth",
@@ -3863,7 +3865,7 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(label("用户名", pal))
+                        .child(label(i18n::t("用户名"), pal))
                         .child(div().flex_1().child(Input::new(&user_e).small()))
                         .into_any_element(),
                 );
@@ -3872,7 +3874,7 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(label("密码", pal))
+                        .child(label(i18n::t("密码"), pal))
                         .child(secret(&pass_e))
                         .into_any_element(),
                 );
@@ -4009,7 +4011,7 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("url-cancel", i18n::t("取消"), false, pal)
+                dlg_btn("url-cancel", i18n::t(i18n::t("取消")), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
@@ -4050,7 +4052,7 @@ impl AppView {
         for (i, _id, name, built_in, on) in configs {
             let mut label = name;
             if built_in {
-                label.push_str(" · 内置");
+                label.push_str(i18n::t(" · 内置"));
             }
             list = list.child(
                 div()
@@ -4218,7 +4220,7 @@ impl AppView {
             ))
             .child(link(
                 "welcome-cmd",
-                "命令",
+                i18n::t("命令"),
                 pal,
                 move |v, _e, window, cx| v.open_cmd_dialog(window, cx),
                 cx,
@@ -4318,7 +4320,7 @@ impl AppView {
                 .items_center()
                 .gap(px(2.0))
                 .child(
-                    text_btn("welcome-recents-cancel", "取消", pal.text3)
+                    text_btn("welcome-recents-cancel", i18n::t("取消"), pal.text3)
                         .on_click(cx.listener(|v, _e, _w, cx| v.welcome_cancel_clear(cx))),
                 )
                 .child(
@@ -4341,7 +4343,7 @@ impl AppView {
                 div()
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child("最近打开"),
+                    .child(i18n::t("最近打开")),
             )
             .child(div().flex_1())
             .child(clear_ctl);
@@ -4561,7 +4563,7 @@ impl AppView {
                 .child(
                     host_btn(
                         SharedString::from(format!("set-host-edit-{i}")),
-                        "编辑",
+                        i18n::t("编辑"),
                         false,
                         pal,
                     )
@@ -4573,7 +4575,7 @@ impl AppView {
                 .child(
                     host_btn(
                         SharedString::from(format!("set-host-del-{i}")),
-                        "删除",
+                        i18n::t("删除"),
                         false,
                         pal,
                     )
@@ -4651,9 +4653,24 @@ impl AppView {
                         Some("用于区分同一主机的不同用途,可留空".into()),
                         text_input(&hn_e, 220.0),
                     ))
-                    .child(settings_row(pal, "主机", None, text_input(&hh_e, 220.0)))
-                    .child(settings_row(pal, "端口", None, text_input(&hp_e, 96.0)))
-                    .child(settings_row(pal, "用户名", None, text_input(&hu_e, 220.0)));
+                    .child(settings_row(
+                        pal,
+                        i18n::t("主机"),
+                        None,
+                        text_input(&hh_e, 220.0),
+                    ))
+                    .child(settings_row(
+                        pal,
+                        i18n::t("端口"),
+                        None,
+                        text_input(&hp_e, 96.0),
+                    ))
+                    .child(settings_row(
+                        pal,
+                        i18n::t("用户名"),
+                        None,
+                        text_input(&hu_e, 220.0),
+                    ));
                 if let Some(e) = host_err {
                     ed_box = ed_box.child(
                         div()
@@ -4673,7 +4690,7 @@ impl AppView {
                                         .on_click(cx.listener(|v, _e, _w, cx| v.host_save(cx))),
                                 )
                                 .child(
-                                    host_btn("set-host-cancel".into(), "取消", false, pal)
+                                    host_btn("set-host-cancel".into(), i18n::t("取消"), false, pal)
                                         .on_click(
                                             cx.listener(|v, _e, _w, cx| v.host_edit_cancel(cx)),
                                         ),
@@ -4794,7 +4811,7 @@ impl AppView {
                     .child(
                         host_btn(
                             SharedString::from(format!("set-urlcred-del-{i}")),
-                            "删除",
+                            i18n::t("删除"),
                             false,
                             pal,
                         )
@@ -5123,14 +5140,14 @@ impl AppView {
                 .text_size(px(theme::scaled(12.0)))
                 .text_color(theme::hex(pal.text1))
                 .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                .child("编辑")
+                .child(i18n::t("编辑"))
                 .on_click(cx.listener(move |v, _e, window, cx| v.open_config_page(i, window, cx)))
                 .into_any_element();
             let meta = format!(
                 "{} · {} 条规则{}",
                 if *enabled { "已启用" } else { "未启用" },
                 rules_n,
-                if *built_in { " · 内置" } else { "" }
+                if *built_in { i18n::t(" · 内置") } else { "" }
             );
             cfg_entries.push((
                 format!("{name} 配置 分析规则 正则"),
@@ -5224,7 +5241,7 @@ impl AppView {
                                     .child(format!(
                                         "{} 条规则{}",
                                         rules_n,
-                                        if *built_in { " · 内置" } else { "" }
+                                        if *built_in { i18n::t(" · 内置") } else { "" }
                                     )),
                             ),
                     )
@@ -5489,7 +5506,7 @@ impl AppView {
                     .text_color(theme::hex(pal.primary))
                     .hover(|s| s.bg(theme::hex(pal.fill_hover)))
                     .child(if capturing {
-                        "取消"
+                        i18n::t("取消")
                     } else {
                         i18n::t("修改")
                     })
@@ -5554,17 +5571,17 @@ impl AppView {
             (0, "颜色管理", color_rows),
             (1, "加载与自动追加", load),
             (1, "内存", memory),
-            (2, "分析配置", cfg_entries),
+            (2, i18n::t("分析配置"), cfg_entries),
             (3, "已保存的 SSH 主机", host_entries),
             (3, "已保存的 URL 凭据", url_cred_entries),
-            (3, "最近打开", recents_cfg),
+            (3, i18n::t("最近打开"), recents_cfg),
             (4, "键盘快捷键", shortcut_entries),
         ];
         let page_titles = [
             i18n::t("外观与显示"),
             i18n::t("日志与性能"),
-            i18n::t("分析配置"),
-            i18n::t("连接"),
+            i18n::t(i18n::t("分析配置")),
+            i18n::t(i18n::t("连接")),
             i18n::t("快捷键"),
         ];
         let page_descs = [
@@ -5679,9 +5696,15 @@ impl AppView {
                     .pb(px(6.0))
                     .child(Input::new(&search_e).small().w_full()),
             );
-        for (i, label) in ["外观与显示", "日志与性能", "分析配置", "连接", "快捷键"]
-            .iter()
-            .enumerate()
+        for (i, label) in [
+            "外观与显示",
+            "日志与性能",
+            i18n::t("分析配置"),
+            i18n::t("连接"),
+            "快捷键",
+        ]
+        .iter()
+        .enumerate()
         {
             let on = tab_sel == i && !searching;
             nav = nav.child(
@@ -8175,11 +8198,11 @@ fn is_auth_error(msg: &str) -> bool {
 fn http_auth_label(k: crate::source::HttpAuthKind) -> &'static str {
     use crate::source::HttpAuthKind as K;
     match k {
-        K::None => "无认证",
+        K::None => i18n::t("无认证"),
         K::Basic => "Basic",
         K::Bearer => "Bearer",
         K::ApiKey => "API Key",
-        K::Header => "自定义请求头",
+        K::Header => i18n::t("自定义请求头"),
     }
 }
 
@@ -8360,7 +8383,7 @@ fn command_rows(
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label("命令", pal))
+                .child(label(i18n::t("命令"), pal))
                 .child(div().flex_1().child(Input::new(&fields.text).small()))
                 .into_any_element(),
         );
@@ -8839,6 +8862,7 @@ mod tests {
         bottom_distance, elide_path, http_auth_label, is_auth_error, pick_chip_style, validate_ssh,
         validate_url_addr, ChipStyle,
     };
+    use crate::i18n;
     use gpui_kit::px;
 
     #[test]
@@ -8898,11 +8922,11 @@ mod tests {
     #[test]
     fn auth_kind_labels() {
         use crate::source::HttpAuthKind as K;
-        assert_eq!(http_auth_label(K::None), "无认证");
+        assert_eq!(http_auth_label(K::None), i18n::t("无认证"));
         assert_eq!(http_auth_label(K::Basic), "Basic");
         assert_eq!(http_auth_label(K::Bearer), "Bearer");
         assert_eq!(http_auth_label(K::ApiKey), "API Key");
-        assert_eq!(http_auth_label(K::Header), "自定义请求头");
+        assert_eq!(http_auth_label(K::Header), i18n::t("自定义请求头"));
     }
 
     #[test]
@@ -8922,16 +8946,16 @@ mod tests {
         assert!(validate_ssh("h", "u", "/var/log/app.log", "22").is_none());
         assert!(validate_ssh("", "u", "/a.log", "22")
             .unwrap()
-            .contains("主机"));
+            .contains(i18n::t("主机")));
         assert!(validate_ssh("h", "", "/a.log", "22")
             .unwrap()
-            .contains("用户名"));
+            .contains(i18n::t("用户名")));
         assert!(validate_ssh("h", "u", "/a.log", "0")
             .unwrap()
-            .contains("端口"));
+            .contains(i18n::t("端口")));
         assert!(validate_ssh("h", "u", "/a.log", "abc")
             .unwrap()
-            .contains("端口"));
+            .contains(i18n::t("端口")));
     }
 
     #[test]

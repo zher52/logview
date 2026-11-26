@@ -172,6 +172,33 @@ const EN: &[(&str, &str)] = &[
         "Saved hosts, URL credentials and recent entries",
     ),
     ("全局快捷键一览(固定绑定)", "Global shortcuts (fixed bindings)"),
+    ("· 内置", "Built-in"),
+    (" · 内置", " · built-in"),
+    ("用户名", "Username"),
+    ("密码", "Password"),
+    ("端口", "Port"),
+    ("主机", "Host"),
+    ("认证", "Authentication"),
+    ("无认证", "No authentication"),
+    ("自定义请求头", "Custom header"),
+    ("请求头值", "Header value"),
+    (
+        "主机名或 IP,输入时可搜索已保存的服务器",
+        "Hostname or IP; type to search saved servers",
+    ),
+    ("密码(Agent 认证可留空)", "Password (optional for agent auth)"),
+    ("例如 adb logcat -v threadtime", "e.g. adb logcat -v threadtime"),
+    (
+        "检索:高亮 / 过滤(支持正则)",
+        "Search: highlight / filter (regex supported)",
+    ),
+    ("新标签页", "New tab"),
+    ("最近打开", "Recent"),
+    ("编辑", "Edit"),
+    ("删除", "Delete"),
+    ("命令", "Command"),
+    ("新配置", "New config"),
+    ("分析配置", "Analysis config"),
 ];
 
 #[cfg(test)]
