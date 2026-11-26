@@ -1,0 +1,316 @@
+2026-11-25T09:30:01.123Z TRACE conn#12 handshake start
+2026-11-25T09:30:01.130Z DEBUG retry policy backoff=200ms attempts=3
+2026-11-25T09:30:01.204Z INFO  server started on 0.0.0.0:8443
+2026-11-25T09:30:01.210Z INFO  config loaded from /etc/app/app.yaml
+2026-11-25T09:30:01.221Z INFO  console at http://10.0.0.5:8080/console
+2026-11-25T09:30:02.015Z WARN  slow query 1.42s: SELECT * FROM orders WHERE user_id=8817
+2026-11-25T09:30:02.120Z ERROR upstream timeout url=https://api.example.com/v1/health retry=3
+{"level":"error","msg":"upstream timeout","n":9182}
+2026-11-25T09:30:02.500Z WARN  queue depth 9182 > threshold 8000
+2026-11-25T09:30:03.000Z FATAL disk full path=/var/log/app/app.log
+2026-11-25T09:30:03.001Z INFO  wrote core dump to /var/crash/app-20261125.dump
+2026-11-25T09:30:04.000Z INFO  restarting worker pool
+2026-11-25T09:30:04.120Z DEBUG workers=8 ready=true
+2026-11-25T09:30:04.500Z INFO  request id=a9f3 method=GET path=/v1/users status=200 dur=12ms
+2026-11-25T09:30:04.610Z INFO  request id=a9f4 method=POST path=/v1/orders status=201 dur=31ms
+2026-11-25T09:30:04.620Z DEBUG db pool: in_flight=3 idle=5
+2026-11-25T09:30:05.000Z level=info msg="cache warmed" entries=8213
+2026-11-25T09:30:05.010Z level=debug msg="cache keys sampled" sample=["user:8817","sess:a9f3"]
+2026-11-25T09:30:05.100Z [INFO] health probe scheduled interval=30s
+2026-11-25T09:30:05.110Z [WARN] upstream latency p99=1.8s target<=1.0s
+2026-11-25T09:30:06.000Z ERROR probe failed url=https://api.example.com/v1/ping err=ETIMEDOUT
+2026-11-25T09:30:06.100Z INFO  circuit breaker opened for api.example.com
+2026-11-25T09:30:07.000Z WARN  falling back to stale cache ttl=300s
+2026-11-25T09:30:08.000Z INFO  request id=a9f5 method=GET path=/v1/orders/42 status=200 dur=8ms served=stale
+2026-11-25T09:30:09.000Z ERROR payment webhook rejected order=42 code=INVALID_SIG
+{"ts":"2026-11-25T09:30:09.100Z","level":"warn","msg":"retry scheduled","after_s":30}
+2026-11-25T09:30:09.200Z INFO  audit log appended /var/log/app/audit.log
+2026-11-25T09:30:10.000Z DEBUG gc pause 0.4ms heap=512MB
+2026-11-25T09:30:10.500Z INFO  request id=a9f6 method=GET path=/healthz status=200 dur=2ms
+2026-11-25T09:30:11.000Z level=error msg="email send failed" to=ops@example.com err=smtp_550
+2026-11-25T09:30:11.100Z WARN  dead letter queue size=1
+2026-11-25T09:30:12.000Z INFO  config reload requested by admin
+2026-11-25T09:30:12.010Z DEBUG diff: workers.max 8 -> 16
+2026-11-25T09:30:12.020Z INFO  config reloaded from /etc/app/app.yaml
+2026-11-25T09:30:13.000Z INFO  request id=a9f7 method=GET path=/v1/users status=200 dur=11ms
+2026-11-25T09:30:14.000Z [ERROR] upstream retry exhausted url=https://api.example.com/v1/health
+2026-11-25T09:30:14.100Z INFO  alert dispatched severity=critical
+{"level":"info","msg":"metrics flushed","series":4201}
+2026-11-25T09:30:15.000Z DEBUG trace id=8812 span=db.query dur=6ms
+2026-11-25T09:30:15.500Z INFO  request id=a9f8 method=GET path=/v1/orders status=200 dur=9ms
+2026-11-25T09:30:16.000Z WARN  clock skew detected node=worker-3 skew=1.2s
+2026-11-25T09:30:17.000Z INFO  ntp sync ok offset=0.01s
+2026-11-25T09:30:18.000Z ERROR disk usage 91% on /var threshold=90%
+2026-11-25T09:30:18.100Z INFO  log rotation policy applied keep=7d
+2026-11-25T09:30:19.000Z INFO  request id=a9f9 method=DELETE path=/v1/cache status=204 dur=3ms
+2026-11-25T09:30:20.000Z level=info msg="deployment registered" version=2026.11.25-rc1
+2026-11-25T09:30:21.000Z DEBUG ingress rules reloaded count=42
+2026-11-25T09:30:22.000Z INFO  request id=b001 method=GET path=/v1/products status=200 dur=14ms
+2026-11-25T09:30:23.000Z [WARN] rate limit approaching ip=203.0.113.77 limit=1000/min
+2026-11-25T09:30:24.000Z ERROR oauth token refresh failed provider=github err=401
+2026-11-25T09:30:24.100Z INFO  re-auth flow started
+2026-11-25T09:30:25.000Z INFO  request id=b002 method=GET path=/v1/me status=200 dur=7ms
+2026-11-25T09:30:26.000Z level=debug msg="token cache hit" ratio=0.93
+2026-11-25T09:30:27.000Z INFO  request id=b003 method=GET path=/v1/products/9 status=404 dur=4ms
+2026-11-25T09:30:28.000Z WARN  404 spike detected path_prefix=/v1/products
+2026-11-25T09:30:29.000Z INFO  sitemap rebuild queued
+2026-11-25T09:30:30.000Z FATAL unhandled exception in worker-5 panic="index out of range"
+2026-11-25T09:30:30.010Z INFO  worker-5 restarted attempts=1
+2026-11-25T09:30:31.000Z DEBUG stack summary frames=12 top=orders.go:214
+2026-11-25T09:30:32.000Z INFO  request id=b004 method=POST path=/v1/orders status=201 dur=22ms
+2026-11-25T09:30:33.000Z level=info msg="order created" order=8899 total=199.00
+2026-11-25T09:30:34.000Z INFO  inventory reserved sku=SKU-8811 qty=2
+2026-11-25T09:30:35.000Z WARN  inventory low sku=SKU-8811 remaining=3
+2026-11-25T09:30:36.000Z INFO  notification queued channel=email template=order_confirm
+2026-11-25T09:30:37.000Z DEBUG email renderer cache hit=true
+2026-11-25T09:30:38.000Z INFO  request id=b005 method=GET path=/v1/orders/8899 status=200 dur=6ms
+2026-11-25T09:30:39.000Z INFO  trace id=8814 finished spans=18 dur=41ms
+2026-11-25T09:30:40.000Z [INFO] exporter batch sent rows=812
+2026-11-25T09:30:41.000Z ERROR export partial failure rows=3 reason=constraint
+2026-11-25T09:30:42.000Z INFO  retry queue drained pending=0
+2026-11-25T09:30:43.000Z INFO  request id=b006 method=GET path=/v1/stats status=200 dur=17ms
+2026-11-25T09:30:44.000Z DEBUG stats cache recomputed keys=12
+2026-11-25T09:30:45.000Z level=warn msg="slow endpoint" path=/v1/stats p95=850ms
+2026-11-25T09:30:46.000Z INFO  profiler attached duration=60s
+2026-11-25T09:30:47.000Z DEBUG profile samples=1200 hot=render_stats.go:88
+2026-11-25T09:30:48.000Z INFO  profiler report saved /var/tmp/profile-20261125.txt
+2026-11-25T09:30:49.000Z INFO  request id=b007 method=GET path=/v1/stats status=200 dur=120ms
+2026-11-25T09:30:50.000Z INFO  optimization deployed cache_ttl=5m
+2026-11-25T09:30:51.000Z [DEBUG] checking feature flags flags=18
+2026-11-25T09:30:52.000Z INFO  request id=b008 method=GET path=/v1/flags status=200 dur=5ms
+2026-11-25T09:30:53.000Z level=error msg="flag backend unreachable" err=DNS_TEMP_FAIL
+2026-11-25T09:30:53.100Z WARN  using cached flags age=42m
+2026-11-25T09:30:54.000Z INFO  dns recovered for flags.internal
+2026-11-25T09:30:55.000Z INFO  request id=b009 method=GET path=/v1/flags status=200 dur=9ms
+2026-11-25T09:30:56.000Z DEBUG flags diff applied changes=1
+2026-11-25T09:30:57.000Z INFO  request id=b010 method=GET path=/v1/users/8817 status=200 dur=8ms
+2026-11-25T09:30:58.000Z INFO  session refreshed user=8817 ttl=3600s
+2026-11-25T09:30:59.000Z [WARN] session store latency p99=90ms
+2026-11-25T09:31:00.000Z INFO  hourly report generated rows=4211
+2026-11-25T09:31:01.000Z INFO  report uploaded http://minio.internal:9000/reports/2026-11-25.csv
+2026-11-25T09:31:02.000Z DEBUG upload retry=0
+2026-11-25T09:31:03.000Z INFO  request id=b011 method=GET path=/v1/reports status=200 dur=11ms
+2026-11-25T09:31:04.000Z level=info msg="cleanup done" removed=128 files=128
+2026-11-25T09:31:05.000Z INFO  request id=b012 method=GET path=/healthz status=200 dur=1ms
+2026-11-26T10:02:49.000Z INFO  request id=c001 method=GET path=/v1/items/1 status=200 dur=22ms
+2026-11-26T10:02:54.000Z INFO  request id=c002 method=GET path=/v1/items/2 status=200 dur=15ms
+2026-11-26T10:02:59.000Z WARN  queue depth 9003 > threshold 8000
+2026-11-26T10:03:04.000Z INFO  request id=c004 method=GET path=/v1/items/4 status=200 dur=38ms
+2026-11-26T10:03:09.000Z DEBUG  gc pause 0.2ms heap=512MB
+2026-11-26T10:03:14.000Z INFO  request id=c006 method=GET path=/v1/items/6 status=200 dur=40ms
+2026-11-26T10:03:19.000Z WARN  queue depth 9007 > threshold 8000
+2026-11-26T10:03:24.000Z INFO  request id=c008 method=GET path=/v1/items/8 status=200 dur=41ms
+2026-11-26T10:03:29.000Z INFO  request id=c009 method=GET path=/v1/items/9 status=200 dur=3ms
+2026-11-26T10:03:34.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=10
+2026-11-26T10:03:39.000Z INFO  request id=c011 method=GET path=/v1/items/11 status=200 dur=31ms
+2026-11-26T10:03:44.000Z INFO  request id=c012 method=GET path=/v1/items/12 status=200 dur=14ms
+2026-11-26T10:03:49.000Z WARN  queue depth 9013 > threshold 8000
+2026-11-26T10:03:54.000Z INFO  request id=c014 method=GET path=/v1/items/14 status=200 dur=43ms
+2026-11-26T10:03:59.000Z DEBUG  gc pause 0.3ms heap=512MB
+2026-11-26T10:04:04.000Z INFO  request id=c016 method=GET path=/v1/items/16 status=200 dur=38ms
+2026-11-26T10:04:09.000Z WARN  queue depth 9017 > threshold 8000
+2026-11-26T10:04:14.000Z INFO  request id=c018 method=GET path=/v1/items/18 status=200 dur=27ms
+2026-11-26T10:04:19.000Z INFO  request id=c019 method=GET path=/v1/items/19 status=200 dur=24ms
+2026-11-26T10:04:24.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=20
+2026-11-26T10:04:29.000Z INFO  request id=c021 method=GET path=/v1/items/21 status=200 dur=0ms
+2026-11-26T10:04:34.000Z INFO  request id=c022 method=GET path=/v1/items/22 status=200 dur=34ms
+2026-11-26T10:04:40.000Z WARN  queue depth 9023 > threshold 8000
+2026-11-26T10:04:45.000Z INFO  request id=c024 method=GET path=/v1/items/24 status=200 dur=16ms
+2026-11-26T10:04:50.000Z DEBUG  gc pause 0.6ms heap=512MB
+2026-11-26T10:04:55.000Z INFO  request id=c026 method=GET path=/v1/items/26 status=200 dur=12ms
+2026-11-26T10:05:00.000Z WARN  queue depth 9027 > threshold 8000
+2026-11-26T10:05:05.000Z INFO  request id=c028 method=GET path=/v1/items/28 status=200 dur=31ms
+2026-11-26T10:05:10.000Z INFO  request id=c029 method=GET path=/v1/items/29 status=200 dur=31ms
+2026-11-26T10:05:15.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=30
+2026-11-26T10:05:20.000Z INFO  request id=c031 method=GET path=/v1/items/31 status=200 dur=32ms
+2026-11-26T10:05:25.000Z INFO  request id=c032 method=GET path=/v1/items/32 status=200 dur=14ms
+2026-11-26T10:05:30.000Z WARN  queue depth 9033 > threshold 8000
+2026-11-26T10:05:35.000Z INFO  request id=c034 method=GET path=/v1/items/34 status=200 dur=3ms
+2026-11-26T10:05:40.000Z DEBUG  gc pause 0.4ms heap=512MB
+2026-11-26T10:05:45.000Z INFO  request id=c036 method=GET path=/v1/items/36 status=200 dur=16ms
+2026-11-26T10:05:50.000Z WARN  queue depth 9037 > threshold 8000
+2026-11-26T10:05:55.000Z INFO  request id=c038 method=GET path=/v1/items/38 status=200 dur=31ms
+2026-11-26T10:06:00.000Z INFO  request id=c039 method=GET path=/v1/items/39 status=200 dur=32ms
+2026-11-26T10:06:05.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=40
+2026-11-26T10:06:10.000Z INFO  request id=c041 method=GET path=/v1/items/41 status=200 dur=38ms
+2026-11-26T10:06:15.000Z INFO  request id=c042 method=GET path=/v1/items/42 status=200 dur=4ms
+2026-11-26T10:06:20.000Z WARN  queue depth 9043 > threshold 8000
+2026-11-26T10:06:25.000Z INFO  request id=c044 method=GET path=/v1/items/44 status=200 dur=6ms
+2026-11-26T10:06:30.000Z DEBUG  gc pause 0.7ms heap=512MB
+2026-11-26T10:06:35.000Z INFO  request id=c046 method=GET path=/v1/items/46 status=200 dur=2ms
+2026-11-26T10:06:40.000Z WARN  queue depth 9047 > threshold 8000
+2026-11-26T10:06:45.000Z INFO  request id=c048 method=GET path=/v1/items/48 status=200 dur=5ms
+2026-11-26T10:06:50.000Z INFO  request id=c049 method=GET path=/v1/items/49 status=200 dur=24ms
+2026-11-26T10:06:55.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=50
+2026-11-26T10:07:00.000Z INFO  request id=c051 method=GET path=/v1/items/51 status=200 dur=27ms
+2026-11-26T10:07:05.000Z INFO  request id=c052 method=GET path=/v1/items/52 status=200 dur=20ms
+2026-11-26T10:07:11.000Z WARN  queue depth 9053 > threshold 8000
+2026-11-26T10:07:16.000Z INFO  request id=c054 method=GET path=/v1/items/54 status=200 dur=44ms
+2026-11-26T10:07:21.000Z DEBUG  gc pause 0.3ms heap=512MB
+2026-11-26T10:07:26.000Z INFO  request id=c056 method=GET path=/v1/items/56 status=200 dur=34ms
+2026-11-26T10:07:31.000Z WARN  queue depth 9057 > threshold 8000
+2026-11-26T10:07:36.000Z INFO  request id=c058 method=GET path=/v1/items/58 status=200 dur=43ms
+2026-11-26T10:07:41.000Z INFO  request id=c059 method=GET path=/v1/items/59 status=200 dur=7ms
+2026-11-26T10:07:46.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=60
+2026-11-26T10:07:51.000Z INFO  request id=c061 method=GET path=/v1/items/61 status=200 dur=27ms
+2026-11-26T10:07:56.000Z INFO  request id=c062 method=GET path=/v1/items/62 status=200 dur=22ms
+2026-11-26T10:08:01.000Z WARN  queue depth 9063 > threshold 8000
+2026-11-26T10:08:06.000Z INFO  request id=c064 method=GET path=/v1/items/64 status=200 dur=18ms
+2026-11-26T10:08:11.000Z DEBUG  gc pause 0.0ms heap=512MB
+2026-11-26T10:08:16.000Z INFO  request id=c066 method=GET path=/v1/items/66 status=200 dur=28ms
+2026-11-26T10:08:22.000Z WARN  queue depth 9067 > threshold 8000
+2026-11-26T10:08:27.000Z INFO  request id=c068 method=GET path=/v1/items/68 status=200 dur=46ms
+2026-11-26T10:08:32.000Z INFO  request id=c069 method=GET path=/v1/items/69 status=200 dur=32ms
+2026-11-26T10:08:37.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=70
+2026-11-26T10:08:42.000Z INFO  request id=c071 method=GET path=/v1/items/71 status=200 dur=23ms
+2026-11-26T10:08:47.000Z INFO  request id=c072 method=GET path=/v1/items/72 status=200 dur=40ms
+2026-11-26T10:08:52.000Z WARN  queue depth 9073 > threshold 8000
+2026-11-26T10:08:57.000Z INFO  request id=c074 method=GET path=/v1/items/74 status=200 dur=32ms
+2026-11-26T10:09:02.000Z DEBUG  gc pause 0.1ms heap=512MB
+2026-11-26T10:09:07.000Z INFO  request id=c076 method=GET path=/v1/items/76 status=200 dur=47ms
+2026-11-26T10:09:12.000Z WARN  queue depth 9077 > threshold 8000
+2026-11-26T10:09:17.000Z INFO  request id=c078 method=GET path=/v1/items/78 status=200 dur=39ms
+2026-11-26T10:09:22.000Z INFO  request id=c079 method=GET path=/v1/items/79 status=200 dur=0ms
+2026-11-26T10:09:27.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=80
+2026-11-26T10:09:32.000Z INFO  request id=c081 method=GET path=/v1/items/81 status=200 dur=34ms
+2026-11-26T10:09:37.000Z INFO  request id=c082 method=GET path=/v1/items/82 status=200 dur=19ms
+2026-11-26T10:09:42.000Z WARN  queue depth 9083 > threshold 8000
+2026-11-26T10:09:47.000Z INFO  request id=c084 method=GET path=/v1/items/84 status=200 dur=2ms
+2026-11-26T10:09:52.000Z DEBUG  gc pause 0.1ms heap=512MB
+2026-11-26T10:09:57.000Z INFO  request id=c086 method=GET path=/v1/items/86 status=200 dur=0ms
+2026-11-26T10:10:02.000Z WARN  queue depth 9087 > threshold 8000
+2026-11-26T10:10:07.000Z INFO  request id=c088 method=GET path=/v1/items/88 status=200 dur=13ms
+2026-11-26T10:10:12.000Z INFO  request id=c089 method=GET path=/v1/items/89 status=200 dur=25ms
+2026-11-26T10:10:17.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=90
+2026-11-26T10:10:22.000Z INFO  request id=c091 method=GET path=/v1/items/91 status=200 dur=45ms
+2026-11-26T10:10:27.000Z INFO  request id=c092 method=GET path=/v1/items/92 status=200 dur=42ms
+2026-11-26T10:10:32.000Z WARN  queue depth 9093 > threshold 8000
+2026-11-26T10:10:37.000Z INFO  request id=c094 method=GET path=/v1/items/94 status=200 dur=35ms
+2026-11-26T10:10:42.000Z DEBUG  gc pause 0.3ms heap=512MB
+2026-11-26T10:10:47.000Z INFO  request id=c096 method=GET path=/v1/items/96 status=200 dur=2ms
+2026-11-26T10:10:53.000Z WARN  queue depth 9097 > threshold 8000
+2026-11-26T10:10:58.000Z INFO  request id=c098 method=GET path=/v1/items/98 status=200 dur=8ms
+2026-11-26T10:11:03.000Z INFO  request id=c099 method=GET path=/v1/items/99 status=200 dur=35ms
+2026-11-26T10:11:08.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=100
+2026-11-26T10:11:13.000Z INFO  request id=c101 method=GET path=/v1/items/101 status=200 dur=17ms
+2026-11-26T10:11:18.000Z INFO  request id=c102 method=GET path=/v1/items/102 status=200 dur=49ms
+2026-11-26T10:11:23.000Z WARN  queue depth 9103 > threshold 8000
+2026-11-26T10:11:28.000Z INFO  request id=c104 method=GET path=/v1/items/104 status=200 dur=13ms
+2026-11-26T10:11:33.000Z DEBUG  gc pause 0.6ms heap=512MB
+2026-11-26T10:11:38.000Z INFO  request id=c106 method=GET path=/v1/items/106 status=200 dur=26ms
+2026-11-26T10:11:43.000Z WARN  queue depth 9107 > threshold 8000
+2026-11-26T10:11:48.000Z INFO  request id=c108 method=GET path=/v1/items/108 status=200 dur=33ms
+2026-11-26T10:11:53.000Z INFO  request id=c109 method=GET path=/v1/items/109 status=200 dur=46ms
+2026-11-26T10:11:58.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=110
+2026-11-26T10:12:03.000Z INFO  request id=c111 method=GET path=/v1/items/111 status=200 dur=35ms
+2026-11-26T10:12:08.000Z INFO  request id=c112 method=GET path=/v1/items/112 status=200 dur=32ms
+2026-11-26T10:12:13.000Z WARN  queue depth 9113 > threshold 8000
+2026-11-26T10:12:18.000Z INFO  request id=c114 method=GET path=/v1/items/114 status=200 dur=20ms
+2026-11-26T10:12:23.000Z DEBUG  gc pause 0.6ms heap=512MB
+2026-11-26T10:12:28.000Z INFO  request id=c116 method=GET path=/v1/items/116 status=200 dur=2ms
+2026-11-26T10:12:33.000Z WARN  queue depth 9117 > threshold 8000
+2026-11-26T10:12:38.000Z INFO  request id=c118 method=GET path=/v1/items/118 status=200 dur=34ms
+2026-11-26T10:12:43.000Z INFO  request id=c119 method=GET path=/v1/items/119 status=200 dur=8ms
+2026-11-26T10:12:48.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=120
+2026-11-26T10:12:54.000Z INFO  request id=c121 method=GET path=/v1/items/121 status=200 dur=47ms
+2026-11-26T10:13:00.000Z INFO  request id=c122 method=GET path=/v1/items/122 status=200 dur=17ms
+2026-11-26T10:13:05.000Z WARN  queue depth 9123 > threshold 8000
+2026-11-26T10:13:10.000Z INFO  request id=c124 method=GET path=/v1/items/124 status=200 dur=8ms
+2026-11-26T10:13:15.000Z DEBUG  gc pause 0.7ms heap=512MB
+2026-11-26T10:13:20.000Z INFO  request id=c126 method=GET path=/v1/items/126 status=200 dur=46ms
+2026-11-26T10:13:25.000Z WARN  queue depth 9127 > threshold 8000
+2026-11-26T10:13:30.000Z INFO  request id=c128 method=GET path=/v1/items/128 status=200 dur=6ms
+2026-11-26T10:13:35.000Z INFO  request id=c129 method=GET path=/v1/items/129 status=200 dur=30ms
+2026-11-26T10:13:40.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=130
+2026-11-26T10:13:45.000Z INFO  request id=c131 method=GET path=/v1/items/131 status=200 dur=33ms
+2026-11-26T10:13:50.000Z INFO  request id=c132 method=GET path=/v1/items/132 status=200 dur=23ms
+2026-11-26T10:13:55.000Z WARN  queue depth 9133 > threshold 8000
+2026-11-26T10:14:00.000Z INFO  request id=c134 method=GET path=/v1/items/134 status=200 dur=7ms
+2026-11-26T10:14:05.000Z DEBUG  gc pause 0.2ms heap=512MB
+2026-11-26T10:14:10.000Z INFO  request id=c136 method=GET path=/v1/items/136 status=200 dur=32ms
+2026-11-26T10:14:15.000Z WARN  queue depth 9137 > threshold 8000
+2026-11-26T10:14:21.000Z INFO  request id=c138 method=GET path=/v1/items/138 status=200 dur=30ms
+2026-11-26T10:14:26.000Z INFO  request id=c139 method=GET path=/v1/items/139 status=200 dur=5ms
+2026-11-26T10:14:31.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=140
+2026-11-26T10:14:36.000Z INFO  request id=c141 method=GET path=/v1/items/141 status=200 dur=17ms
+2026-11-26T10:14:41.000Z INFO  request id=c142 method=GET path=/v1/items/142 status=200 dur=24ms
+2026-11-26T10:14:46.000Z WARN  queue depth 9143 > threshold 8000
+2026-11-26T10:14:51.000Z INFO  request id=c144 method=GET path=/v1/items/144 status=200 dur=18ms
+2026-11-26T10:14:56.000Z DEBUG  gc pause 0.0ms heap=512MB
+2026-11-26T10:15:01.000Z INFO  request id=c146 method=GET path=/v1/items/146 status=200 dur=16ms
+2026-11-26T10:15:06.000Z WARN  queue depth 9147 > threshold 8000
+2026-11-26T10:15:11.000Z INFO  request id=c148 method=GET path=/v1/items/148 status=200 dur=31ms
+2026-11-26T10:15:16.000Z INFO  request id=c149 method=GET path=/v1/items/149 status=200 dur=6ms
+2026-11-26T10:15:21.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=150
+2026-11-26T10:15:26.000Z INFO  request id=c151 method=GET path=/v1/items/151 status=200 dur=23ms
+2026-11-26T10:15:31.000Z INFO  request id=c152 method=GET path=/v1/items/152 status=200 dur=28ms
+2026-11-26T10:15:36.000Z WARN  queue depth 9153 > threshold 8000
+2026-11-26T10:15:41.000Z INFO  request id=c154 method=GET path=/v1/items/154 status=200 dur=34ms
+2026-11-26T10:15:46.000Z DEBUG  gc pause 0.2ms heap=512MB
+2026-11-26T10:15:51.000Z INFO  request id=c156 method=GET path=/v1/items/156 status=200 dur=11ms
+2026-11-26T10:15:56.000Z WARN  queue depth 9157 > threshold 8000
+2026-11-26T10:16:01.000Z INFO  request id=c158 method=GET path=/v1/items/158 status=200 dur=13ms
+2026-11-26T10:16:06.000Z INFO  request id=c159 method=GET path=/v1/items/159 status=200 dur=15ms
+2026-11-26T10:16:11.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=160
+2026-11-26T10:16:16.000Z INFO  request id=c161 method=GET path=/v1/items/161 status=200 dur=26ms
+2026-11-26T10:16:21.000Z INFO  request id=c162 method=GET path=/v1/items/162 status=200 dur=15ms
+2026-11-26T10:16:26.000Z WARN  queue depth 9163 > threshold 8000
+2026-11-26T10:16:31.000Z INFO  request id=c164 method=GET path=/v1/items/164 status=200 dur=43ms
+2026-11-26T10:16:37.000Z DEBUG  gc pause 0.3ms heap=512MB
+2026-11-26T10:16:42.000Z INFO  request id=c166 method=GET path=/v1/items/166 status=200 dur=39ms
+2026-11-26T10:16:47.000Z WARN  queue depth 9167 > threshold 8000
+2026-11-26T10:16:52.000Z INFO  request id=c168 method=GET path=/v1/items/168 status=200 dur=6ms
+2026-11-26T11:22:18.000Z INFO  request id=c001 method=GET path=/v1/items/1 status=200 dur=16ms
+2026-11-26T11:22:23.000Z INFO  request id=c002 method=GET path=/v1/items/2 status=200 dur=33ms
+2026-11-26T11:22:28.000Z WARN  queue depth 9003 > threshold 8000
+2026-11-26T11:22:33.000Z INFO  request id=c004 method=GET path=/v1/items/4 status=200 dur=31ms
+2026-11-26T11:22:38.000Z DEBUG  gc pause 0.0ms heap=512MB
+2026-11-26T11:22:43.000Z INFO  request id=c006 method=GET path=/v1/items/6 status=200 dur=42ms
+2026-11-26T11:22:48.000Z WARN  queue depth 9007 > threshold 8000
+2026-11-26T11:22:53.000Z INFO  request id=c008 method=GET path=/v1/items/8 status=200 dur=30ms
+2026-11-26T11:22:58.000Z INFO  request id=c009 method=GET path=/v1/items/9 status=200 dur=33ms
+2026-11-26T11:23:03.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=10
+2026-11-26T11:23:08.000Z INFO  request id=c011 method=GET path=/v1/items/11 status=200 dur=16ms
+2026-11-26T11:23:13.000Z INFO  request id=c012 method=GET path=/v1/items/12 status=200 dur=10ms
+2026-11-26T11:23:18.000Z WARN  queue depth 9013 > threshold 8000
+2026-11-26T11:23:23.000Z INFO  request id=c014 method=GET path=/v1/items/14 status=200 dur=26ms
+2026-11-26T11:23:28.000Z DEBUG  gc pause 0.3ms heap=512MB
+2026-11-26T11:23:33.000Z INFO  request id=c016 method=GET path=/v1/items/16 status=200 dur=16ms
+2026-11-26T11:23:38.000Z WARN  queue depth 9017 > threshold 8000
+2026-11-26T11:23:43.000Z INFO  request id=c018 method=GET path=/v1/items/18 status=200 dur=15ms
+2026-11-26T11:23:48.000Z INFO  request id=c019 method=GET path=/v1/items/19 status=200 dur=41ms
+2026-11-26T11:23:53.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=20
+2026-11-26T11:23:59.000Z INFO  request id=c021 method=GET path=/v1/items/21 status=200 dur=12ms
+2026-11-26T11:56:08.000Z WARN  queue depth 9223 > threshold 8000
+2026-11-26T11:56:13.000Z INFO  request id=c224 method=GET path=/v1/items/224 status=200 dur=23ms
+2026-11-26T11:56:18.000Z DEBUG  gc pause 0.6ms heap=512MB
+2026-11-26T11:56:23.000Z INFO  request id=c226 method=GET path=/v1/items/226 status=200 dur=0ms
+2026-11-26T11:56:28.000Z WARN  queue depth 9227 > threshold 8000
+2026-11-26T11:56:33.000Z INFO  request id=c228 method=GET path=/v1/items/228 status=200 dur=35ms
+2026-11-26T11:56:38.000Z INFO  request id=c229 method=GET path=/v1/items/229 status=200 dur=30ms
+2026-11-26T11:56:43.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=230
+2026-11-26T11:56:48.000Z INFO  request id=c231 method=GET path=/v1/items/231 status=200 dur=14ms
+2026-11-26T11:56:53.000Z INFO  request id=c232 method=GET path=/v1/items/232 status=200 dur=28ms
+2026-11-26T11:56:58.000Z WARN  queue depth 9233 > threshold 8000
+2026-11-26T11:57:03.000Z INFO  request id=c234 method=GET path=/v1/items/234 status=200 dur=36ms
+2026-11-26T11:57:08.000Z DEBUG  gc pause 0.1ms heap=512MB
+2026-11-26T11:57:13.000Z INFO  request id=c236 method=GET path=/v1/items/236 status=200 dur=4ms
+2026-11-26T11:57:18.000Z WARN  queue depth 9237 > threshold 8000
+2026-11-26T11:57:23.000Z INFO  request id=c238 method=GET path=/v1/items/238 status=200 dur=10ms
+2026-11-26T11:57:28.000Z INFO  request id=c239 method=GET path=/v1/items/239 status=200 dur=44ms
+2026-11-26T11:57:33.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=240
+2026-11-26T11:57:38.000Z INFO  request id=c241 method=GET path=/v1/items/241 status=200 dur=38ms
+2026-11-26T11:57:43.000Z INFO  request id=c242 method=GET path=/v1/items/242 status=200 dur=13ms
+2026-11-26T11:57:48.000Z WARN  queue depth 9243 > threshold 8000
+2026-11-26T11:57:54.000Z INFO  request id=c244 method=GET path=/v1/items/244 status=200 dur=46ms
+2026-11-26T11:57:59.000Z DEBUG  gc pause 0.3ms heap=512MB
+2026-11-26T11:58:04.000Z INFO  request id=c246 method=GET path=/v1/items/246 status=200 dur=22ms
+2026-11-26T11:58:09.000Z WARN  queue depth 9247 > threshold 8000
+2026-11-26T11:58:14.000Z INFO  request id=c248 method=GET path=/v1/items/248 status=200 dur=49ms
+2026-11-26T11:58:19.000Z INFO  request id=c249 method=GET path=/v1/items/249 status=200 dur=3ms
+2026-11-26T11:58:24.000Z ERROR  upstream timeout url=https://api.example.com/v1/health retry=250
+2026-11-26T11:58:29.000Z INFO  request id=c251 method=GET path=/v1/items/251 status=200 dur=35ms
+2026-11-26T11:58:34.000Z INFO  request id=c252 method=GET path=/v1/items/252 status=200 dur=43ms
+2026-11-26T11:58:39.000Z WARN  queue depth 9253 > threshold 8000
+2026-11-26T11:58:44.000Z INFO  request id=c254 method=GET path=/v1/items/254 status=200 dur=32ms
+2026-11-26T11:58:49.000Z DEBUG  gc pause 0.8ms heap=512MB

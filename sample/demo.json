@@ -1,0 +1,8 @@
+{
+  "name": "logview",
+  "version": "0.1.0",
+  "levels": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"],
+  "recents_limit": 50,
+  "purge_creds": true,
+  "nested": { "highlight": "#3b5bdb", "enabled": false }
+}
