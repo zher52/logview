@@ -51,10 +51,21 @@ pub fn t(key: &'static str) -> &'static str {
     if lang() == Lang::Zh {
         return key;
     }
-    EN.iter()
-        .find(|(zh, _)| *zh == key)
-        .map(|(_, en)| *en)
-        .unwrap_or(key)
+    lookup(key).unwrap_or(key)
+}
+
+/// 动态文案(错误/提示)翻译:按整串精确查表,未收录时原样返回
+pub fn td(text: &str) -> String {
+    if lang() == Lang::Zh {
+        return text.to_string();
+    }
+    lookup(text)
+        .map(str::to_string)
+        .unwrap_or_else(|| text.to_string())
+}
+
+fn lookup(key: &str) -> Option<&'static str> {
+    EN.iter().find(|(zh, _)| *zh == key).map(|(_, en)| *en)
 }
 
 /// 中文原文 → 英文;逐步补齐,未收录的条目自动回退中文
@@ -226,6 +237,24 @@ const EN: &[(&str, &str)] = &[
     ("已恢复该内置配置的默认规则", "Restored defaults for this built-in config"),
     ("已恢复全部内置配置的默认规则", "Restored all built-in config defaults"),
     ("没有匹配的已保存服务器", "No matching saved servers"),
+    ("算法", "Algorithm"),
+    ("指纹", "Fingerprint"),
+    (
+        "首次连接该主机,无法自动校验身份。请与服务器管理员提供的指纹核对;",
+        "First connection to this host; its identity cannot be verified automatically. Compare the fingerprint with the one provided by the server administrator.",
+    ),
+    (
+        "不一致时可能存在中间人攻击。选择「记住」后,密钥变化将直接拒绝连接。",
+        "A mismatch may indicate a man-in-the-middle attack. If you choose Remember, future key changes will be rejected.",
+    ),
+    (
+        "记住连接(凭据保存到系统钥匙串)",
+        "Remember connection (credentials stored in the system keychain)",
+    ),
+    (
+        "记住连接(系统钥匙串不可用,仅本次会话有效)",
+        "Remember connection (system keychain unavailable; valid for this session only)",
+    ),
 ];
 
 #[cfg(test)]
@@ -239,6 +268,8 @@ mod tests {
         assert_eq!(t("跳到末尾"), "Jump to end");
         // 未收录的文案在英文模式下回退中文,不会显示空白
         assert_eq!(t("尚未收录的文案"), "尚未收录的文案");
+        assert_eq!(td("尚未收录的文案"), "尚未收录的文案");
+        assert_eq!(td("取消"), "Cancel");
         set(Lang::Zh);
         assert_eq!(t("取消"), "取消");
     }

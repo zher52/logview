@@ -3351,7 +3351,7 @@ impl AppView {
         // 服务器输入框获得焦点即展开已保存服务器列表,失焦(含选中后焦点移走)收起
         let host_focus = f.host.read(cx).presentation().focus_handle().clone();
         let show_servers = host_focus.is_focused(window);
-        let err = f.err.clone();
+        let err = f.err.clone().map(|e| i18n::td(&e));
         let (host_e, port_e, user_e, pass_e, path_e) = (
             f.host.clone(),
             f.port.clone(),
@@ -3553,9 +3553,9 @@ impl AppView {
                             theme::hex(pal.warning)
                         })
                         .child(if secrets::available() {
-                            "记住连接(凭据保存到系统钥匙串)"
+                            i18n::t("记住连接(凭据保存到系统钥匙串)")
                         } else {
-                            "记住连接(系统钥匙串不可用,仅本次会话有效)"
+                            i18n::t("记住连接(系统钥匙串不可用,仅本次会话有效)")
                         }),
                 )
                 .into_any_element(),
@@ -3619,7 +3619,7 @@ impl AppView {
         let Dialog::Cmd(f) = &self.dialog else {
             return div().into_any_element();
         };
-        let err = f.err.clone();
+        let err = f.err.clone().map(|e| i18n::td(&e));
         let mut rows = command_rows(
             cx,
             &self.settings.command_presets,
@@ -3712,19 +3712,23 @@ impl AppView {
             .py(px(14.0))
             .max_w(px(560.0))
             .child(field(i18n::t("主机"), host, false))
-            .child(field("算法", algo, false))
-            .child(field("指纹", fp, true))
+            .child(field(i18n::t("算法"), algo, false))
+            .child(field(i18n::t("指纹"), fp, true))
             .child(
                 div()
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child("首次连接该主机,无法自动校验身份。请与服务器管理员提供的指纹核对;"),
+                    .child(i18n::t(
+                        "首次连接该主机,无法自动校验身份。请与服务器管理员提供的指纹核对;",
+                    )),
             )
             .child(
                 div()
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child("不一致时可能存在中间人攻击。选择「记住」后,密钥变化将直接拒绝连接。"),
+                    .child(i18n::t(
+                        "不一致时可能存在中间人攻击。选择「记住」后,密钥变化将直接拒绝连接。",
+                    )),
             );
         let header = dlg_header(
             i18n::t("确认主机密钥"),
@@ -3800,7 +3804,7 @@ impl AppView {
         let Dialog::Url(f) = &self.dialog else {
             return div().into_any_element();
         };
-        let err = f.err.clone();
+        let err = f.err.clone().map(|e| i18n::td(&e));
         let auth = f.auth;
         let remember = f.remember;
         let (url_e, user_e, pass_e, token_e, hname_e, hvalue_e) = (
@@ -4841,7 +4845,7 @@ impl AppView {
                     .pb(px(10.0))
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.text2))
-                    .child(n)
+                    .child(i18n::td(&n))
                     .into_any_element(),
             );
         }
@@ -5569,7 +5573,7 @@ impl AppView {
                     .py(px(8.0))
                     .text_size(px(theme::scaled(11.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child(n)
+                    .child(i18n::td(&n))
                     .into_any_element(),
             ));
         }
@@ -6895,7 +6899,7 @@ impl AppView {
         let loading = cur.and_then(|t| t.loading);
         let tail_banner = cur.and_then(|t| t.tail_banner);
         let no_follow = cur.map(|t| t.no_follow).unwrap_or(false);
-        let err_text = cur.and_then(|t| t.err.clone());
+        let err_text = cur.and_then(|t| t.err.clone()).map(|e| i18n::td(&e));
         let match_err = cur.and_then(|t| t.match_err.clone());
         let has_tabs = !self.tabs.is_empty();
         let is_welcome = cur.map_or(false, |t| t.welcome);
@@ -7738,7 +7742,7 @@ impl AppView {
             segs.push(("就绪".into(), theme::hex(pal.text3)));
         }
         if let Some(n) = &self.cred_notice {
-            segs.push((n.clone(), theme::hex(pal.warning)));
+            segs.push((i18n::td(n), theme::hex(pal.warning)));
         }
 
         // —— 位置信息:贴状态栏最右,占据剩余宽度;悬停显示完整路径,双击复制 ——
