@@ -3908,6 +3908,7 @@ name = "logview"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "chrono",
  "crossbeam-channel",
  "dirs",
@@ -3919,6 +3920,7 @@ dependencies = [
  "ropey",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "ssh2",
 ]
 

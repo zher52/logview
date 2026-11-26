@@ -19,6 +19,8 @@ open = "5"
 anyhow = "1"
 crossbeam-channel = "0.5"
 ssh2 = "0.9"
+sha2 = "0.10"
+base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 ropey = "=2.0.0-beta.1"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }

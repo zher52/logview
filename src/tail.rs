@@ -16,6 +16,11 @@ pub enum Cmd {
     Pause(bool),
     SeekStart, // 清空并从头全量加载(加载全部)
     SeekEnd,   // 跳到末尾:取尾部 tail_cap 字节
+    /// 对未知 SSH 主机密钥的确认结果(TOFU)
+    HostKeyDecision {
+        accept: bool,
+        remember: bool,
+    },
 }
 
 pub enum Msg {
@@ -49,6 +54,36 @@ pub enum Msg {
         code: Option<i32>,
         retry_in: Option<u64>,
     },
+    /// 首次连接未知主机:等用户核对指纹后回 `Cmd::HostKeyDecision`
+    HostKeyPrompt(source::HostKeyInfo),
+}
+
+/// 询问 UI 是否信任未知主机;等待期间仍响应 Stop
+fn ask_host_key(
+    info: &source::HostKeyInfo,
+    cmd_rx: &Receiver<Cmd>,
+    tx: &Sender<Msg>,
+) -> source::HostKeyDecision {
+    if tx.send(Msg::HostKeyPrompt(info.clone())).is_err() {
+        return source::HostKeyDecision::Reject;
+    }
+    loop {
+        match cmd_rx.recv_timeout(std::time::Duration::from_millis(200)) {
+            Ok(Cmd::HostKeyDecision { accept, remember }) => {
+                return if accept {
+                    source::HostKeyDecision::Accept { remember }
+                } else {
+                    source::HostKeyDecision::Reject
+                };
+            }
+            Ok(Cmd::Stop) => return source::HostKeyDecision::Reject,
+            Ok(_) => {}
+            Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
+            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
+                return source::HostKeyDecision::Reject;
+            }
+        }
+    }
 }
 
 /// 命令输出:读线程 → 控制循环
@@ -109,7 +144,7 @@ fn worker(
         worker_stream(params, plan, cmd_rx, tx);
         return;
     }
-    let mut o = match source::open(&params) {
+    let mut o = match source::open(&params, &mut |info| ask_host_key(info, &cmd_rx, &tx)) {
         Ok(o) => o,
         Err(e) => {
             let _ = tx.send(Msg::Error {
@@ -231,6 +266,7 @@ fn worker(
         match cmd_rx.recv_timeout(Duration::from_millis(100)) {
             Ok(Cmd::Stop) => return,
             Ok(Cmd::Pause(p)) => paused = p,
+            Ok(Cmd::HostKeyDecision { .. }) => {}
             Ok(Cmd::SeekStart) => {
                 offset = 0;
                 let _ = tx.send(Msg::Replace {
@@ -434,7 +470,9 @@ fn worker_stream(
             return;
         };
         let started = std::time::Instant::now();
-        let mut handle = match source::open_command(&params, &plan) {
+        let mut handle = match source::open_command(&params, &plan, &mut |info| {
+            ask_host_key(info, &cmd_rx, &tx)
+        }) {
             Ok(Opened::Stream(h)) => h,
             Ok(_) => {
                 let _ = tx.send(Msg::Error {
@@ -521,6 +559,7 @@ fn worker_stream(
                         return;
                     }
                     Ok(Cmd::Pause(p)) => paused = p,
+                    Ok(Cmd::HostKeyDecision { .. }) => {}
                     // 命令没有历史可回放:从头加载不可用,忽略
                     Ok(Cmd::SeekStart) => {}
                     Ok(Cmd::SeekEnd) => {

@@ -10,6 +10,9 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
+use base64::Engine as _;
+use sha2::{Digest, Sha256};
+
 use crate::command::CommandPlan;
 use crate::ssrf::{validate_url, Validated};
 
@@ -367,7 +370,7 @@ pub struct StreamHandle {
     pub exit: Arc<Mutex<Option<i32>>>,
 }
 
-pub fn open(p: &SourceParams) -> Result<Opened, String> {
+pub fn open(p: &SourceParams, ask: HostKeyAsk) -> Result<Opened, String> {
     match p {
         SourceParams::Local { path } => {
             if !std::path::Path::new(path).is_file() {
@@ -384,7 +387,7 @@ pub fn open(p: &SourceParams) -> Result<Opened, String> {
             auth,
             path,
         } => {
-            let sess = ssh_connect(host, *port, user, auth)?;
+            let sess = ssh_connect(host, *port, user, auth, ask)?;
             Ok(Opened::Ssh {
                 sess,
                 path: path.clone(),
@@ -554,38 +557,145 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
 
 /// 比对 `~/.ssh/known_hosts` 中已有的主机密钥。
 ///
-/// 已知主机的密钥不一致时直接拒绝连接(中间人风险);未知主机按首次连接处理,
-/// 不写入 known_hosts(TOFU 确认界面尚未实现,见 SECURITY.md)。
-fn verify_known_host(sess: &ssh2::Session, host: &str, port: u16) -> Result<(), String> {
-    let Some(home) = dirs::home_dir() else {
+/// 待确认的未知主机密钥(TOFU)
+#[derive(Clone, Debug)]
+pub struct HostKeyInfo {
+    pub host: String,
+    pub port: u16,
+    /// 密钥算法,如 ssh-ed25519
+    pub algo: String,
+    /// OpenSSH 风格指纹:SHA256:...
+    pub fingerprint: String,
+}
+
+/// 未知主机的处理结果
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HostKeyDecision {
+    /// 接受;`remember` 为 true 时写入 known_hosts
+    Accept {
+        remember: bool,
+    },
+    Reject,
+}
+
+/// 未知主机询问回调:在 worker 线程中等待 UI 决策(期间仍可响应 Stop)
+pub type HostKeyAsk<'a> = &'a mut dyn FnMut(&HostKeyInfo) -> HostKeyDecision;
+
+fn host_key_algo(key: &[u8]) -> String {
+    (|| {
+        let n = u32::from_be_bytes(key.get(..4)?.try_into().ok()?) as usize;
+        std::str::from_utf8(key.get(4..4 + n)?)
+            .ok()
+            .map(str::to_owned)
+    })()
+    .unwrap_or_else(|| "未知算法".into())
+}
+
+fn host_key_fingerprint(key: &[u8]) -> String {
+    let digest = Sha256::digest(key);
+    format!(
+        "SHA256:{}",
+        base64::engine::general_purpose::STANDARD_NO_PAD.encode(digest)
+    )
+}
+
+fn known_hosts_path() -> Option<PathBuf> {
+    dirs::home_dir().map(|h| h.join(".ssh").join("known_hosts"))
+}
+
+/// 把当前会话的主机密钥追加到 known_hosts(保留已有条目)
+fn trust_host(sess: &ssh2::Session, host: &str, port: u16) -> Result<(), String> {
+    let path = known_hosts_path().ok_or("找不到用户目录,无法写入 known_hosts")?;
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("创建 ~/.ssh 失败:{e}"))?;
+    }
+    let mut known_hosts = sess
+        .known_hosts()
+        .map_err(|e| format!("known_hosts 初始化失败:{e}"))?;
+    if path.is_file() {
+        known_hosts
+            .read_file(&path, ssh2::KnownHostFileKind::OpenSSH)
+            .map_err(|e| format!("读取 known_hosts 失败:{e}"))?;
+    }
+    let (key, kind) = sess.host_key().ok_or("无法获取服务器主机密钥")?;
+    // 非默认端口需写成 [host]:port,与 OpenSSH 一致
+    let name = if port == 22 {
+        host.to_string()
+    } else {
+        format!("[{host}]:{port}")
+    };
+    known_hosts
+        .add(
+            &name,
+            key,
+            "added by logview",
+            ssh2::KnownHostKeyFormat::from(kind),
+        )
+        .map_err(|e| format!("写入 known_hosts 失败:{e}"))?;
+    known_hosts
+        .write_file(&path, ssh2::KnownHostFileKind::OpenSSH)
+        .map_err(|e| format!("保存 known_hosts 失败:{e}"))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
+}
+
+/// 已知主机密钥不一致时拒绝;未知主机交由 `ask` 决定(TOFU)
+fn verify_known_host(
+    sess: &ssh2::Session,
+    host: &str,
+    port: u16,
+    ask: HostKeyAsk,
+) -> Result<(), String> {
+    let Some((key, _kind)) = sess.host_key() else {
         return Ok(());
     };
-    let path = home.join(".ssh").join("known_hosts");
-    if !path.is_file() {
-        return Ok(());
-    }
     let mut known_hosts = match sess.known_hosts() {
         Ok(kh) => kh,
         Err(_) => return Ok(()),
     };
-    if known_hosts
-        .read_file(&path, ssh2::KnownHostFileKind::OpenSSH)
-        .is_err()
-    {
-        return Ok(());
+    if let Some(path) = known_hosts_path() {
+        if path.is_file()
+            && known_hosts
+                .read_file(&path, ssh2::KnownHostFileKind::OpenSSH)
+                .is_err()
+        {
+            return Err(format!(
+                "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取"
+            ));
+        }
     }
-    let Some((key, _kind)) = sess.host_key() else {
-        return Ok(());
-    };
     match known_hosts.check_port(host, port, key) {
-        ssh2::CheckResult::Match | ssh2::CheckResult::NotFound => Ok(()),
+        ssh2::CheckResult::Match => Ok(()),
         ssh2::CheckResult::Mismatch => Err(format!(
-            "SSH 主机密钥与 ~/.ssh/known_hosts 记录不一致({host}:{port}),可能存在中间人攻击;\
+            "SSH 主机密钥与 known_hosts 记录不一致({host}:{port}),可能存在中间人攻击;\
              确认服务器换过密钥后请先更新 known_hosts"
         )),
         ssh2::CheckResult::Failure => Err(format!(
             "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取"
         )),
+        ssh2::CheckResult::NotFound => {
+            let info = HostKeyInfo {
+                host: host.to_string(),
+                port,
+                algo: host_key_algo(key),
+                fingerprint: host_key_fingerprint(key),
+            };
+            match ask(&info) {
+                HostKeyDecision::Accept { remember } => {
+                    if remember {
+                        trust_host(sess, host, port)?;
+                    }
+                    Ok(())
+                }
+                HostKeyDecision::Reject => {
+                    Err(format!("已取消连接:{host}:{port} 的主机密钥未确认"))
+                }
+            }
+        }
     }
 }
 
@@ -594,8 +704,9 @@ pub fn ssh_connect(
     port: u16,
     user: &str,
     auth: &SshAuth,
+    ask: HostKeyAsk,
 ) -> Result<ssh2::Session, String> {
-    ssh_connect_t(host, port, user, auth, 20_000)
+    ssh_connect_t(host, port, user, auth, 20_000, ask)
 }
 
 /// 连接并认证;`timeout_ms` 作用于阻塞调用(0 = 不限时)
@@ -605,6 +716,7 @@ fn ssh_connect_t(
     user: &str,
     auth: &SshAuth,
     timeout_ms: u32,
+    ask: HostKeyAsk,
 ) -> Result<ssh2::Session, String> {
     let tcp = std::net::TcpStream::connect((host, port))
         .map_err(|e| format!("SSH 连接失败 {host}:{port}: {e}"))?;
@@ -612,7 +724,7 @@ fn ssh_connect_t(
     sess.set_tcp_stream(tcp);
     sess.set_timeout(timeout_ms);
     sess.handshake().map_err(|e| format!("SSH 握手失败: {e}"))?;
-    verify_known_host(&sess, host, port)?;
+    verify_known_host(&sess, host, port, ask)?;
     let ok = match auth {
         SshAuth::Password(p) => sess.userauth_password(user, p).is_ok(),
         SshAuth::KeyText { key, passphrase } => sess
@@ -956,7 +1068,7 @@ fn capture_local(argv: &[String]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
-fn capture_ssh(target: &ExecTarget, argv: &[String]) -> Result<String, String> {
+fn capture_ssh(target: &ExecTarget, argv: &[String], ask: HostKeyAsk) -> Result<String, String> {
     let ExecTarget::Ssh {
         host,
         port,
@@ -966,7 +1078,7 @@ fn capture_ssh(target: &ExecTarget, argv: &[String]) -> Result<String, String> {
     else {
         return Err("不是 SSH 目标".into());
     };
-    let sess = ssh_connect_t(host, *port, user, auth, 15_000)?;
+    let sess = ssh_connect_t(host, *port, user, auth, 15_000, ask)?;
     let remote = argv
         .iter()
         .map(|s| crate::command::shell_quote(s))
@@ -992,15 +1104,20 @@ fn ssh_connect_stream(
     port: u16,
     user: &str,
     auth: &SshAuth,
+    ask: HostKeyAsk,
 ) -> Result<ssh2::Session, String> {
-    let sess = ssh_connect_t(host, port, user, auth, 0)?;
+    let sess = ssh_connect_t(host, port, user, auth, 0, ask)?;
     sess.set_blocking(false);
     sess.set_keepalive(true, 30);
     Ok(sess)
 }
 
 /// 打开命令源:先求值(如 PID),再 spawn 子进程 / 建立 SSH exec 通道
-pub fn open_command(p: &SourceParams, plan: &CommandPlan) -> Result<Opened, String> {
+pub fn open_command(
+    p: &SourceParams,
+    plan: &CommandPlan,
+    ask: HostKeyAsk,
+) -> Result<Opened, String> {
     let SourceParams::Command { target, .. } = p else {
         return Err("不是命令源".into());
     };
@@ -1008,7 +1125,7 @@ pub fn open_command(p: &SourceParams, plan: &CommandPlan) -> Result<Opened, Stri
     for r in &plan.resolve {
         let out = match target {
             ExecTarget::Local => capture_local(&r.argv)?,
-            t => capture_ssh(t, &r.argv)?,
+            t => capture_ssh(t, &r.argv, ask)?,
         };
         let value = out.split_whitespace().next().unwrap_or("").to_string();
         if value.is_empty() {
@@ -1041,7 +1158,7 @@ pub fn open_command(p: &SourceParams, plan: &CommandPlan) -> Result<Opened, Stri
                     .collect::<Vec<_>>()
                     .join(" ")
             };
-            let sess = ssh_connect_stream(host, *port, user, auth)?;
+            let sess = ssh_connect_stream(host, *port, user, auth, ask)?;
             let mut ch = sess
                 .channel_session()
                 .map_err(|e| format!("SSH 通道创建失败:{e}"))?;
@@ -1231,7 +1348,10 @@ mod tests {
             restart: false,
             raw: true,
         };
-        let mut o = open_command(&params, &plan).expect("启动命令");
+        let mut o = open_command(&params, &plan, &mut |_| HostKeyDecision::Accept {
+            remember: false,
+        })
+        .expect("启动命令");
         let Opened::Stream(s) = &mut o else {
             panic!("应为流式句柄")
         };
@@ -1263,10 +1383,27 @@ mod tests {
             restart: false,
             raw: true,
         };
-        let err = match open_command(&params, &plan) {
+        let err = match open_command(&params, &plan, &mut |_| HostKeyDecision::Accept {
+            remember: false,
+        }) {
             Err(e) => e,
             Ok(_) => panic!("不存在的命令不应启动成功"),
         };
         assert!(err.contains("未找到命令"), "{err}");
+    }
+
+    #[test]
+    fn host_key_algo_and_fingerprint() {
+        let mut blob = Vec::new();
+        blob.extend_from_slice(&11u32.to_be_bytes());
+        blob.extend_from_slice(b"ssh-ed25519");
+        blob.extend_from_slice(&32u32.to_be_bytes());
+        blob.extend_from_slice(&[7u8; 32]);
+        assert_eq!(host_key_algo(&blob), "ssh-ed25519");
+        let fp = host_key_fingerprint(&blob);
+        assert!(fp.starts_with("SHA256:"), "{fp}");
+        // SHA-256 为 32 字节,base64 无填充后固定 43 字符
+        assert_eq!(fp.len(), "SHA256:".len() + 43);
+        assert_eq!(host_key_algo(&[0, 1]), "未知算法");
     }
 }

@@ -432,6 +432,8 @@ enum Dialog {
     Ssh(SshForm),
     Url(UrlForm),
     Cmd(CmdForm),
+    /// 未知 SSH 主机:首次连接时核对指纹(TOFU)
+    HostKey(HostKeyForm),
 }
 
 /// SSH 连接配置弹窗状态
@@ -508,6 +510,12 @@ impl CmdFields {
 struct CmdForm {
     fields: CmdFields,
     err: Option<String>,
+}
+
+/// 未知 SSH 主机:首次连接时核对指纹(TOFU)
+struct HostKeyForm {
+    tab: u64,
+    info: crate::source::HostKeyInfo,
 }
 
 /// 按预设重建字段输入框(填默认值)
@@ -1065,6 +1073,8 @@ pub struct AppView {
     pending_commits: Vec<(SetField, u64)>,
     /// 子线程报告认证失败后的待处理重试(标签页 id, 参数, 错误);下一帧弹出连接表单
     auth_retry: Option<(u64, SourceParams, String)>,
+    /// 等待确认的未知主机(标签页 id, 主机密钥);按到达顺序逐个弹窗
+    host_key_queue: Vec<(u64, crate::source::HostKeyInfo)>,
     /// 根节点焦点:快捷键(⌘T/⌘K… )的接收者
     focus_handle: FocusHandle,
     /// 鼠标上方的短提示(如「已复制」),到期由 poll 清理
@@ -1115,6 +1125,7 @@ impl AppView {
             debounce_gen: 0,
             pending_commits: Vec::new(),
             auth_retry: None,
+            host_key_queue: Vec::new(),
             focus_handle: cx.focus_handle(),
             toast: None,
         };
@@ -1422,10 +1433,21 @@ impl AppView {
             return;
         }
         let was_settings = self.tabs.get(i).map_or(false, |t| t.settings);
+        let closed_id = self.tabs.get(i).map(|t| t.id);
         if let Some(t) = self.tabs.get(i) {
             let _ = t.cmd_tx.send(Cmd::Stop);
         }
         self.tabs.remove(i);
+        if let Some(id) = closed_id {
+            // 关闭标签页时丢弃它的待确认主机,并关闭对应弹窗
+            self.host_key_queue.retain(|(t, _)| *t != id);
+            if let Dialog::HostKey(f) = &self.dialog {
+                if f.tab == id {
+                    self.dialog = Dialog::None;
+                    self.show_next_host_key();
+                }
+            }
+        }
         if was_settings {
             // 关闭设置页:面板状态释放(改动已实时写入设置)
             self.settings_panel = None;
@@ -3293,6 +3315,7 @@ impl AppView {
             Dialog::Ssh(_) => Some(self.render_ssh_dialog(window, cx)),
             Dialog::Url(_) => Some(self.render_url_dialog(cx)),
             Dialog::Cmd(_) => Some(self.render_cmd_dialog(cx)),
+            Dialog::HostKey(_) => Some(self.render_host_key_dialog(cx)),
         }
     }
 
@@ -3621,6 +3644,126 @@ impl AppView {
                     .on_click(cx.listener(|v, _e, _w, cx| v.cmd_submit(cx))),
             );
         dlg_shell("dlg-cmd", header, body, footer, pal, ui_font)
+    }
+
+    /// 首次连接未知主机:展示指纹,用户可选择仅本次信任或写入 known_hosts
+    fn render_host_key_dialog(&self, cx: &mut Context<Self>) -> AnyElement {
+        let light = !cx.theme().mode.is_dark();
+        let pal = theme::palette(light);
+        let ui_font = self.ui_font(cx);
+        let Dialog::HostKey(f) = &self.dialog else {
+            return div().into_any_element();
+        };
+        let host = format!("{}:{}", f.info.host, f.info.port);
+        let algo = f.info.algo.clone();
+        let fp = f.info.fingerprint.clone();
+        let field = |k: &'static str, v: String, mono: bool| {
+            let mut val = div()
+                .text_size(px(theme::scaled(12.5)))
+                .text_color(theme::hex(pal.text1));
+            if mono {
+                val = val.font_family(theme::mono_family());
+            }
+            div()
+                .flex()
+                .gap(px(10.0))
+                .items_start()
+                .child(
+                    div()
+                        .w(px(52.0))
+                        .flex_none()
+                        .text_size(px(theme::scaled(12.0)))
+                        .text_color(theme::hex(pal.text3))
+                        .child(k),
+                )
+                .child(val.child(v))
+        };
+        let body = div()
+            .flex()
+            .flex_col()
+            .gap(px(10.0))
+            .px(px(16.0))
+            .py(px(14.0))
+            .max_w(px(560.0))
+            .child(field("主机", host, false))
+            .child(field("算法", algo, false))
+            .child(field("指纹", fp, true))
+            .child(
+                div()
+                    .text_size(px(theme::scaled(12.0)))
+                    .text_color(theme::hex(pal.text3))
+                    .child("首次连接该主机,无法自动校验身份。请与服务器管理员提供的指纹核对;"),
+            )
+            .child(
+                div()
+                    .text_size(px(theme::scaled(12.0)))
+                    .text_color(theme::hex(pal.text3))
+                    .child("不一致时可能存在中间人攻击。选择「记住」后,密钥变化将直接拒绝连接。"),
+            );
+        let header = dlg_header(
+            "确认主机密钥",
+            pal,
+            cx.listener(|v, _e, _w, _cx| v.host_key_respond(false, false)),
+        );
+        let footer = div()
+            .flex()
+            .justify_end()
+            .gap(px(8.0))
+            .px(px(16.0))
+            .py(px(10.0))
+            .border_t_1()
+            .border_color(theme::hex(pal.split))
+            .child(
+                dlg_btn("hk-cancel", "取消", false, pal)
+                    .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(false, false))),
+            )
+            .child(
+                dlg_btn("hk-once", "仅本次信任", false, pal)
+                    .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(true, false))),
+            )
+            .child(
+                dlg_btn("hk-remember", "信任并记住", true, pal)
+                    .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(true, true))),
+            );
+        dlg_shell("dlg-hostkey", header, body, footer, pal, ui_font)
+    }
+
+    /// 回传主机密钥决定并关闭弹窗
+    fn host_key_respond(&mut self, accept: bool, remember: bool) {
+        let Dialog::HostKey(f) = &self.dialog else {
+            return;
+        };
+        let tab_id = f.tab;
+        let host = f.info.host.clone();
+        let port = f.info.port;
+        if let Some(t) = self.tabs.iter().find(|t| t.id == tab_id) {
+            let _ = t.cmd_tx.send(Cmd::HostKeyDecision { accept, remember });
+        }
+        self.cred_notice = Some(if accept {
+            if remember {
+                format!("已信任并记住 {host}:{port} 的主机密钥")
+            } else {
+                format!("已信任 {host}:{port} 的主机密钥(仅本次)")
+            }
+        } else {
+            format!("已取消连接 {host}:{port}")
+        });
+        self.dialog = Dialog::None;
+        self.show_next_host_key();
+    }
+
+    /// 弹出台阶队列中的下一个未知主机确认
+    fn show_next_host_key(&mut self) {
+        if !matches!(self.dialog, Dialog::None) {
+            return;
+        }
+        while let Some((tab, info)) = self.host_key_queue.first().cloned() {
+            self.host_key_queue.remove(0);
+            if self.tabs.iter().any(|t| t.id == tab) {
+                self.dialog = Dialog::HostKey(HostKeyForm { tab, info });
+                return;
+            }
+        }
     }
 
     /// URL(HTTP)输入弹窗
@@ -5694,6 +5837,8 @@ impl AppView {
         let mut active_grew = 0usize;
         // 本帧发现的认证失败(标签页索引, 错误):轮询结束后再弹表单,避免嵌套借用
         let mut auth_fail: Option<(usize, String)> = None;
+        // 本帧收到的未知主机确认请求(TOFU)
+        let mut host_prompts: Vec<(u64, crate::source::HostKeyInfo)> = Vec::new();
         // 本帧活动标签的视图被重建(跳尾 Replace / 日志轮换),跟随中需要重新贴底
         let mut active_view_reset = false;
         for ti in 0..self.tabs.len() {
@@ -5789,6 +5934,7 @@ impl AppView {
                             }
                         }
                     }
+                    Msg::HostKeyPrompt(info) => host_prompts.push((tab.id, info)),
                 }
             }
             let tab = &mut self.tabs[ti];
@@ -5804,6 +5950,10 @@ impl AppView {
         }
 
         // 活动标签的认证失败:标记为待弹表单,由下一帧渲染前处理(需要 window/cx 建输入框)
+        if !host_prompts.is_empty() {
+            self.host_key_queue.extend(host_prompts);
+            self.show_next_host_key();
+        }
         if let Some((ti, msg)) = auth_fail {
             if ti == self.active && matches!(self.dialog, Dialog::None) {
                 if let Some(t) = self.tabs.get(ti) {

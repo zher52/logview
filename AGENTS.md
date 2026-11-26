@@ -109,7 +109,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 
 - 密码/口令/token/私钥正文默认仅在内存；勾选「记住连接」后写入系统钥匙串（服务名 `logview`），设置文件永远不含凭据，`SourceParams::sanitized()` 用于最近打开。
 - 旧版明文凭据在加载时迁移，迁移失败也要清除明文。
-- SSH 连接握手后比对 `~/.ssh/known_hosts`：**密钥不一致直接拒绝**；未知主机按首次信任放行（不写入记录文件，TOFU 界面待补）。
+- SSH 连接握手后比对 `~/.ssh/known_hosts`：**密钥不一致直接拒绝**；未知主机弹出指纹确认（TOFU），可选仅本次信任或写入 `known_hosts`。
 
 ### 7. UI 与主题
 
@@ -149,7 +149,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 - HTTP 服务不支持 `Range` 时只能整页查看，无法自动追加（发送 `NoFollow`）。
 - 内网/环回 HTTP 地址被 SSRF 策略拒绝，属有意行为。
 - 命令源没有历史可回溯；需要历史请在命令参数里取（`journalctl -n`、`docker logs --tail`）。
-- SSH 未知主机仍是首次信任，TOFU 确认界面待补。
+- SSH 未知主机采用 TOFU 确认（仅在无法读取 `known_hosts` 时静默放行，见 `SECURITY.md`）。
 - Windows / Linux 仅做 CI 构建检查，交互未充分验证。
 - 界面目前仅中文（约 480 处中文字符串未做 i18n）。
 
