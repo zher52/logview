@@ -309,9 +309,7 @@ fn migrate_secrets(s: &mut Settings) {
                 ..
             }
         ) {
-            s.cred_notice = Some(
-                i18n::t("存在以私钥正文保存的连接,无法迁移到钥匙串;建议改用私钥文件").to_string(),
-            );
+            s.cred_notice = Some(i18n::t("error.keychain.private_key_text").to_string());
             continue;
         }
         let Some(key) = crate::secrets::key_of(&r.params) else {
@@ -325,10 +323,7 @@ fn migrate_secrets(s: &mut Settings) {
             Ok(()) => r.remembered = true,
             Err(e) => {
                 r.remembered = false;
-                s.cred_notice = Some(i18n::tf(
-                    "{e};原明文凭据已移除,连接时需重新输入",
-                    &[("e", e)],
-                ));
+                s.cred_notice = Some(i18n::tf("error.keychain.migrated", &[("e", e)]));
             }
         }
         r.params = r.params.sanitized();

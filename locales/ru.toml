@@ -1,0 +1,626 @@
+# LogView: русский язык
+# Ключи — семантические ID; файлы zh.toml / en.toml должны содержать те же ключи.
+
+
+# ---- level ----
+"level.none" = "Без уровня"
+
+# ---- common ----
+"common.cancel" = "Отмена"
+"common.connect" = "Подключить"
+"common.run" = "Запустить"
+"common.open" = "Открыть"
+
+# ---- ssh ----
+"ssh.trust.once" = "Доверять один раз"
+"ssh.trust.remember" = "Доверять и запомнить"
+"ssh.connection" = "SSH-подключение"
+
+# ---- command ----
+"command.run" = "Запустить команду"
+
+# ---- ssh ----
+"ssh.host_key.confirm" = "Подтвердить ключ хоста"
+
+# ---- dialog ----
+"dialog.open_url" = "Открыть URL"
+
+# ---- configs ----
+"configs.new" = "＋ Новая конфигурация"
+"configs.import_json" = "Импорт JSON"
+"configs.export_json" = "Экспорт JSON"
+"configs.restore_builtin" = "Сбросить встроенные"
+"configs.delete" = "Удалить конфигурацию"
+"configs.restore_default" = "Сбросить"
+"configs.add_rule" = "＋ Добавить правило"
+
+# ---- settings ----
+"settings.group.appearance" = "Внешний вид"
+"settings.group.logging" = "Журнал и производительность"
+"settings.group.analysis" = "Правила анализа"
+"settings.group.shortcuts" = "Горячие клавиши"
+"settings.language" = "Язык интерфейса"
+"settings.language.desc" = "Смена языка интерфейса; непереведённый текст — на английском, затем китайском"
+"settings.title" = "Настройки"
+"settings.search.placeholder" = "Поиск настроек"
+
+# ---- code ----
+"code.plain_text" = "Обычный текст"
+"code.preview.readonly" = "Просмотр (нажмите, чтобы выйти из редактирования)"
+"code.edit_source" = "Редактировать исходник (⌘S — сохранить)"
+"code.save" = "Сохранить изменения (⌘S)"
+"code.too_large" = "Документ слишком велик; показан исходник"
+
+# ---- tab ----
+"tab.close_others" = "Закрыть остальные"
+
+# ---- search ----
+"search.highlight" = "Подсветка"
+"search.filter" = "Фильтр"
+"search.hide" = "Скрыть"
+"search.show" = "Показать"
+
+# ---- wrap ----
+"wrap.on" = "Перенос строк включён (нажмите, чтобы выключить)"
+"wrap.off" = "Перенос строк выключен (нажмите, чтобы включить)"
+
+# ---- toolbar ----
+"toolbar.load_all" = "Загрузить всё"
+"toolbar.jump_to_end" = "К концу"
+
+# ---- settings ----
+"settings.recents_limit" = "Лимит истории"
+"settings.recents_limit.desc" = "Сколько последних записей хранить (1–500)"
+"settings.recents_purge.desc" = "При удалении или очистке истории URL также удалять соответствующие учётные данные из системного хранилища"
+"settings.line_numbers" = "Показывать номера строк"
+"settings.line_numbers.desc" = "Показывать номера строк слева"
+"settings.timestamps" = "Показывать время"
+"settings.timestamps.desc" = "Показывать локальное время получения строки (только для строк, пришедших во время просмотра; старые строки остаются пустыми)"
+"settings.wrap_default" = "Перенос строк по умолчанию"
+"settings.wrap_default.desc" = "Начальное значение для новых вкладок; можно переключать отдельно"
+"settings.ui_font_size" = "Размер шрифта интерфейса"
+"settings.ui_font_size.desc" = "Размер текста интерфейса и панелей (9–24 pt)"
+"settings.log_font_size" = "Размер шрифта журнала"
+"settings.log_font_size.desc" = "Размер текста журнала; высота строк масштабируется (9–24 pt)"
+"settings.ui_font" = "Шрифт интерфейса"
+"settings.ui_font.desc" = "Пусто — системный шрифт интерфейса (напр. PingFang SC)"
+"settings.log_font" = "Шрифт журнала"
+"settings.log_font.desc" = "Пусто — системный моноширинный шрифт (напр. Menlo, JetBrains Mono)"
+"settings.theme" = "Тема"
+"settings.level_colors" = "Уровни журнала"
+"settings.level_colors.desc" = "Цвета уровней задают текст и фон строк; подсветка поиска выделяет совпадения."
+"settings.search_highlight" = "Подсветка поиска"
+"settings.background" = "Фон"
+
+# ---- theme ----
+"theme.light" = "Светлая"
+"theme.dark" = "Тёмная"
+
+# ---- settings ----
+"settings.poll_interval" = "Интервал опроса"
+"settings.poll_interval.desc" = "Как часто проверять новые данные (≥200 мс)"
+"settings.initial_load" = "Начальная загрузка"
+"settings.initial_load.desc" = "Сколько читать с начала при открытии (1–512 МБ)"
+"settings.tail_limit" = "Лимит загрузки хвоста"
+"settings.tail_limit.desc" = "Сколько читать при «К концу» (1–512 МБ)"
+"settings.max_lines" = "Лимит строк"
+"settings.max_lines.desc" = "Старые строки удаляются по кругу сверх лимита (≥1000)"
+"settings.config_io" = "Импорт / экспорт конфигураций"
+"settings.config_io.desc" = "Экспортировать все конфигурации анализа в JSON; импорт заменяет текущие"
+
+# ---- configs ----
+"configs.builtin" = "Встроенная конфигурация"
+"configs.custom" = "Своя конфигурация"
+"configs.enabled_default" = "Включена (по умолчанию для новых вкладок)"
+"configs.regex_auto" = "Регулярное выражение (группа 1 задаёт уровень)"
+"configs.flags" = "Флаги"
+"configs.auto" = "Авто"
+"configs.level" = "Уровень"
+"configs.capture_group" = "Группа захвата"
+"configs.rules" = "Правила сопоставления"
+"configs.empty" = "Конфигураций нет. Нажмите «Новая конфигурация» слева."
+
+# ---- shortcut ----
+"shortcut.press" = "Нажмите сочетание клавиш…"
+"shortcut.change" = "Изменить"
+
+# ---- settings ----
+"settings.section.appearance.desc" = "Номера строк, перенос, шрифты и цвета"
+"settings.section.logging.desc" = "Автодополнение, размеры загрузки и лимит памяти"
+"settings.section.analysis.desc" = "Настройка анализа: регулярные правила, соответствие уровней и включение"
+"settings.section.connections.desc" = "Сохранённые хосты, учётные данные URL и история"
+"settings.section.shortcuts.desc" = "Глобальные горячие клавиши (фиксированные)"
+
+# ---- configs ----
+"configs.builtin_marker" = "· встроенная"
+"configs.builtin_marker_alt" = " · встроенная"
+
+# ---- ssh ----
+"ssh.username" = "Имя пользователя"
+"ssh.password" = "Пароль"
+"ssh.port" = "Порт"
+"ssh.host" = "Хост"
+
+# ---- http ----
+"http.auth" = "Аутентификация"
+"http.auth.none" = "Без аутентификации"
+"http.header.custom" = "Свой заголовок"
+"http.header.value" = "Значение заголовка"
+
+# ---- ssh ----
+"ssh.host.placeholder" = "Имя хоста или IP; при вводе ищутся сохранённые серверы"
+"ssh.password.agent_placeholder" = "Пароль (для agent можно пусто)"
+
+# ---- command ----
+"command.example" = "напр. adb logcat -v threadtime"
+
+# ---- search ----
+"search.placeholder" = "Поиск: подсветка / фильтр (поддерживаются regex)"
+
+# ---- tab ----
+"tab.new" = "Новая вкладка"
+
+# ---- menu ----
+"menu.recent" = "Недавние"
+
+# ---- common ----
+"common.edit" = "Изменить"
+"common.delete" = "Удалить"
+
+# ---- source ----
+"source.command" = "Команда"
+
+# ---- configs ----
+"configs.new_short" = "Новая конфигурация"
+
+# ---- source ----
+"source.server" = "Сервер"
+"source.method" = "Способ"
+"source.file" = "Файл"
+
+# ---- ssh ----
+"ssh.remote_path" = "Удалённый путь"
+
+# ---- common ----
+"common.none" = "Нет"
+
+# ---- http ----
+"http.header.custom_short" = "Свой заголовок"
+"http.header.name" = "Имя заголовка"
+"http.header.value_short" = "Значение заголовка"
+
+# ---- analysis ----
+"analysis.for_tab" = "Конфигурации анализа (текущая вкладка)"
+
+# ---- settings ----
+"settings.manage_link" = "Управлять в настройках…"
+
+# ---- welcome ----
+"welcome.drag_hint" = "Можно также перетащить файл журнала в окно"
+
+# ---- dialog ----
+"dialog.clear.title" = "Подтвердить очистку"
+"dialog.clear.action" = "Очистить"
+
+# ---- ssh ----
+"ssh.hosts.add" = "＋ Добавить хост"
+"ssh.hosts.import_recent" = "Импорт из недавних"
+"ssh.hosts.add_short" = "Добавить хост"
+"ssh.hosts.edit" = "Изменить хост"
+"ssh.hosts.note" = "Заметка"
+
+# ---- common ----
+"common.save" = "Сохранить"
+
+# ---- validation ----
+"validation.host_required" = "Укажите имя хоста или IP"
+"validation.username_required" = "Укажите имя пользователя"
+"validation.port_range" = "Порт должен быть 1–65535"
+"validation.header_name_required" = "Укажите имя заголовка"
+"validation.header_value_required" = "Укажите значение заголовка"
+
+# ---- configs ----
+"configs.restored_one" = "Встроенные правила этой конфигурации восстановлены"
+"configs.restored_all" = "Все встроенные правила восстановлены"
+
+# ---- ssh ----
+"ssh.hosts.no_match" = "Нет подходящих сохранённых серверов"
+"ssh.host_key.algorithm" = "Алгоритм"
+"ssh.host_key.fingerprint" = "Отпечаток"
+"ssh.host_key.warning" = "Первое подключение к хосту; подлинность нельзя проверить автоматически. Сверьте отпечаток с данными администратора."
+"ssh.host_key.mismatch_hint" = "Несовпадение может означать атаку «человек посередине». После «Запомнить» смена ключа будет отклонена."
+"ssh.remember.keychain" = "Запомнить подключение (учётные данные в системном хранилище)"
+"ssh.remember.memory" = "Запомнить подключение (системное хранилище недоступно; только на сеанс)"
+
+# ---- command ----
+"command.retry.after_exit" = "Команда завершилась (код {code}); повтор через {secs} с"
+"command.exited.code" = "Команда завершилась (код {code})"
+"command.retry.after_end" = "Команда завершена; повтор через {secs} с"
+"command.exited" = "Команда завершилась"
+
+# ---- ssh ----
+"ssh.trusted.saved" = "Ключ хоста {host}:{port} сохранён"
+"ssh.trusted.once" = "Ключ хоста {host}:{port} принят (только на сеанс)"
+"ssh.trust.cancelled" = "Подключение к {host}:{port} отменено"
+
+# ---- configs ----
+"configs.exported" = "Экспортировано в {path}"
+"configs.export_failed" = "Ошибка экспорта: {e}"
+"configs.imported" = "Импортировано конфигураций: {n}"
+"configs.import_invalid" = "Ошибка импорта: файл не является корректным JSON конфигурации"
+"configs.import_failed" = "Ошибка импорта: {e}"
+
+# ---- status ----
+"status.rows" = "{n} строк"
+"status.rows.one" = "{n} строка"
+"status.rows.few" = "{n} строки"
+"status.dropped" = "Отброшено: {n}"
+"status.received" = "Получено: {size}"
+"status.loading" = "Загрузка {pct}%"
+"status.polling" = "Опрос каждые {ms} мс"
+"status.reanalyzing" = "Повторный анализ уровней…"
+"status.no_follow" = "Источник не поддерживает автодополнение"
+
+# ---- toolbar ----
+"toolbar.load_all.confirm" = "Загрузить всё с начала (большие файлы могут занять время)"
+
+# ---- http ----
+"http.auth.bearer_hint" = "Отправляется как Authorization: Bearer <token>"
+"http.auth.api_key_hint" = "API-ключ отправляется заголовком; имя по умолчанию X-API-Key, можно изменить"
+"http.header.hint" = "Свой заголовок, напр. X-Api-Key, X-Token"
+"http.auth.none_hint" = "Без данных аутентификации"
+"http.auth.security_note" = "Заголовки аутентификации отправляются только исходному хосту и не передаются при перенаправлении на другой домен; пароли, токены и значения заголовков по умолчанию не сохраняются в истории."
+"http.credentials" = "Учётные данные"
+"http.save_credentials" = "Сохранить учётные данные"
+"http.history_only" = "Только история"
+"http.history_only.desc" = "В историю сохраняются только адрес и способ аутентификации; пароли и токены не сохраняются. Ранее сохранённые данные не удаляются автоматически; управляйте ими в «Настройки → Подключения»."
+"http.save_credentials.desc" = "Сохраняется в системном хранилище и подставляется при следующем подключении"
+"http.keychain_unavailable" = "Системное хранилище недоступно; учётные данные действуют только в этом сеансе"
+
+# ---- status ----
+"status.paused" = "На паузе"
+"status.following" = "Слежение"
+"status.new_lines_plus" = "+{n} новых строк"
+"status.new_lines_plus.one" = "+{n} новая строка"
+"status.new_lines_plus.few" = "+{n} новые строки"
+"status.matched" = "Совпадений: {n}"
+"status.matched.one" = "Совпадение: {n}"
+"status.matched.few" = "Совпадения: {n}"
+
+# ---- error ----
+"error.regex" = "Ошибка regex: {e}"
+
+# ---- status ----
+"status.head_loaded" = "Загружено {loaded} из {total} (файл больше)"
+"status.jumped_end" = "Переход к концу с байта {off} из {total}; новые записи будут добавляться автоматически"
+
+# ---- settings ----
+"settings.search.empty" = "Нет настроек по запросу «{query}»"
+"settings.search.matches" = "{n} настроек соответствует «{query}»"
+"settings.search.matches.one" = "{n} настройка соответствует «{query}»"
+"settings.search.matches.few" = "{n} настройки соответствуют «{query}»"
+
+# ---- tab ----
+"tab.title_rows" = "{name}: {n} строк (нажмите, чтобы {action})"
+"tab.title_rows.one" = "{name}: {n} строка (нажмите, чтобы {action})"
+"tab.title_rows.few" = "{name}: {n} строки (нажмите, чтобы {action})"
+
+# ---- shortcut ----
+"shortcut.swapped" = "Сочетание изменено на «{desc}»"
+"shortcut.set" = "Назначено: {shortcut}"
+
+# ---- analysis ----
+"analysis.summary" = "Конфигурации: включено {on}/{total}; нажмите для выбора"
+
+# ---- command ----
+"command.will_run" = "Будет выполнено: {cmd}"
+
+# ---- error ----
+"error.port_invalid" = "Неверный порт: {e}"
+"error.save_failed" = "Ошибка сохранения: {e}"
+
+# ---- ssh ----
+"ssh.host.user" = "{host}:{port} · пользователь {user}"
+
+# ---- configs ----
+"configs.summary" = "{status} · правил: {n}{suffix}"
+"configs.summary.one" = "{status} · правило: {n}{suffix}"
+"configs.summary.few" = "{status} · правила: {n}{suffix}"
+
+# ---- common ----
+"common.enabled" = "Включено"
+"common.disabled" = "Выключено"
+
+# ---- configs ----
+"configs.rules_count" = "правил: {n}{suffix}"
+"configs.rules_count.one" = "правило: {n}{suffix}"
+"configs.rules_count.few" = "правила: {n}{suffix}"
+
+# ---- ssh ----
+"ssh.import.empty" = "В ~/.ssh/config нет конкретных хостов для импорта; шаблоны и блоки Match пропущены"
+"ssh.import.duplicates" = "Все хосты из ~/.ssh/config уже существуют; пропущено дубликатов: {n}"
+"ssh.import.done" = "Импортировано хостов из ~/.ssh/config: {n}"
+"ssh.import.done_with_dups" = "Импортировано хостов из ~/.ssh/config: {n}; пропущено дубликатов: {d}"
+
+# ---- http ----
+"http.creds.deleted" = "Учётные данные URL удалены"
+
+# ---- error ----
+"error.delete_failed" = "Ошибка удаления: {e}"
+"error.header_not_allowed" = "Заголовок не разрешён: {name}"
+"error.creds_delete_failed" = "Не удалось удалить учётные данные: {e}"
+
+# ---- links ----
+"links.open_in_tab" = "Открыть {target} в новой вкладке"
+
+# ---- toolbar ----
+"toolbar.load_from_start" = "Загрузить с начала"
+
+# ---- toast ----
+"toast.path_copied" = "Путь скопирован"
+
+# ---- validation ----
+"validation.host_user_required" = "Укажите хост и имя пользователя"
+
+# ---- error ----
+"error.command_stream.size_unsupported" = "Потоки команд не поддерживают размер/произвольное чтение"
+"error.command_stream.seek_unsupported" = "Потоки команд не поддерживают произвольное чтение"
+"error.http.range_unsupported" = "Сервер игнорирует Range; добавочное чтение недоступно"
+"error.ssh.auth" = "Ошибка аутентификации SSH (проверьте имя, пароль, ключ или agent)"
+"error.url.missing_host" = "В URL отсутствует хост"
+"error.http.redirect_location_missing" = "В перенаправлении нет Location"
+"error.http.redirect_location_invalid" = "Неверный Location перенаправления"
+"error.http.too_many_redirects" = "Слишком много перенаправлений"
+"error.source.not_ssh" = "Не SSH-назначение"
+"error.source.not_command" = "Не источник-команда"
+"error.source.command_needs_open_command" = "Источник-команда открывается только через open_command"
+"error.command.empty" = "Команда пуста"
+"error.ssh.host_key_missing" = "Не удалось получить ключ хоста"
+"error.ssh.unknown_algorithm" = "Неизвестный алгоритм"
+"error.source.command_plan_missing" = "У источника-команды нет плана выполнения"
+"error.source.command_not_streaming" = "Источник-команда вернул не потоковый дескриптор"
+"error.file.not_regular" = "Файл не существует или не является обычным файлом: {path}"
+"error.http.auth_status" = "HTTP {status} (ошибка аутентификации)"
+"error.stat" = "Ошибка stat: {e}"
+"error.sftp.channel" = "Ошибка канала SFTP: {e}"
+"error.sftp.stat" = "Ошибка SFTP stat: {e}"
+"error.sftp.open" = "Ошибка SFTP open: {e}"
+"error.sftp.seek" = "Ошибка SFTP seek: {e}"
+"error.sftp.read" = "Ошибка чтения SFTP: {e}"
+"error.open" = "Ошибка открытия: {e}"
+"error.seek" = "Ошибка seek: {e}"
+"error.read" = "Ошибка чтения: {e}"
+"error.http.read" = "Ошибка чтения HTTP: {e}"
+"error.ssh.connect" = "Ошибка SSH-подключения {host}:{port}: {e}"
+"error.ssh.handshake" = "Ошибка SSH-рукопожатия: {e}"
+"error.ssh.host_key_unconfirmed" = "Подключение отменено: ключ хоста {host}:{port} не подтверждён"
+"error.http.client_build" = "Не удалось создать HTTP-клиент: {e}"
+"error.http.token_invalid" = "Неверный bearer-токен: {e}"
+"error.http.header_name_invalid" = "Неверное имя заголовка: {e}"
+"error.http.header_value_invalid" = "Неверное значение заголовка: {e}"
+"error.http.request" = "Ошибка HTTP-запроса: {e}"
+"error.command.value_exit" = "Команда получения значения завершилась (код {code})"
+"error.command.value_failed" = "Ошибка команды получения значения: {err}"
+"error.command.value_empty_output" = "Не удалось получить {key}: нет вывода (цель запущена? параметры верны?)"
+"error.command.unresolved_placeholder" = "В команде остался неразрешённый заполнитель: {a}"
+
+# ---- toolbar ----
+"toolbar.source.local" = "Локально {path}"
+"toolbar.source.command_local" = "Команда (локально) {cmd}"
+"toolbar.source.command_ssh" = "Команда {user}@{host}:{port} {cmd}"
+
+# ---- error ----
+"error.command.not_found" = "Команда не найдена: {prog} (установлена? есть в PATH?)"
+"error.command.permission_denied" = "Нет прав на выполнение: {prog}"
+"error.command.spawn" = "Не удалось запустить команду {prog}: {e}"
+"error.ssh.channel" = "Не удалось создать SSH-канал: {e}"
+"error.ssh.stderr_merge" = "Не удалось объединить stderr SSH: {e}"
+"error.command.remote_value" = "Ошибка выполнения удалённой команды получения: {e}"
+"error.command.remote_value_read" = "Ошибка чтения вывода удалённой команды: {e}"
+"error.command.remote_run" = "Ошибка выполнения удалённой команды: {e}"
+"error.command.value_empty" = "Команда получения значения пуста"
+"error.command.retry_count" = "{e} (повтор {err_count}/5)"
+
+# ---- app ----
+"app.name" = "LogView"
+
+# ---- ssh ----
+"ssh.creds.missing" = "Сохранённые учётные данные не найдены; введите их при подключении"
+"ssh.creds.reenter" = "{e}; при подключении потребуется повторный ввод учётных данных"
+"ssh.creds.session_only" = "{e}; учётные данные действуют только в этом сеансе"
+
+# ---- configs ----
+"configs.builtin_restored_all" = "Все встроенные правила по умолчанию восстановлены"
+
+# ---- error ----
+"error.reenter_retry" = "{msg}; введите заново и повторите"
+
+# ---- validation ----
+"validation.basic_needs_username" = "Для Basic-аутентификации нужно имя пользователя"
+"validation.bearer_needs_token" = "Для Bearer-аутентификации нужен токен"
+"validation.header_name_charset" = "Имя заголовка содержит недопустимые символы"
+
+# ---- ssh ----
+"ssh.command.shell_hint" = "Удалённые команды выполняются в login shell; доступны конвейеры и перенаправление."
+
+# ---- command ----
+"command.local_shell_hint" = "Локальные команды выполняются без shell: конвейеры и перенаправление не работают, аргументы делятся по кавычкам."
+
+# ---- ssh ----
+"ssh.hosts.empty" = "Сохранённых хостов нет. Добавьте ниже или импортируйте из недавних."
+"ssh.hosts.delete_note" = "Удаление также уберёт сервер из «Недавних»; учётные данные в системном хранилище сохранятся."
+"ssh.hosts.import_ssh_config" = "Импорт из ~/.ssh/config"
+"ssh.hosts.note_placeholder" = "Необязательная заметка о назначении хоста"
+
+# ---- http ----
+"http.creds.empty" = "Сохранённых учётных данных URL нет; выберите «Сохранить учётные данные» в «Открыть URL»."
+
+# ---- shortcut ----
+"shortcut.hint.next_match" = "Перейти к следующему совпадению в поиске"
+"shortcut.hint.close_popups" = "Закрыть окна / отменить запись сочетания"
+"shortcut.fixed" = "Фиксированное сочетание"
+"shortcut.hints" = "Подсказки сочетаний"
+
+# ---- settings ----
+"settings.group.interface" = "Интерфейс"
+"settings.group.typography" = "Размер и шрифты"
+"settings.group.colors" = "Цвета"
+"settings.group.loading" = "Загрузка и слежение"
+"settings.group.memory" = "Память"
+"settings.group.ssh_hosts" = "Сохранённые SSH-хосты"
+"settings.group.url_creds" = "Сохранённые учётные данные URL"
+"settings.group.keyboard" = "Горячие клавиши"
+"settings.search.no_match" = "Нет подходящих настроек"
+"settings.search.results" = "Результаты поиска"
+"settings.saved_auto" = "Сохранено автоматически"
+"settings.changes_live" = "Изменения применяются сразу"
+"settings.changes_live.desc" = "Все изменения применяются сразу и сохраняются автоматически"
+
+# ---- links ----
+"links.open_in_browser" = "Открыть в браузере"
+"links.open_local_file" = "Открыть как локальный файл"
+"links.copy_link" = "Копировать ссылку"
+"links.copy_line" = "Копировать строку"
+"links.copy_selection" = "Копировать выделенное"
+
+# ---- shortcut ----
+"shortcut.record_hint" = "Нажмите сочетание; Esc — отмена"
+"shortcut.restored" = "Сочетание по умолчанию восстановлено"
+
+# ---- common ----
+"common.discard" = "Изменения отменены"
+
+# ---- banner ----
+"banner.rotation" = "── обнаружен поворот журнала ──"
+
+# ---- status ----
+"status.following_hint" = "Слежение (нажмите, чтобы приостановить)"
+"status.paused_hint" = "Пауза (нажмите, чтобы продолжить и перейти к концу)"
+
+# ---- toolbar ----
+"toolbar.jump_to_end.hint" = "К концу (прочитать хвост и продолжить слежение)"
+"toolbar.clear.hint" = "Очистить экран (позиция чтения сохраняется; новые записи добавляются)"
+
+# ---- banner ----
+"banner.new_lines" = "↓ {n} новых строк"
+"banner.new_lines.one" = "↓ {n} новая строка"
+"banner.new_lines.few" = "↓ {n} новые строки"
+
+# ---- toolbar ----
+"toolbar.copy_path.hint" = "Двойной щелчок копирует полный путь"
+
+# ---- status ----
+"status.ready" = "Готово"
+
+# ---- configs ----
+"configs.auto.desc" = "Авто = уровень по тексту группы 1 (err→ERROR, info→INFO, ...); при выключении используется фиксированный уровень. Изменения сразу пересчитывают все вкладки."
+
+# ---- shortcut ----
+"shortcut.modifier_required" = "Нужно сочетание с модификатором (напр. ⌘/Ctrl + буква)"
+
+# ---- validation ----
+"validation.remote_path_required" = "Укажите удалённый путь к журналу (напр. /var/log/app.log)"
+
+# ---- error ----
+"error.command.preset_missing" = "Пресет не найден"
+
+# ---- configs ----
+"configs.custom_tag" = "Свой"
+
+# ---- command ----
+"command.restart_hint" = "Повторять после выхода (обрыв, переподключение устройства)"
+
+# ---- validation ----
+"validation.url_required" = "Укажите URL журнала (напр. https://example.com/app.log)"
+"validation.url_scheme" = "URL должен начинаться с http:// или https://"
+"validation.command_required" = "Укажите команду"
+
+# ---- unit ----
+"unit.items" = "шт."
+"unit.lines" = "строк"
+
+# ---- error ----
+"error.known_hosts.no_home" = "Не удалось найти домашний каталог для записи known_hosts"
+"error.known_hosts.mkdir" = "Не удалось создать ~/.ssh: {e}"
+"error.known_hosts.init" = "Не удалось инициализировать known_hosts: {e}"
+"error.known_hosts.read" = "Не удалось прочитать known_hosts: {e}"
+"error.known_hosts.write" = "Не удалось записать known_hosts: {e}"
+"error.known_hosts.save" = "Не удалось сохранить known_hosts: {e}"
+"error.known_hosts.unreadable" = "Проверка ключа хоста не удалась ({host}:{port}): known_hosts недоступен"
+"error.known_hosts.mismatch" = "Ключ хоста не совпадает с known_hosts ({host}:{port}); возможна атака «человек посередине». Если ключ сервера сменился, сначала обновите known_hosts."
+"error.url.invalid" = "Неверный URL: {e}"
+"error.url.scheme" = "Разрешены только http/https (получено: {s})"
+"error.url.userinfo" = "URL со встроенными именем/паролем не поддерживаются"
+"error.url.missing_port" = "В URL отсутствует порт"
+"error.ssrf.localhost" = "Адреса localhost/.local заблокированы (защита SSRF)"
+"error.ssrf.dns" = "Ошибка DNS: {e}"
+"error.ssrf.dns_empty" = "DNS не вернул результатов"
+"error.ssrf.blocked" = "Внутренний/петлевой/зарезервированный адрес {ip} заблокирован (защита SSRF; только публичные адреса)"
+"error.markdown.image_missing" = "⚠ Изображение не найдено: {decoded}"
+"error.markdown.image_missing_alt" = "⚠ Изображение не найдено: {decoded} ({alt})"
+
+# ---- ssh ----
+"ssh.import.no_home" = "Не удалось найти домашний каталог; импорт не выполнен"
+
+# ---- error ----
+"error.file.read" = "Не удалось прочитать {path}: {e}"
+"error.keychain.init" = "Не удалось инициализировать системное хранилище: {e}"
+"error.keychain.serialize" = "Не удалось сериализовать учётные данные: {e}"
+"error.keychain.write" = "Не удалось записать в системное хранилище: {e}"
+"error.keychain.parse" = "Сохранённые учётные данные повреждены: {e}"
+"error.keychain.read" = "Не удалось прочитать системное хранилище: {e}"
+"error.keychain.delete" = "Не удалось удалить запись системного хранилища: {e}"
+"error.keychain.private_key_text" = "Есть подключение с текстом закрытого ключа; его нельзя перенести в хранилище. Используйте файл ключа."
+"error.keychain.migrated" = "{e}; открытые учётные данные удалены, потребуется повторный ввод"
+
+# ---- validation ----
+"validation.field_required" = "Заполните: {label}"
+
+# ---- error ----
+"error.command.expanded_empty" = "Развёрнутая команда пуста"
+"error.command.unclosed_quote" = "Незакрытая кавычка: {q}"
+
+# ---- preset ----
+"preset.logcat_all" = "logcat (всё)"
+"preset.logcat_package" = "logcat (пакет)"
+
+# ---- command ----
+"command.field.device" = "Устройство"
+"command.field.package" = "Пакет"
+"command.field.path" = "Путь"
+"command.field.service" = "Служба"
+"command.field.container" = "Контейнер"
+"command.field.device.multi" = "Пусто = устройство по умолчанию (укажите при нескольких устройствах)"
+"command.field.package.example" = "напр. com.example.app"
+"command.field.device.default" = "Пусто = устройство по умолчанию"
+"command.field.tag.example" = "напр. ActivityManager"
+"command.field.unit.example" = "напр. nginx.service"
+"command.field.container.example" = "Имя или ID контейнера"
+"command.field.pod.example" = "Имя pod, можно с -c контейнер"
+
+# ---- configs ----
+"configs.builtin.words" = "Обычные слова"
+"configs.builtin.bracket" = "В скобках [LEVEL]"
+"configs.builtin.letters" = "Однобуквенные уровни (T/D/I/W/E/V/F)"
+"configs.builtin.bracket_letters" = "Однобуквенные в скобках [D]/[I]/[W]/[E]"
+
+# ---- shortcut ----
+"shortcut.new_tab" = "Новая вкладка"
+"shortcut.close_tab" = "Закрыть текущую вкладку"
+"shortcut.focus_search" = "Фокус в поиске"
+"shortcut.clear_screen" = "Очистить экран"
+"shortcut.open_settings" = "Открыть настройки"
+"shortcut.copy_row" = "Копировать выбранную строку"
+"shortcut.save_code" = "Сохранить правки кода"
+
+# ---- status ----
+"status.http_status" = "HTTP {status}"
+
+# ---- banner ----
+"banner.rotation_short" = "── поворот ──"
+
+# ---- common ----
+"common.close" = "Закрыть"
+
+# ---- settings ----
+"settings.recents_purge" = "Удалять учётные данные при удалении истории URL"

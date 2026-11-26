@@ -1,0 +1,626 @@
+# LogView locales: English
+# Keys are semantic IDs; keep zh.toml / ru.toml in sync (the build fails on missing keys).
+
+
+# ---- level ----
+"level.none" = "None"
+
+# ---- common ----
+"common.cancel" = "Cancel"
+"common.connect" = "Connect"
+"common.run" = "Run"
+"common.open" = "Open"
+
+# ---- ssh ----
+"ssh.trust.once" = "Trust once"
+"ssh.trust.remember" = "Trust and remember"
+"ssh.connection" = "SSH connection"
+
+# ---- command ----
+"command.run" = "Run command"
+
+# ---- ssh ----
+"ssh.host_key.confirm" = "Confirm host key"
+
+# ---- dialog ----
+"dialog.open_url" = "Open URL"
+
+# ---- configs ----
+"configs.new" = "＋ New config"
+"configs.import_json" = "Import JSON"
+"configs.export_json" = "Export JSON"
+"configs.restore_builtin" = "Restore built-in defaults"
+"configs.delete" = "Delete config"
+"configs.restore_default" = "Restore default"
+"configs.add_rule" = "＋ Add rule"
+
+# ---- settings ----
+"settings.group.appearance" = "Appearance"
+"settings.group.logging" = "Logging & performance"
+"settings.group.analysis" = "Analysis rules"
+"settings.group.shortcuts" = "Shortcuts"
+"settings.language" = "Language"
+"settings.language.desc" = "Switch UI language; untranslated text falls back to English, then Chinese"
+"settings.title" = "Settings"
+"settings.search.placeholder" = "Search settings"
+
+# ---- code ----
+"code.plain_text" = "Plain text"
+"code.preview.readonly" = "Read-only preview (click to exit editing)"
+"code.edit_source" = "Edit source (⌘S to save)"
+"code.save" = "Save changes (⌘S)"
+"code.too_large" = "Document too large; showing source"
+
+# ---- tab ----
+"tab.close_others" = "Close others"
+
+# ---- search ----
+"search.highlight" = "Highlight"
+"search.filter" = "Filter"
+"search.hide" = "Hide"
+"search.show" = "Show"
+
+# ---- wrap ----
+"wrap.on" = "Word wrap: on (click to turn off)"
+"wrap.off" = "Word wrap: off (click to turn on)"
+
+# ---- toolbar ----
+"toolbar.load_all" = "Load all"
+"toolbar.jump_to_end" = "Jump to end"
+
+# ---- settings ----
+"settings.recents_limit" = "History limit"
+"settings.recents_limit.desc" = "How many recent entries to keep (1–500)"
+"settings.recents_purge.desc" = "Also delete matching system keychain credentials when removing or clearing recent URLs"
+"settings.line_numbers" = "Show line numbers"
+"settings.line_numbers.desc" = "Show line numbers at the left of each log line"
+"settings.timestamps" = "Show timestamps"
+"settings.timestamps.desc" = "Show each line's local arrival time (only for lines received while viewing; older lines stay blank)"
+"settings.wrap_default" = "Word wrap by default"
+"settings.wrap_default.desc" = "Initial value for new tabs; can be toggled per tab"
+"settings.ui_font_size" = "UI font size"
+"settings.ui_font_size.desc" = "Size of UI text in settings and toolbars (9–24 pt)"
+"settings.log_font_size" = "Log font size"
+"settings.log_font_size.desc" = "Log text size; line height scales with it (9–24 pt)"
+"settings.ui_font" = "UI font"
+"settings.ui_font.desc" = "Leave empty to follow the system UI font (e.g. PingFang SC)"
+"settings.log_font" = "Log font"
+"settings.log_font.desc" = "Leave empty to follow the system monospace font (e.g. Menlo, JetBrains Mono)"
+"settings.theme" = "Theme"
+"settings.level_colors" = "Log levels"
+"settings.level_colors.desc" = "Level colors apply to level text and row backgrounds; search highlight colors matched text."
+"settings.search_highlight" = "Search highlight"
+"settings.background" = "Background"
+
+# ---- theme ----
+"theme.light" = "Light"
+"theme.dark" = "Dark"
+
+# ---- settings ----
+"settings.poll_interval" = "Poll interval"
+"settings.poll_interval.desc" = "How often to check for new content (≥200 ms)"
+"settings.initial_load" = "Initial load"
+"settings.initial_load.desc" = "Bytes read from the start when opening a log (1–512 MB)"
+"settings.tail_limit" = "Tail load limit"
+"settings.tail_limit.desc" = "Bytes read by \\\"Jump to end\\\" (1–512 MB)"
+"settings.max_lines" = "Line limit"
+"settings.max_lines.desc" = "Oldest lines are dropped in a ring buffer beyond this (≥1000)"
+"settings.config_io" = "Config import / export"
+"settings.config_io.desc" = "Export all analysis configs as JSON; importing replaces the current set"
+
+# ---- configs ----
+"configs.builtin" = "Built-in config"
+"configs.custom" = "Custom config"
+"configs.enabled_default" = "Enabled (default for new tabs)"
+"configs.regex_auto" = "Regex (capture group 1 provides the level text)"
+"configs.flags" = "Flags"
+"configs.auto" = "Auto"
+"configs.level" = "Level"
+"configs.capture_group" = "Capture group"
+"configs.rules" = "Matching rules"
+"configs.empty" = "No configs yet. Click \\\"New config\\\" on the left to create one."
+
+# ---- shortcut ----
+"shortcut.press" = "Press a shortcut…"
+"shortcut.change" = "Change"
+
+# ---- settings ----
+"settings.section.appearance.desc" = "Line numbers, wrapping, fonts and colors"
+"settings.section.logging.desc" = "Auto-follow, load sizes and memory limits"
+"settings.section.analysis.desc" = "Level analysis: regex rules, level mapping and enablement"
+"settings.section.connections.desc" = "Saved hosts, URL credentials and recent entries"
+"settings.section.shortcuts.desc" = "Global shortcuts (fixed bindings)"
+
+# ---- configs ----
+"configs.builtin_marker" = "Built-in"
+"configs.builtin_marker_alt" = " · built-in"
+
+# ---- ssh ----
+"ssh.username" = "Username"
+"ssh.password" = "Password"
+"ssh.port" = "Port"
+"ssh.host" = "Host"
+
+# ---- http ----
+"http.auth" = "Authentication"
+"http.auth.none" = "No authentication"
+"http.header.custom" = "Custom header"
+"http.header.value" = "Header value"
+
+# ---- ssh ----
+"ssh.host.placeholder" = "Hostname or IP; type to search saved servers"
+"ssh.password.agent_placeholder" = "Password (optional for agent auth)"
+
+# ---- command ----
+"command.example" = "e.g. adb logcat -v threadtime"
+
+# ---- search ----
+"search.placeholder" = "Search: highlight / filter (regex supported)"
+
+# ---- tab ----
+"tab.new" = "New tab"
+
+# ---- menu ----
+"menu.recent" = "Recent"
+
+# ---- common ----
+"common.edit" = "Edit"
+"common.delete" = "Delete"
+
+# ---- source ----
+"source.command" = "Command"
+
+# ---- configs ----
+"configs.new_short" = "New config"
+
+# ---- source ----
+"source.server" = "Server"
+"source.method" = "Method"
+"source.file" = "File"
+
+# ---- ssh ----
+"ssh.remote_path" = "Remote path"
+
+# ---- common ----
+"common.none" = "None"
+
+# ---- http ----
+"http.header.custom_short" = "Custom header"
+"http.header.name" = "Header name"
+"http.header.value_short" = "Header value"
+
+# ---- analysis ----
+"analysis.for_tab" = "Analysis configs (current tab)"
+
+# ---- settings ----
+"settings.manage_link" = "Manage in settings…"
+
+# ---- welcome ----
+"welcome.drag_hint" = "You can also drag a log file into the window"
+
+# ---- dialog ----
+"dialog.clear.title" = "Confirm clear"
+"dialog.clear.action" = "Clear"
+
+# ---- ssh ----
+"ssh.hosts.add" = "＋ Add host"
+"ssh.hosts.import_recent" = "Import from recent"
+"ssh.hosts.add_short" = "Add host"
+"ssh.hosts.edit" = "Edit host"
+"ssh.hosts.note" = "Note"
+
+# ---- common ----
+"common.save" = "Save"
+
+# ---- validation ----
+"validation.host_required" = "Enter a hostname or IP"
+"validation.username_required" = "Enter a username"
+"validation.port_range" = "Port must be 1–65535"
+"validation.header_name_required" = "Enter a header name"
+"validation.header_value_required" = "Enter a header value"
+
+# ---- configs ----
+"configs.restored_one" = "Restored defaults for this built-in config"
+"configs.restored_all" = "Restored all built-in config defaults"
+
+# ---- ssh ----
+"ssh.hosts.no_match" = "No matching saved servers"
+"ssh.host_key.algorithm" = "Algorithm"
+"ssh.host_key.fingerprint" = "Fingerprint"
+"ssh.host_key.warning" = "First connection to this host; its identity cannot be verified automatically. Compare the fingerprint with the one provided by the server administrator."
+"ssh.host_key.mismatch_hint" = "A mismatch may indicate a man-in-the-middle attack. If you choose Remember, future key changes will be rejected."
+"ssh.remember.keychain" = "Remember connection (credentials stored in the system keychain)"
+"ssh.remember.memory" = "Remember connection (system keychain unavailable; valid for this session only)"
+
+# ---- command ----
+"command.retry.after_exit" = "Command exited (code={code}); retrying in {secs}s"
+"command.exited.code" = "Command exited (code={code})"
+"command.retry.after_end" = "Command ended; retrying in {secs}s"
+"command.exited" = "Command exited"
+
+# ---- ssh ----
+"ssh.trusted.saved" = "Trusted and saved the host key for {host}:{port}"
+"ssh.trusted.once" = "Trusted the host key for {host}:{port} (this session only)"
+"ssh.trust.cancelled" = "Cancelled connection to {host}:{port}"
+
+# ---- configs ----
+"configs.exported" = "Exported to {path}"
+"configs.export_failed" = "Export failed: {e}"
+"configs.imported" = "Imported {n} config sets"
+"configs.import_invalid" = "Import failed: the file is not valid config JSON"
+"configs.import_failed" = "Import failed: {e}"
+
+# ---- status ----
+"status.rows" = "{n} lines"
+"status.rows.one" = "{n} line"
+"status.rows.few" = "{n} lines"
+"status.dropped" = "Dropped {n}"
+"status.received" = "Received {size}"
+"status.loading" = "Loading {pct}%"
+"status.polling" = "Polling every {ms} ms"
+"status.reanalyzing" = "Re-analyzing levels…"
+"status.no_follow" = "This source does not support auto-follow"
+
+# ---- toolbar ----
+"toolbar.load_all.confirm" = "Load all from the start (may take a while for large files)"
+
+# ---- http ----
+"http.auth.bearer_hint" = "Sent as Authorization: Bearer <token>"
+"http.auth.api_key_hint" = "API key is sent as a header; default name X-API-Key, editable"
+"http.header.hint" = "Custom header, e.g. X-Api-Key or X-Token"
+"http.auth.none_hint" = "No authentication information is sent"
+"http.auth.security_note" = "Auth headers are only sent to the original host and dropped on cross-domain redirects; passwords, tokens and header values are not saved to recent entries by default."
+"http.credentials" = "Credentials"
+"http.save_credentials" = "Save credentials"
+"http.history_only" = "History only"
+"http.history_only.desc" = "Only the address and auth method are saved to recent entries; passwords and tokens are not. Existing saved credentials are not deleted automatically; manage them in Settings → Connections."
+"http.save_credentials.desc" = "Stored in the system keychain and filled in automatically next time"
+"http.keychain_unavailable" = "System keychain unavailable; credentials are valid for this session only"
+
+# ---- status ----
+"status.paused" = "Paused"
+"status.following" = "Following"
+"status.new_lines_plus" = "+{n} new lines"
+"status.new_lines_plus.one" = "+{n} new line"
+"status.new_lines_plus.few" = "+{n} new lines"
+"status.matched" = "{n} matching lines"
+"status.matched.one" = "{n} matching line"
+"status.matched.few" = "{n} matching lines"
+
+# ---- error ----
+"error.regex" = "Regex error: {e}"
+
+# ---- status ----
+"status.head_loaded" = "Loaded first {loaded} of {total} (file is larger)"
+"status.jumped_end" = "Jumped to end, starting at byte {off} of {total}; new logs will follow automatically"
+
+# ---- settings ----
+"settings.search.empty" = "No settings match \\\"{query}\\\""
+"settings.search.matches" = "{n} settings match \\\"{query}\\\""
+"settings.search.matches.one" = "{n} setting matches \"{query}\""
+"settings.search.matches.few" = "{n} settings match \"{query}\""
+
+# ---- tab ----
+"tab.title_rows" = "{name}: {n} lines (click to {action})"
+"tab.title_rows.one" = "{name}: {n} line (click to {action})"
+"tab.title_rows.few" = "{name}: {n} lines (click to {action})"
+
+# ---- shortcut ----
+"shortcut.swapped" = "Swapped shortcut with \\\"{desc}\\\""
+"shortcut.set" = "Set to {shortcut}"
+
+# ---- analysis ----
+"analysis.summary" = "Analysis: {on}/{total} enabled; click to choose"
+
+# ---- command ----
+"command.will_run" = "Will run: {cmd}"
+
+# ---- error ----
+"error.port_invalid" = "Invalid port: {e}"
+"error.save_failed" = "Save failed: {e}"
+
+# ---- ssh ----
+"ssh.host.user" = "{host}:{port} · user {user}"
+
+# ---- configs ----
+"configs.summary" = "{status} · {n} rules{suffix}"
+"configs.summary.one" = "{status} · {n} rule{suffix}"
+"configs.summary.few" = "{status} · {n} rules{suffix}"
+
+# ---- common ----
+"common.enabled" = "Enabled"
+"common.disabled" = "Disabled"
+
+# ---- configs ----
+"configs.rules_count" = "{n} rules{suffix}"
+"configs.rules_count.one" = "{n} rule{suffix}"
+"configs.rules_count.few" = "{n} rules{suffix}"
+
+# ---- ssh ----
+"ssh.import.empty" = "~/.ssh/config has no concrete hosts to import; wildcard and Match blocks were skipped"
+"ssh.import.duplicates" = "All hosts in ~/.ssh/config already exist; skipped {n} duplicates"
+"ssh.import.done" = "Imported {n} hosts from ~/.ssh/config"
+"ssh.import.done_with_dups" = "Imported {n} hosts from ~/.ssh/config; skipped {d} duplicates"
+
+# ---- http ----
+"http.creds.deleted" = "Deleted the URL credentials"
+
+# ---- error ----
+"error.delete_failed" = "Delete failed: {e}"
+"error.header_not_allowed" = "Header not allowed: {name}"
+"error.creds_delete_failed" = "Failed to delete credentials: {e}"
+
+# ---- links ----
+"links.open_in_tab" = "Open {target} in a new tab"
+
+# ---- toolbar ----
+"toolbar.load_from_start" = "Load from start"
+
+# ---- toast ----
+"toast.path_copied" = "Path copied"
+
+# ---- validation ----
+"validation.host_user_required" = "Enter a host and username"
+
+# ---- error ----
+"error.command_stream.size_unsupported" = "Command streams do not support size or random access"
+"error.command_stream.seek_unsupported" = "Command streams do not support random access"
+"error.http.range_unsupported" = "The server ignored the Range request; incremental reading is unavailable"
+"error.ssh.auth" = "SSH authentication failed (check username, password, key or agent)"
+"error.url.missing_host" = "The URL is missing a hostname"
+"error.http.redirect_location_missing" = "Redirect is missing a Location header"
+"error.http.redirect_location_invalid" = "Redirect Location is invalid"
+"error.http.too_many_redirects" = "Too many redirects"
+"error.source.not_ssh" = "Not an SSH target"
+"error.source.not_command" = "Not a command source"
+"error.source.command_needs_open_command" = "Command sources must be opened via open_command"
+"error.command.empty" = "Command is empty"
+"error.ssh.host_key_missing" = "Unable to obtain the server host key"
+"error.ssh.unknown_algorithm" = "Unknown algorithm"
+"error.source.command_plan_missing" = "Command source is missing an execution plan"
+"error.source.command_not_streaming" = "Command source returned a non-streaming handle"
+"error.file.not_regular" = "File does not exist or is not a regular file: {path}"
+"error.http.auth_status" = "HTTP {status} (authentication failed)"
+"error.stat" = "stat failed: {e}"
+"error.sftp.channel" = "SFTP channel failed: {e}"
+"error.sftp.stat" = "SFTP stat failed: {e}"
+"error.sftp.open" = "SFTP open failed: {e}"
+"error.sftp.seek" = "SFTP seek failed: {e}"
+"error.sftp.read" = "SFTP read failed: {e}"
+"error.open" = "Open failed: {e}"
+"error.seek" = "Seek failed: {e}"
+"error.read" = "Read failed: {e}"
+"error.http.read" = "HTTP read failed: {e}"
+"error.ssh.connect" = "SSH connection failed {host}:{port}: {e}"
+"error.ssh.handshake" = "SSH handshake failed: {e}"
+"error.ssh.host_key_unconfirmed" = "Connection cancelled: the host key for {host}:{port} was not confirmed"
+"error.http.client_build" = "Failed to build the HTTP client: {e}"
+"error.http.token_invalid" = "Invalid bearer token: {e}"
+"error.http.header_name_invalid" = "Invalid header name: {e}"
+"error.http.header_value_invalid" = "Invalid header value: {e}"
+"error.http.request" = "HTTP request failed: {e}"
+"error.command.value_exit" = "Value command failed (code={code})"
+"error.command.value_failed" = "Value command failed: {err}"
+"error.command.value_empty_output" = "Failed to resolve {key}: no output (is the target running? are the arguments correct?)"
+"error.command.unresolved_placeholder" = "Unresolved placeholder in command: {a}"
+
+# ---- toolbar ----
+"toolbar.source.local" = "Local {path}"
+"toolbar.source.command_local" = "Command (local) {cmd}"
+"toolbar.source.command_ssh" = "Command {user}@{host}:{port} {cmd}"
+
+# ---- error ----
+"error.command.not_found" = "Command not found: {prog} (is it installed and on PATH?)"
+"error.command.permission_denied" = "Permission denied: {prog}"
+"error.command.spawn" = "Failed to start command {prog}: {e}"
+"error.ssh.channel" = "SSH channel failed: {e}"
+"error.ssh.stderr_merge" = "SSH stderr merge failed: {e}"
+"error.command.remote_value" = "Remote value command failed: {e}"
+"error.command.remote_value_read" = "Failed to read remote value command output: {e}"
+"error.command.remote_run" = "Remote command execution failed: {e}"
+"error.command.value_empty" = "Value command is empty"
+"error.command.retry_count" = "{e} (retry {err_count}/5)"
+
+# ---- app ----
+"app.name" = "LogView"
+
+# ---- ssh ----
+"ssh.creds.missing" = "Saved credentials not found; enter them again when connecting"
+"ssh.creds.reenter" = "{e}; credentials must be re-entered when connecting"
+"ssh.creds.session_only" = "{e}; credentials are valid for this session only"
+
+# ---- configs ----
+"configs.builtin_restored_all" = "All built-in default rules restored"
+
+# ---- error ----
+"error.reenter_retry" = "{msg}; please re-enter and try again"
+
+# ---- validation ----
+"validation.basic_needs_username" = "Basic authentication requires a username"
+"validation.bearer_needs_token" = "Bearer authentication requires a token"
+"validation.header_name_charset" = "Header name contains invalid characters"
+
+# ---- ssh ----
+"ssh.command.shell_hint" = "Remote commands run in a login shell; pipes and redirection are available."
+
+# ---- command ----
+"command.local_shell_hint" = "Local commands bypass the shell: pipes and redirection do not apply; arguments are split by quotes."
+
+# ---- ssh ----
+"ssh.hosts.empty" = "No saved hosts yet. Add one below, or import from recents."
+"ssh.hosts.delete_note" = "Deleting also removes the same server from recents; credentials in the system keychain are kept."
+"ssh.hosts.import_ssh_config" = "Import from ~/.ssh/config"
+"ssh.hosts.note_placeholder" = "Optional note to distinguish uses of the same host"
+
+# ---- http ----
+"http.creds.empty" = "No saved URL credentials yet; choose “Save credentials” in “Open URL” to add one."
+
+# ---- shortcut ----
+"shortcut.hint.next_match" = "Jump to the next match in the search box"
+"shortcut.hint.close_popups" = "Close popups / cancel shortcut recording"
+"shortcut.fixed" = "Fixed binding"
+"shortcut.hints" = "Shortcut hints"
+
+# ---- settings ----
+"settings.group.interface" = "Interface"
+"settings.group.typography" = "Size and fonts"
+"settings.group.colors" = "Colors"
+"settings.group.loading" = "Loading and follow"
+"settings.group.memory" = "Memory"
+"settings.group.ssh_hosts" = "Saved SSH hosts"
+"settings.group.url_creds" = "Saved URL credentials"
+"settings.group.keyboard" = "Keyboard shortcuts"
+"settings.search.no_match" = "No matching settings"
+"settings.search.results" = "Search results"
+"settings.saved_auto" = "Saved automatically"
+"settings.changes_live" = "Changes apply immediately"
+"settings.changes_live.desc" = "All changes apply immediately and are saved automatically"
+
+# ---- links ----
+"links.open_in_browser" = "Open in browser"
+"links.open_local_file" = "Open as local file"
+"links.copy_link" = "Copy link"
+"links.copy_line" = "Copy whole line"
+"links.copy_selection" = "Copy selected text"
+
+# ---- shortcut ----
+"shortcut.record_hint" = "Press a key combination; Esc to cancel"
+"shortcut.restored" = "Default shortcut restored"
+
+# ---- common ----
+"common.discard" = "Changes cancelled"
+
+# ---- banner ----
+"banner.rotation" = "── log rotation detected ──"
+
+# ---- status ----
+"status.following_hint" = "Following (click to pause)"
+"status.paused_hint" = "Paused (click to resume and jump to end)"
+
+# ---- toolbar ----
+"toolbar.jump_to_end.hint" = "Jump to end (read the tail and keep following)"
+"toolbar.clear.hint" = "Clear screen (keep reading position; new logs still append)"
+
+# ---- banner ----
+"banner.new_lines" = "↓ {n} new lines"
+"banner.new_lines.one" = "↓ {n} new line"
+"banner.new_lines.few" = "↓ {n} new lines"
+
+# ---- toolbar ----
+"toolbar.copy_path.hint" = "Double-click to copy the full path"
+
+# ---- status ----
+"status.ready" = "Ready"
+
+# ---- configs ----
+"configs.auto.desc" = "Auto = map capture group 1 text to a level (err→ERROR, info→INFO, ...); when off, use the fixed level. Changes re-analyze all tabs immediately."
+
+# ---- shortcut ----
+"shortcut.modifier_required" = "A modifier key is required (e.g. ⌘/Ctrl + a letter)"
+
+# ---- validation ----
+"validation.remote_path_required" = "Enter the remote log path (e.g. /var/log/app.log)"
+
+# ---- error ----
+"error.command.preset_missing" = "Preset not found"
+
+# ---- configs ----
+"configs.custom_tag" = "Custom"
+
+# ---- command ----
+"command.restart_hint" = "Retry automatically after exit (disconnects, device reconnects)"
+
+# ---- validation ----
+"validation.url_required" = "Enter the log URL (e.g. https://example.com/app.log)"
+"validation.url_scheme" = "URL must start with http:// or https://"
+"validation.command_required" = "Enter a command"
+
+# ---- unit ----
+"unit.items" = "items"
+"unit.lines" = "lines"
+
+# ---- error ----
+"error.known_hosts.no_home" = "Cannot locate the home directory; cannot write known_hosts"
+"error.known_hosts.mkdir" = "Failed to create ~/.ssh: {e}"
+"error.known_hosts.init" = "Failed to initialize known_hosts: {e}"
+"error.known_hosts.read" = "Failed to read known_hosts: {e}"
+"error.known_hosts.write" = "Failed to write known_hosts: {e}"
+"error.known_hosts.save" = "Failed to save known_hosts: {e}"
+"error.known_hosts.unreadable" = "SSH host key verification failed ({host}:{port}): cannot read known_hosts"
+"error.known_hosts.mismatch" = "SSH host key does not match known_hosts ({host}:{port}); a man-in-the-middle attack is possible. If the server key changed, update known_hosts first."
+"error.url.invalid" = "Invalid URL: {e}"
+"error.url.scheme" = "Only http/https is allowed (got: {s})"
+"error.url.userinfo" = "URLs with embedded username/password are not supported"
+"error.url.missing_port" = "URL is missing a port"
+"error.ssrf.localhost" = "localhost/.local addresses are blocked (SSRF protection)"
+"error.ssrf.dns" = "DNS resolution failed: {e}"
+"error.ssrf.dns_empty" = "DNS returned no results"
+"error.ssrf.blocked" = "Blocked internal/loopback/reserved address {ip} (SSRF protection; public addresses only)"
+"error.markdown.image_missing" = "⚠ Image missing: {decoded}"
+"error.markdown.image_missing_alt" = "⚠ Image missing: {decoded} ({alt})"
+
+# ---- ssh ----
+"ssh.import.no_home" = "Cannot locate the home directory; nothing imported"
+
+# ---- error ----
+"error.file.read" = "Failed to read {path}: {e}"
+"error.keychain.init" = "Failed to initialize the system keychain: {e}"
+"error.keychain.serialize" = "Failed to serialize credentials: {e}"
+"error.keychain.write" = "Failed to write to the system keychain: {e}"
+"error.keychain.parse" = "Saved credentials could not be parsed: {e}"
+"error.keychain.read" = "Failed to read from the system keychain: {e}"
+"error.keychain.delete" = "Failed to delete the system keychain entry: {e}"
+"error.keychain.private_key_text" = "A connection stores the private key text; it cannot be migrated to the keychain. Use a key file instead."
+"error.keychain.migrated" = "{e}; the plaintext credentials were removed; enter them again when connecting"
+
+# ---- validation ----
+"validation.field_required" = "{label} is required"
+
+# ---- error ----
+"error.command.expanded_empty" = "The expanded command is empty"
+"error.command.unclosed_quote" = "Unclosed quote: {q}"
+
+# ---- preset ----
+"preset.logcat_all" = "logcat (all)"
+"preset.logcat_package" = "logcat (package)"
+
+# ---- command ----
+"command.field.device" = "Device"
+"command.field.package" = "Package"
+"command.field.path" = "Path"
+"command.field.service" = "Service"
+"command.field.container" = "Container"
+"command.field.device.multi" = "Empty = default device (required when multiple devices are connected)"
+"command.field.package.example" = "e.g. com.example.app"
+"command.field.device.default" = "Empty = default device"
+"command.field.tag.example" = "e.g. ActivityManager"
+"command.field.unit.example" = "e.g. nginx.service"
+"command.field.container.example" = "Container name or ID"
+"command.field.pod.example" = "Pod name, optionally with -c container"
+
+# ---- configs ----
+"configs.builtin.words" = "Common words"
+"configs.builtin.bracket" = "Bracketed [LEVEL]"
+"configs.builtin.letters" = "Single-letter levels (T/D/I/W/E/V/F)"
+"configs.builtin.bracket_letters" = "Bracketed single letters [D]/[I]/[W]/[E]"
+
+# ---- shortcut ----
+"shortcut.new_tab" = "New tab"
+"shortcut.close_tab" = "Close current tab"
+"shortcut.focus_search" = "Focus search box"
+"shortcut.clear_screen" = "Clear screen"
+"shortcut.open_settings" = "Open settings"
+"shortcut.copy_row" = "Copy selected row"
+"shortcut.save_code" = "Save code view edits"
+
+# ---- status ----
+"status.http_status" = "HTTP {status}"
+
+# ---- banner ----
+"banner.rotation_short" = "── rotation ──"
+
+# ---- common ----
+"common.close" = "Close"
+
+# ---- settings ----
+"settings.recents_purge" = "Clear credentials when deleting URL history"

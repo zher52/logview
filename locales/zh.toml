@@ -1,0 +1,626 @@
+# LogView 语言包：简体中文（源语言）
+# 键为语义 ID；新增文案请同时在 en.toml / ru.toml 补齐，缺项会在构建时报错。
+
+
+# ---- level ----
+"level.none" = "无级别"
+
+# ---- common ----
+"common.cancel" = "取消"
+"common.connect" = "连接"
+"common.run" = "运行"
+"common.open" = "打开"
+
+# ---- ssh ----
+"ssh.trust.once" = "仅本次信任"
+"ssh.trust.remember" = "信任并记住"
+"ssh.connection" = "SSH 连接"
+
+# ---- command ----
+"command.run" = "运行命令"
+
+# ---- ssh ----
+"ssh.host_key.confirm" = "确认主机密钥"
+
+# ---- dialog ----
+"dialog.open_url" = "打开 URL"
+
+# ---- configs ----
+"configs.new" = "＋ 新建配置"
+"configs.import_json" = "导入 JSON"
+"configs.export_json" = "导出 JSON"
+"configs.restore_builtin" = "恢复内置默认"
+"configs.delete" = "删除配置"
+"configs.restore_default" = "恢复默认"
+"configs.add_rule" = "＋ 添加规则"
+
+# ---- settings ----
+"settings.group.appearance" = "外观与显示"
+"settings.group.logging" = "日志与性能"
+"settings.group.analysis" = "分析配置"
+"settings.group.shortcuts" = "快捷键"
+"settings.language" = "界面语言"
+"settings.language.desc" = "切换界面文案;未翻译的内容依次回退英文、中文"
+"settings.title" = "设置"
+"settings.search.placeholder" = "搜索设置"
+
+# ---- code ----
+"code.plain_text" = "纯文本"
+"code.preview.readonly" = "只读预览(点击退出编辑)"
+"code.edit_source" = "编辑源码(⌘S 保存)"
+"code.save" = "保存修改(⌘S)"
+"code.too_large" = "文档较大,已显示源码"
+
+# ---- tab ----
+"tab.close_others" = "关闭其他"
+
+# ---- search ----
+"search.highlight" = "高亮"
+"search.filter" = "过滤"
+"search.hide" = "隐藏"
+"search.show" = "显示"
+
+# ---- wrap ----
+"wrap.on" = "自动换行:已开启(点击关闭)"
+"wrap.off" = "自动换行:已关闭(点击开启)"
+
+# ---- toolbar ----
+"toolbar.load_all" = "加载全部"
+"toolbar.jump_to_end" = "跳到末尾"
+
+# ---- settings ----
+"settings.recents_limit" = "保存条数"
+"settings.recents_limit.desc" = "最多保留多少条最近打开记录(1–500)"
+"settings.recents_purge.desc" = "移除或清空 URL 最近打开记录时,同时删除系统钥匙串中的对应凭据"
+"settings.line_numbers" = "显示行号"
+"settings.line_numbers.desc" = "在日志行左侧显示行号"
+"settings.timestamps" = "显示时间戳"
+"settings.timestamps.desc" = "在日志行左侧显示该行的本地时间(本次查看期间新到达的行;已存在的历史行留空)"
+"settings.wrap_default" = "默认自动换行"
+"settings.wrap_default.desc" = "新标签页的初始值;标签页内可单独切换"
+"settings.ui_font_size" = "界面字号"
+"settings.ui_font_size.desc" = "设置、工具栏等界面文字大小(9–24 pt)"
+"settings.log_font_size" = "日志字号"
+"settings.log_font_size.desc" = "日志文本大小,行高随之等比变化(9–24 pt)"
+"settings.ui_font" = "界面字体"
+"settings.ui_font.desc" = "留空跟随系统 UI 字体(如 PingFang SC)"
+"settings.log_font" = "日志字体"
+"settings.log_font.desc" = "留空跟随系统等宽字体(如 Menlo、JetBrains Mono)"
+"settings.theme" = "主题"
+"settings.level_colors" = "日志级别"
+"settings.level_colors.desc" = "级别颜色同时用于级别文字与行底色;搜索高亮用于检索命中文本的底色。"
+"settings.search_highlight" = "搜索高亮"
+"settings.background" = "底色"
+
+# ---- theme ----
+"theme.light" = "亮色"
+"theme.dark" = "暗色"
+
+# ---- settings ----
+"settings.poll_interval" = "轮询间隔"
+"settings.poll_interval.desc" = "检查新增内容的间隔(≥200 ms)"
+"settings.initial_load" = "初始加载"
+"settings.initial_load.desc" = "打开日志时从开头读取的大小(1–512 MB)"
+"settings.tail_limit" = "尾部加载上限"
+"settings.tail_limit.desc" = "「跳到末尾」一次读取的大小(1–512 MB)"
+"settings.max_lines" = "行数上限"
+"settings.max_lines.desc" = "超出后环形丢弃最旧行(≥1000)"
+"settings.config_io" = "配置导入 / 导出"
+"settings.config_io.desc" = "导出全部分析配置为 JSON;导入会整体替换现有配置"
+
+# ---- configs ----
+"configs.builtin" = "内置配置"
+"configs.custom" = "自定义配置"
+"configs.enabled_default" = "启用(新标签页默认)"
+"configs.regex_auto" = "正则(捕获组 1 取级别文本)"
+"configs.flags" = "标志"
+"configs.auto" = "自动"
+"configs.level" = "级别"
+"configs.capture_group" = "取捕获组"
+"configs.rules" = "匹配规则"
+"configs.empty" = "暂无配置,点击左侧「新建配置」创建"
+
+# ---- shortcut ----
+"shortcut.press" = "按下组合键…"
+"shortcut.change" = "修改"
+
+# ---- settings ----
+"settings.section.appearance.desc" = "界面行号换行、字号字体与颜色管理"
+"settings.section.logging.desc" = "自动追加、加载大小与内存上限"
+"settings.section.analysis.desc" = "级别分析配置:正则规则、级别映射与启用状态"
+"settings.section.connections.desc" = "已保存的主机、URL 凭据与最近打开记录的管理"
+"settings.section.shortcuts.desc" = "全局快捷键一览(固定绑定)"
+
+# ---- configs ----
+"configs.builtin_marker" = "· 内置"
+"configs.builtin_marker_alt" = " · 内置"
+
+# ---- ssh ----
+"ssh.username" = "用户名"
+"ssh.password" = "密码"
+"ssh.port" = "端口"
+"ssh.host" = "主机"
+
+# ---- http ----
+"http.auth" = "认证"
+"http.auth.none" = "无认证"
+"http.header.custom" = "自定义请求头"
+"http.header.value" = "请求头值"
+
+# ---- ssh ----
+"ssh.host.placeholder" = "主机名或 IP,输入时可搜索已保存的服务器"
+"ssh.password.agent_placeholder" = "密码(Agent 认证可留空)"
+
+# ---- command ----
+"command.example" = "例如 adb logcat -v threadtime"
+
+# ---- search ----
+"search.placeholder" = "检索:高亮 / 过滤(支持正则)"
+
+# ---- tab ----
+"tab.new" = "新标签页"
+
+# ---- menu ----
+"menu.recent" = "最近打开"
+
+# ---- common ----
+"common.edit" = "编辑"
+"common.delete" = "删除"
+
+# ---- source ----
+"source.command" = "命令"
+
+# ---- configs ----
+"configs.new_short" = "新配置"
+
+# ---- source ----
+"source.server" = "服务器"
+"source.method" = "方式"
+"source.file" = "文件"
+
+# ---- ssh ----
+"ssh.remote_path" = "远程路径"
+
+# ---- common ----
+"common.none" = "无"
+
+# ---- http ----
+"http.header.custom_short" = "自定义头"
+"http.header.name" = "头名称"
+"http.header.value_short" = "头值"
+
+# ---- analysis ----
+"analysis.for_tab" = "分析配置(当前标签页)"
+
+# ---- settings ----
+"settings.manage_link" = "在设置中管理…"
+
+# ---- welcome ----
+"welcome.drag_hint" = "也可以把日志文件直接拖入窗口"
+
+# ---- dialog ----
+"dialog.clear.title" = "确认清除"
+"dialog.clear.action" = "清除"
+
+# ---- ssh ----
+"ssh.hosts.add" = "＋ 新增主机"
+"ssh.hosts.import_recent" = "从最近打开导入"
+"ssh.hosts.add_short" = "新增主机"
+"ssh.hosts.edit" = "编辑主机"
+"ssh.hosts.note" = "备注"
+
+# ---- common ----
+"common.save" = "保存"
+
+# ---- validation ----
+"validation.host_required" = "请填写主机名或 IP"
+"validation.username_required" = "请填写用户名"
+"validation.port_range" = "端口需为 1–65535"
+"validation.header_name_required" = "请填写请求头名称"
+"validation.header_value_required" = "请填写请求头值"
+
+# ---- configs ----
+"configs.restored_one" = "已恢复该内置配置的默认规则"
+"configs.restored_all" = "已恢复全部内置配置的默认规则"
+
+# ---- ssh ----
+"ssh.hosts.no_match" = "没有匹配的已保存服务器"
+"ssh.host_key.algorithm" = "算法"
+"ssh.host_key.fingerprint" = "指纹"
+"ssh.host_key.warning" = "首次连接该主机,无法自动校验身份。请与服务器管理员提供的指纹核对;"
+"ssh.host_key.mismatch_hint" = "不一致时可能存在中间人攻击。选择「记住」后,密钥变化将直接拒绝连接。"
+"ssh.remember.keychain" = "记住连接(凭据保存到系统钥匙串)"
+"ssh.remember.memory" = "记住连接(系统钥匙串不可用,仅本次会话有效)"
+
+# ---- command ----
+"command.retry.after_exit" = "命令退出(code={code}),{secs}s 后重试"
+"command.exited.code" = "命令已退出(code={code})"
+"command.retry.after_end" = "命令结束,{secs}s 后重试"
+"command.exited" = "命令已退出"
+
+# ---- ssh ----
+"ssh.trusted.saved" = "已信任并记住 {host}:{port} 的主机密钥"
+"ssh.trusted.once" = "已信任 {host}:{port} 的主机密钥(仅本次)"
+"ssh.trust.cancelled" = "已取消连接 {host}:{port}"
+
+# ---- configs ----
+"configs.exported" = "已导出到 {path}"
+"configs.export_failed" = "导出失败:{e}"
+"configs.imported" = "已导入 {n} 套配置"
+"configs.import_invalid" = "导入失败:文件不是有效的配置 JSON"
+"configs.import_failed" = "导入失败:{e}"
+
+# ---- status ----
+"status.rows" = "{n} 行"
+"status.rows.one" = "{n} 行"
+"status.rows.few" = "{n} 行"
+"status.dropped" = "已丢弃 {n}"
+"status.received" = "已接收 {size}"
+"status.loading" = "加载中 {pct}%"
+"status.polling" = "轮询 {ms}ms"
+"status.reanalyzing" = "重新分析级别中…"
+"status.no_follow" = "该源不支持自动跟随"
+
+# ---- toolbar ----
+"toolbar.load_all.confirm" = "从头加载全部(大文件可能耗时较久)"
+
+# ---- http ----
+"http.auth.bearer_hint" = "以 Authorization: Bearer <token> 发送"
+"http.auth.api_key_hint" = "API Key 以请求头发送,名称默认 X-API-Key,可修改"
+"http.header.hint" = "自定义请求头,例如 X-Api-Key、X-Token 等"
+"http.auth.none_hint" = "不携带认证信息"
+"http.auth.security_note" = "认证头只发送到初始主机,重定向到其他域名时不携带;密码/token/头值默认不写入最近打开。"
+"http.credentials" = "凭据"
+"http.save_credentials" = "保存凭据"
+"http.history_only" = "仅记录历史"
+"http.history_only.desc" = "只记录地址与认证方式到最近打开,不保存密码/token;已保存的旧凭据不会自动删除,可在设置→连接里管理"
+"http.save_credentials.desc" = "写入系统钥匙串,下次连接自动回填"
+"http.keychain_unavailable" = "系统钥匙串不可用,凭据仅本次会话有效"
+
+# ---- status ----
+"status.paused" = "已暂停"
+"status.following" = "跟进中"
+"status.new_lines_plus" = "+{n} 新行"
+"status.new_lines_plus.one" = "+{n} 新行"
+"status.new_lines_plus.few" = "+{n} 新行"
+"status.matched" = "匹配 {n} 行"
+"status.matched.one" = "匹配 {n} 行"
+"status.matched.few" = "匹配 {n} 行"
+
+# ---- error ----
+"error.regex" = "正则错误:{e}"
+
+# ---- status ----
+"status.head_loaded" = "已加载头部 {loaded} / {total}(文件更大)"
+"status.jumped_end" = "已跳至末尾,从字节 {off} / {total} 开始 — 新日志将自动追加"
+
+# ---- settings ----
+"settings.search.empty" = "没有与「{query}」匹配的设置项"
+"settings.search.matches" = "{n} 项设置匹配「{query}」"
+"settings.search.matches.one" = "{n} 项设置匹配「{query}」"
+"settings.search.matches.few" = "{n} 项设置匹配「{query}」"
+
+# ---- tab ----
+"tab.title_rows" = "{name}:{n} 行(点击{action})"
+"tab.title_rows.one" = "{name}:{n} 行(点击{action})"
+"tab.title_rows.few" = "{name}:{n} 行(点击{action})"
+
+# ---- shortcut ----
+"shortcut.swapped" = "已与「{desc}」互换快捷键"
+"shortcut.set" = "已设为 {shortcut}"
+
+# ---- analysis ----
+"analysis.summary" = "分析配置:{on}/{total} 已启用,点击选择"
+
+# ---- command ----
+"command.will_run" = "将执行:{cmd}"
+
+# ---- error ----
+"error.port_invalid" = "端口无效: {e}"
+"error.save_failed" = "保存失败:{e}"
+
+# ---- ssh ----
+"ssh.host.user" = "{host}:{port} · 用户 {user}"
+
+# ---- configs ----
+"configs.summary" = "{status} · {n} 条规则{suffix}"
+"configs.summary.one" = "{status} · {n} 条规则{suffix}"
+"configs.summary.few" = "{status} · {n} 条规则{suffix}"
+
+# ---- common ----
+"common.enabled" = "已启用"
+"common.disabled" = "未启用"
+
+# ---- configs ----
+"configs.rules_count" = "{n} 条规则{suffix}"
+"configs.rules_count.one" = "{n} 条规则{suffix}"
+"configs.rules_count.few" = "{n} 条规则{suffix}"
+
+# ---- ssh ----
+"ssh.import.empty" = "~/.ssh/config 里没有可导入的具体主机;通配与 Match 块已跳过"
+"ssh.import.duplicates" = "~/.ssh/config 中的主机均已存在,跳过 {n} 个重复项"
+"ssh.import.done" = "已从 ~/.ssh/config 导入 {n} 个主机"
+"ssh.import.done_with_dups" = "已从 ~/.ssh/config 导入 {n} 个主机,跳过 {d} 个重复项"
+
+# ---- http ----
+"http.creds.deleted" = "已删除该 URL 凭据"
+
+# ---- error ----
+"error.delete_failed" = "删除失败:{e}"
+"error.header_not_allowed" = "不允许设置请求头: {name}"
+"error.creds_delete_failed" = "凭据删除失败:{e}"
+
+# ---- links ----
+"links.open_in_tab" = "在新标签页打开 {target}"
+
+# ---- toolbar ----
+"toolbar.load_from_start" = "从头加载"
+
+# ---- toast ----
+"toast.path_copied" = "已复制路径"
+
+# ---- validation ----
+"validation.host_user_required" = "请填写主机与用户名"
+
+# ---- error ----
+"error.command_stream.size_unsupported" = "命令流不支持大小/随机读取"
+"error.command_stream.seek_unsupported" = "命令流不支持随机读取"
+"error.http.range_unsupported" = "服务器忽略 Range 请求,无法增量读取"
+"error.ssh.auth" = "SSH 认证失败(检查用户名/密码/密钥/agent)"
+"error.url.missing_host" = "URL 缺少主机名"
+"error.http.redirect_location_missing" = "重定向缺少 Location"
+"error.http.redirect_location_invalid" = "重定向 Location 无效"
+"error.http.too_many_redirects" = "重定向次数过多"
+"error.source.not_ssh" = "不是 SSH 目标"
+"error.source.not_command" = "不是命令源"
+"error.source.command_needs_open_command" = "命令源需通过 open_command 打开"
+"error.command.empty" = "命令为空"
+"error.ssh.host_key_missing" = "无法获取服务器主机密钥"
+"error.ssh.unknown_algorithm" = "未知算法"
+"error.source.command_plan_missing" = "命令源缺少执行计划"
+"error.source.command_not_streaming" = "命令源返回了非流式句柄"
+"error.file.not_regular" = "文件不存在或不是普通文件: {path}"
+"error.http.auth_status" = "HTTP {status}(认证失败)"
+"error.stat" = "stat 失败: {e}"
+"error.sftp.channel" = "SFTP 通道失败: {e}"
+"error.sftp.stat" = "SFTP stat 失败: {e}"
+"error.sftp.open" = "SFTP open 失败: {e}"
+"error.sftp.seek" = "SFTP seek 失败: {e}"
+"error.sftp.read" = "SFTP 读取失败: {e}"
+"error.open" = "打开失败: {e}"
+"error.seek" = "seek 失败: {e}"
+"error.read" = "读取失败: {e}"
+"error.http.read" = "HTTP 读取失败: {e}"
+"error.ssh.connect" = "SSH 连接失败 {host}:{port}: {e}"
+"error.ssh.handshake" = "SSH 握手失败: {e}"
+"error.ssh.host_key_unconfirmed" = "已取消连接:{host}:{port} 的主机密钥未确认"
+"error.http.client_build" = "HTTP client 构建失败: {e}"
+"error.http.token_invalid" = "Bearer token 无效: {e}"
+"error.http.header_name_invalid" = "请求头名称无效: {e}"
+"error.http.header_value_invalid" = "请求头值无效: {e}"
+"error.http.request" = "HTTP 请求失败: {e}"
+"error.command.value_exit" = "取值命令失败(code={code})"
+"error.command.value_failed" = "取值命令失败:{err}"
+"error.command.value_empty_output" = "取值失败:{key} 没有输出(目标是否在运行?参数是否正确?)"
+"error.command.unresolved_placeholder" = "命令中有未解析的占位符:{a}"
+
+# ---- toolbar ----
+"toolbar.source.local" = "本地 {path}"
+"toolbar.source.command_local" = "命令(本机) {cmd}"
+"toolbar.source.command_ssh" = "命令 {user}@{host}:{port} {cmd}"
+
+# ---- error ----
+"error.command.not_found" = "未找到命令 {prog}(请确认已安装,并在 PATH 中)"
+"error.command.permission_denied" = "没有执行权限:{prog}"
+"error.command.spawn" = "无法启动命令 {prog}:{e}"
+"error.ssh.channel" = "SSH 通道创建失败:{e}"
+"error.ssh.stderr_merge" = "SSH stderr 合并失败:{e}"
+"error.command.remote_value" = "远端取值命令执行失败:{e}"
+"error.command.remote_value_read" = "远端取值命令读取失败:{e}"
+"error.command.remote_run" = "远端命令执行失败:{e}"
+"error.command.value_empty" = "取值命令为空"
+"error.command.retry_count" = "{e}(重试 {err_count}/5)"
+
+# ---- app ----
+"app.name" = "日志查看器"
+
+# ---- ssh ----
+"ssh.creds.missing" = "未找到已保存的凭据,连接时需重新输入"
+"ssh.creds.reenter" = "{e};连接时需重新输入凭据"
+"ssh.creds.session_only" = "{e};凭据仅在本次会话内有效,下次连接需重新输入"
+
+# ---- configs ----
+"configs.builtin_restored_all" = "已恢复全部内置默认规则"
+
+# ---- error ----
+"error.reenter_retry" = "{msg};请重新输入后重试"
+
+# ---- validation ----
+"validation.basic_needs_username" = "Basic 认证需要填写用户名"
+"validation.bearer_needs_token" = "Bearer 认证需要填写 token"
+"validation.header_name_charset" = "请求头名称包含非法字符"
+
+# ---- ssh ----
+"ssh.command.shell_hint" = "远端命令由登录 shell 执行,可用管道与重定向。"
+
+# ---- command ----
+"command.local_shell_hint" = "本机命令不经过 shell:管道与重定向不生效,参数按引号拆分。"
+
+# ---- ssh ----
+"ssh.hosts.empty" = "还没有保存的主机;可点下方「新增主机」,或从最近打开导入"
+"ssh.hosts.delete_note" = "删除会同时清理「最近打开」中的同名服务器;系统钥匙串里的凭据不受影响"
+"ssh.hosts.import_ssh_config" = "从 ~/.ssh/config 导入"
+"ssh.hosts.note_placeholder" = "用于区分同一主机的不同用途,可留空"
+
+# ---- http ----
+"http.creds.empty" = "没有保存的 URL 凭据;在「打开 URL」里选「保存凭据」后会出现在这里"
+
+# ---- shortcut ----
+"shortcut.hint.next_match" = "检索框内跳到下一处命中"
+"shortcut.hint.close_popups" = "关闭弹层 / 取消快捷键录制"
+"shortcut.fixed" = "固定绑定"
+"shortcut.hints" = "快捷键提示"
+
+# ---- settings ----
+"settings.group.interface" = "界面"
+"settings.group.typography" = "字号与字体"
+"settings.group.colors" = "颜色管理"
+"settings.group.loading" = "加载与自动追加"
+"settings.group.memory" = "内存"
+"settings.group.ssh_hosts" = "已保存的 SSH 主机"
+"settings.group.url_creds" = "已保存的 URL 凭据"
+"settings.group.keyboard" = "键盘快捷键"
+"settings.search.no_match" = "没有匹配的设置项"
+"settings.search.results" = "搜索结果"
+"settings.saved_auto" = "已自动保存"
+"settings.changes_live" = "更改即时生效"
+"settings.changes_live.desc" = "所有更改立即生效并自动保存"
+
+# ---- links ----
+"links.open_in_browser" = "在浏览器打开"
+"links.open_local_file" = "作为本地文件打开"
+"links.copy_link" = "复制链接"
+"links.copy_line" = "复制整行"
+"links.copy_selection" = "复制选中文本"
+
+# ---- shortcut ----
+"shortcut.record_hint" = "请按下组合键;Esc 取消"
+"shortcut.restored" = "已恢复默认快捷键"
+
+# ---- common ----
+"common.discard" = "已取消修改"
+
+# ---- banner ----
+"banner.rotation" = "── 检测到日志轮换 ──"
+
+# ---- status ----
+"status.following_hint" = "跟进中(点击暂停跟随)"
+"status.paused_hint" = "已暂停(点击恢复跟随并跳到末尾)"
+
+# ---- toolbar ----
+"toolbar.jump_to_end.hint" = "跳到末尾(只读文件尾部并继续跟随)"
+"toolbar.clear.hint" = "清屏(保留读取位置,新日志继续追加)"
+
+# ---- banner ----
+"banner.new_lines" = "↓ {n} 条新行"
+"banner.new_lines.one" = "↓ {n} 条新行"
+"banner.new_lines.few" = "↓ {n} 条新行"
+
+# ---- toolbar ----
+"toolbar.copy_path.hint" = "双击复制完整路径"
+
+# ---- status ----
+"status.ready" = "就绪"
+
+# ---- configs ----
+"configs.auto.desc" = "自动 = 取正则捕获组 1 的文本映射级别(err→ERROR、info→INFO 等);关闭后用所选固定级别。改动立即重分析全部标签。"
+
+# ---- shortcut ----
+"shortcut.modifier_required" = "需要含修饰键的组合(如 ⌘/Ctrl + 字母)"
+
+# ---- validation ----
+"validation.remote_path_required" = "请填写远程日志路径(例如 /var/log/app.log)"
+
+# ---- error ----
+"error.command.preset_missing" = "预设不存在"
+
+# ---- configs ----
+"configs.custom_tag" = "自定义"
+
+# ---- command ----
+"command.restart_hint" = "退出后自动重试(断线、设备重连)"
+
+# ---- validation ----
+"validation.url_required" = "请填写日志地址(例如 https://example.com/app.log)"
+"validation.url_scheme" = "URL 需以 http:// 或 https:// 开头"
+"validation.command_required" = "请填写命令"
+
+# ---- unit ----
+"unit.items" = "条"
+"unit.lines" = "行"
+
+# ---- error ----
+"error.known_hosts.no_home" = "找不到用户目录,无法写入 known_hosts"
+"error.known_hosts.mkdir" = "创建 ~/.ssh 失败:{e}"
+"error.known_hosts.init" = "known_hosts 初始化失败:{e}"
+"error.known_hosts.read" = "读取 known_hosts 失败:{e}"
+"error.known_hosts.write" = "写入 known_hosts 失败:{e}"
+"error.known_hosts.save" = "保存 known_hosts 失败:{e}"
+"error.known_hosts.unreadable" = "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取"
+"error.known_hosts.mismatch" = "SSH 主机密钥与 known_hosts 记录不一致({host}:{port}),可能存在中间人攻击;确认服务器换过密钥后请先更新 known_hosts"
+"error.url.invalid" = "URL 无效: {e}"
+"error.url.scheme" = "仅允许 http/https 协议(收到: {s})"
+"error.url.userinfo" = "不支持携带用户名/密码的 URL"
+"error.url.missing_port" = "URL 缺少端口"
+"error.ssrf.localhost" = "拒绝 localhost/.local 地址(SSRF 防护)"
+"error.ssrf.dns" = "DNS 解析失败: {e}"
+"error.ssrf.dns_empty" = "DNS 解析无结果"
+"error.ssrf.blocked" = "拒绝内网/环回/保留地址 {ip}(SSRF 防护,仅允许公网地址)"
+"error.markdown.image_missing" = "⚠ 图片缺失:{decoded}"
+"error.markdown.image_missing_alt" = "⚠ 图片缺失:{decoded}({alt})"
+
+# ---- ssh ----
+"ssh.import.no_home" = "无法定位用户主目录,未导入"
+
+# ---- error ----
+"error.file.read" = "读取 {path} 失败: {e}"
+"error.keychain.init" = "初始化系统钥匙串失败: {e}"
+"error.keychain.serialize" = "凭据序列化失败: {e}"
+"error.keychain.write" = "写入系统钥匙串失败: {e}"
+"error.keychain.parse" = "已保存的凭据无法解析: {e}"
+"error.keychain.read" = "读取系统钥匙串失败: {e}"
+"error.keychain.delete" = "删除系统钥匙串条目失败: {e}"
+"error.keychain.private_key_text" = "存在以私钥正文保存的连接,无法迁移到钥匙串;建议改用私钥文件"
+"error.keychain.migrated" = "{e};原明文凭据已移除,连接时需重新输入"
+
+# ---- validation ----
+"validation.field_required" = "请填写{label}"
+
+# ---- error ----
+"error.command.expanded_empty" = "展开后的命令为空"
+"error.command.unclosed_quote" = "引号未闭合: {q}"
+
+# ---- preset ----
+"preset.logcat_all" = "logcat 全部"
+"preset.logcat_package" = "logcat 包名"
+
+# ---- command ----
+"command.field.device" = "设备"
+"command.field.package" = "包名"
+"command.field.path" = "路径"
+"command.field.service" = "服务"
+"command.field.container" = "容器"
+"command.field.device.multi" = "留空 = 默认设备(多设备时需填写)"
+"command.field.package.example" = "例如 com.example.app"
+"command.field.device.default" = "留空 = 默认设备"
+"command.field.tag.example" = "例如 ActivityManager"
+"command.field.unit.example" = "例如 nginx.service"
+"command.field.container.example" = "容器名或 ID"
+"command.field.pod.example" = "pod 名称,可带 -c 容器"
+
+# ---- configs ----
+"configs.builtin.words" = "通用单词"
+"configs.builtin.bracket" = "方括号 [LEVEL]"
+"configs.builtin.letters" = "单字母级别 (T/D/I/W/E/V/F)"
+"configs.builtin.bracket_letters" = "方括号单字母 [D]/[I]/[W]/[E]"
+
+# ---- shortcut ----
+"shortcut.new_tab" = "新建标签页"
+"shortcut.close_tab" = "关闭当前标签页"
+"shortcut.focus_search" = "聚焦检索框"
+"shortcut.clear_screen" = "清屏"
+"shortcut.open_settings" = "打开设置"
+"shortcut.copy_row" = "复制选中行"
+"shortcut.save_code" = "保存代码视图修改"
+
+# ---- status ----
+"status.http_status" = "HTTP {status}"
+
+# ---- banner ----
+"banner.rotation_short" = "── 轮换 ──"
+
+# ---- common ----
+"common.close" = "关闭"
+
+# ---- settings ----
+"settings.recents_purge" = "删除 URL 记录时清除凭据"

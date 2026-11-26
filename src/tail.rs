@@ -359,7 +359,7 @@ fn worker(
                 err_streak += 1;
                 let _ = tx.send(Msg::Error {
                     msg: crate::i18n::tf(
-                        "{e}(重试 {err_count}/5)",
+                        "error.command.retry_count",
                         &[("e", e.clone()), ("err_count", err_streak.to_string())],
                     ),
                     fatal: false,

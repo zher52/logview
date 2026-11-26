@@ -27,6 +27,10 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 # 行时间戳按本地时区格式化(仅需要 clock/std,不引入 oldtime)
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
+[build-dependencies]
+# 构建期解析 locales/*.toml 并生成查表
+toml = "0.8"
+
 [profile.dev]
 opt-level = 1
 

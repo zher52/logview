@@ -219,7 +219,7 @@ impl Tab {
         let enabled_ids = Self::default_enabled(settings);
         Tab {
             id: 0,
-            title: i18n::t("新标签页").into(),
+            title: i18n::t("tab.new").into(),
             params: None,
             cmd_tx: tx,
             msg_rx: rx,
@@ -263,7 +263,7 @@ impl Tab {
     /// 设置标签页:与空白页相同的占位结构,内容由 AppView.settings_panel 渲染
     fn settings(settings: &Settings) -> Tab {
         let mut t = Tab::blank(settings);
-        t.title = i18n::t("设置").into();
+        t.title = i18n::t("settings.title").into();
         t.welcome = false;
         t.settings = true;
         t
@@ -458,10 +458,10 @@ struct SshForm {
 impl SshForm {
     fn new(window: &mut Window, cx: &mut Context<AppView>) -> SshForm {
         let mut mk = |ph: &'static str| cx.new(|cx| InputState::new(window, cx).placeholder(ph));
-        let host = mk(i18n::t("主机名或 IP,输入时可搜索已保存的服务器"));
+        let host = mk(i18n::t("ssh.host.placeholder"));
         let port = mk("22");
-        let user = mk(i18n::t("用户名"));
-        let password = mk(i18n::t("密码(Agent 认证可留空)"));
+        let user = mk(i18n::t("ssh.username"));
+        let password = mk(i18n::t("ssh.password.agent_placeholder"));
         let path = mk("/var/log/app.log");
         port.update(cx, |s, cx| s.set_value("22", window, cx));
         SshForm {
@@ -498,9 +498,7 @@ impl CmdFields {
         CmdFields {
             preset: 0,
             inputs: Vec::new(),
-            text: cx.new(|cx| {
-                InputState::new(window, cx).placeholder(i18n::t("例如 adb logcat -v threadtime"))
-            }),
+            text: cx.new(|cx| InputState::new(window, cx).placeholder(i18n::t("command.example"))),
             restart: false,
         }
     }
@@ -610,11 +608,11 @@ impl UrlForm {
         UrlForm {
             url: mk("https://example.com/app.log"),
             auth: 0,
-            user: mk(i18n::t("用户名")),
-            password: mk(i18n::t("密码")),
+            user: mk(i18n::t("ssh.username")),
+            password: mk(i18n::t("ssh.password")),
             token: mk("Bearer token"),
             header_name: mk("X-API-Key"),
-            header_value: mk(i18n::t("请求头值")),
+            header_value: mk(i18n::t("http.header.value")),
             remember: false,
             retry: None,
             err: None,
@@ -1097,9 +1095,8 @@ impl AppView {
         paths: Vec<std::path::PathBuf>,
         settings: Settings,
     ) -> Self {
-        let search_input = cx.new(|cx| {
-            InputState::new(window, cx).placeholder(i18n::t("检索:高亮 / 过滤(支持正则)"))
-        });
+        let search_input =
+            cx.new(|cx| InputState::new(window, cx).placeholder(i18n::t("search.placeholder")));
 
         // 字号来自设置:必须在首帧渲染前写入主题运行时值
         theme::set_font_sizes(settings.ui_font_size, settings.log_font_size);
@@ -1370,8 +1367,8 @@ impl AppView {
         let key = key_of_params(params)?;
         match secrets::load(&key) {
             Ok(Some(sec)) if sec.apply(params) => None,
-            Ok(_) => Some(i18n::t("未找到已保存的凭据,连接时需重新输入").into()),
-            Err(e) => Some(i18n::tf("{e};连接时需重新输入凭据", &[("e", e)])),
+            Ok(_) => Some(i18n::t("ssh.creds.missing").into()),
+            Err(e) => Some(i18n::tf("ssh.creds.reenter", &[("e", e)])),
         }
     }
 
@@ -1389,10 +1386,8 @@ impl AppView {
                             self.cred_notice = None;
                         }
                         Err(e) => {
-                            self.cred_notice = Some(i18n::tf(
-                                "{e};凭据仅在本次会话内有效,下次连接需重新输入",
-                                &[("e", e)],
-                            ));
+                            self.cred_notice =
+                                Some(i18n::tf("ssh.creds.session_only", &[("e", e)]));
                         }
                     }
                 }
@@ -1564,7 +1559,9 @@ impl AppView {
             e
         };
         let s = &self.settings;
-        let search = cx.new(|cx| InputState::new(window, cx).placeholder(i18n::t("搜索设置")));
+        let search = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(i18n::t("settings.search.placeholder"))
+        });
         let color_dark: Vec<Entity<InputState>> = s
             .level_colors_hex(false)
             .into_iter()
@@ -2179,7 +2176,7 @@ impl AppView {
                     .map(|t| t.as_millis())
                     .unwrap_or(0)
             ),
-            name: i18n::t("新配置").into(),
+            name: i18n::t("configs.new_short").into(),
             enabled: true,
             built_in: false,
             rules: vec![crate::level::Rule {
@@ -2241,7 +2238,7 @@ impl AppView {
         self.rebuild_rule_inputs(window, cx);
         self.settings_apply(true, cx);
         if let Some(d) = self.settings_panel.as_mut() {
-            d.cfg_notice = Some(i18n::t("已恢复该内置配置的默认规则").into());
+            d.cfg_notice = Some(i18n::t("configs.restored_one").into());
         }
         cx.notify();
     }
@@ -2258,7 +2255,7 @@ impl AppView {
         self.rebuild_rule_inputs(window, cx);
         self.settings_apply(true, cx);
         if let Some(d) = self.settings_panel.as_mut() {
-            d.cfg_notice = Some(i18n::t("已恢复全部内置默认规则").into());
+            d.cfg_notice = Some(i18n::t("configs.builtin_restored_all").into());
         }
         cx.notify();
     }
@@ -2544,7 +2541,7 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let err = i18n::tf("{msg};请重新输入后重试", &[("msg", msg)]);
+        let err = i18n::tf("error.reenter_retry", &[("msg", msg)]);
         match params {
             SourceParams::Ssh {
                 host,
@@ -2743,11 +2740,11 @@ impl AppView {
         let edit = d.host_edit;
         let port = port_txt.parse::<u16>().ok().filter(|p| *p > 0);
         let err = if host.is_empty() {
-            Some(i18n::t("请填写主机名或 IP").to_string())
+            Some(i18n::t("validation.host_required").to_string())
         } else if user.is_empty() {
-            Some(i18n::t("请填写用户名").to_string())
+            Some(i18n::t("validation.username_required").to_string())
         } else if port.is_none() {
-            Some(i18n::t("端口需为 1–65535").to_string())
+            Some(i18n::t("validation.port_range").to_string())
         } else {
             None
         };
@@ -2821,18 +2818,11 @@ impl AppView {
                     crate::store::save(&self.settings);
                 }
                 match (added, dup) {
-                    (0, 0) => i18n::t("~/.ssh/config 里没有可导入的具体主机;通配与 Match 块已跳过")
-                        .to_string(),
-                    (0, n) => i18n::tf(
-                        "~/.ssh/config 中的主机均已存在,跳过 {n} 个重复项",
-                        &[("n", n.to_string())],
-                    ),
-                    (n, 0) => i18n::tf(
-                        "已从 ~/.ssh/config 导入 {n} 个主机",
-                        &[("n", n.to_string())],
-                    ),
+                    (0, 0) => i18n::t("ssh.import.empty").to_string(),
+                    (0, n) => i18n::tf("ssh.import.duplicates", &[("n", n.to_string())]),
+                    (n, 0) => i18n::tf("ssh.import.done", &[("n", n.to_string())]),
                     (n, d) => i18n::tf(
-                        "已从 ~/.ssh/config 导入 {n} 个主机,跳过 {d} 个重复项",
+                        "ssh.import.done_with_dups",
                         &[("n", n.to_string()), ("d", d.to_string())],
                     ),
                 }
@@ -3028,8 +3018,8 @@ impl AppView {
     /// 删除一条已保存的 URL 凭据:先删钥匙串条目,再把对应最近打开标记为未保存
     fn url_cred_delete(&mut self, key: String, cx: &mut Context<Self>) {
         let notice = match secrets::delete(&key) {
-            Ok(()) => i18n::t("已删除该 URL 凭据").to_string(),
-            Err(e) => i18n::tf("删除失败:{e}", &[("e", e.to_string())]),
+            Ok(()) => i18n::t("http.creds.deleted").to_string(),
+            Err(e) => i18n::tf("error.delete_failed", &[("e", e.to_string())]),
         };
         let mut changed = false;
         for r in &mut self.settings.recents {
@@ -3067,8 +3057,10 @@ impl AppView {
         let err = match validate_url_addr(u) {
             Some(e) => Some(e),
             None => match auth {
-                1 if user.is_empty() => Some(i18n::t("Basic 认证需要填写用户名").to_string()),
-                2 if token.is_empty() => Some(i18n::t("Bearer 认证需要填写 token").to_string()),
+                1 if user.is_empty() => {
+                    Some(i18n::t("validation.basic_needs_username").to_string())
+                }
+                2 if token.is_empty() => Some(i18n::t("validation.bearer_needs_token").to_string()),
                 3 | 4 => {
                     let name = if header_name.is_empty() && auth == 3 {
                         "X-API-Key"
@@ -3076,22 +3068,22 @@ impl AppView {
                         header_name.as_str()
                     };
                     if name.is_empty() {
-                        Some(i18n::t("请填写请求头名称").to_string())
+                        Some(i18n::t("validation.header_name_required").to_string())
                     } else if header_value.is_empty() {
-                        Some(i18n::t("请填写请求头值").to_string())
+                        Some(i18n::t("validation.header_value_required").to_string())
                     } else if matches!(
                         name.to_ascii_lowercase().as_str(),
                         "host" | "content-length" | "transfer-encoding" | "connection"
                     ) {
                         Some(i18n::tf(
-                            "不允许设置请求头: {name}",
+                            "error.header_not_allowed",
                             &[("name", name.to_string())],
                         ))
                     } else if !name
                         .bytes()
                         .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
                     {
-                        Some(i18n::t("请求头名称包含非法字符").to_string())
+                        Some(i18n::t("validation.header_name_charset").to_string())
                     } else {
                         None
                     }
@@ -3222,7 +3214,10 @@ impl AppView {
         }
         if let Some(k) = secrets::key_of(&r.params) {
             if let Err(e) = secrets::delete(&k) {
-                self.cred_notice = Some(i18n::tf("凭据删除失败:{e}", &[("e", e.to_string())]));
+                self.cred_notice = Some(i18n::tf(
+                    "error.creds_delete_failed",
+                    &[("e", e.to_string())],
+                ));
             }
         }
     }
@@ -3241,8 +3236,8 @@ impl AppView {
         cx.spawn(async move |this, cx| {
             let Ok(Ok(Some(path))) = rx.await else { return };
             let msg = match std::fs::write(&path, &json) {
-                Ok(()) => i18n::tf("已导出到 {path}", &[("path", path.display().to_string())]),
-                Err(e) => i18n::tf("导出失败:{e}", &[("e", e.to_string())]),
+                Ok(()) => i18n::tf("configs.exported", &[("path", path.display().to_string())]),
+                Err(e) => i18n::tf("configs.export_failed", &[("e", e.to_string())]),
             };
             this.update(cx, |v, cx| {
                 if let Some(d) = v.settings_panel.as_mut() {
@@ -3274,15 +3269,15 @@ impl AppView {
                         let n = list.len();
                         (
                             Some(list),
-                            i18n::tf("已导入 {n} 套配置", &[("n", n.to_string())]),
+                            i18n::tf("configs.imported", &[("n", n.to_string())]),
                         )
                     }
-                    _ => (
-                        None,
-                        i18n::t("导入失败:文件不是有效的配置 JSON").to_string(),
-                    ),
+                    _ => (None, i18n::t("configs.import_invalid").to_string()),
                 },
-                Err(e) => (None, i18n::tf("导入失败:{e}", &[("e", e.to_string())])),
+                Err(e) => (
+                    None,
+                    i18n::tf("configs.import_failed", &[("e", e.to_string())]),
+                ),
             };
             this.update(cx, |v, cx| {
                 if let Some(cfgs) = cfg {
@@ -3428,7 +3423,7 @@ impl AppView {
                     .py(px(6.0))
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.text3))
-                    .child(i18n::t("没有匹配的已保存服务器"))
+                    .child(i18n::t("ssh.hosts.no_match"))
                     .into_any_element(),
             );
         }
@@ -3449,7 +3444,7 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label(i18n::t("服务器"), pal))
+                .child(label(i18n::t("source.server"), pal))
                 .child(div().flex_1().child(Input::new(&host_e).small()))
                 .into_any_element(),
         );
@@ -3461,7 +3456,7 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label(i18n::t("端口"), pal))
+                .child(label(i18n::t("ssh.port"), pal))
                 .child(div().w(px(90.0)).child(Input::new(&port_e).small()))
                 .child(div().w(px(10.0)))
                 .child(
@@ -3470,7 +3465,7 @@ impl AppView {
                         .text_right()
                         .text_size(px(theme::scaled(12.0)))
                         .text_color(theme::hex(pal.text2))
-                        .child(i18n::t("用户名")),
+                        .child(i18n::t("ssh.username")),
                 )
                 .child(div().flex_1().child(Input::new(&user_e).small()))
                 .into_any_element(),
@@ -3480,7 +3475,7 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label(i18n::t("密码"), pal))
+                .child(label(i18n::t("ssh.password"), pal))
                 .child(
                     div().flex_1().child(
                         Input::new(&pass_e)
@@ -3496,11 +3491,11 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label(i18n::t("方式"), pal))
+                .child(label(i18n::t("source.method"), pal))
                 .child(segmented(
                     cx,
                     "ssh-mode",
-                    &[i18n::t("文件"), i18n::t("命令")],
+                    &[i18n::t("source.file"), i18n::t("source.command")],
                     mode,
                     pal,
                     |v, i| v.ssh_set_mode(i),
@@ -3513,7 +3508,7 @@ impl AppView {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .child(label(i18n::t("远程路径"), pal))
+                    .child(label(i18n::t("ssh.remote_path"), pal))
                     .child(div().flex_1().child(Input::new(&path_e).small()))
                     .into_any_element(),
             );
@@ -3524,7 +3519,7 @@ impl AppView {
                 false,
                 &f.cmd,
                 pal,
-                i18n::t("远端命令由登录 shell 执行,可用管道与重定向。"),
+                i18n::t("ssh.command.shell_hint"),
                 |v, i, w, cx| v.ssh_cmd_set_preset(i, w, cx),
                 |v| v.ssh_cmd_toggle_restart(),
             ));
@@ -3534,11 +3529,11 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label(i18n::t("认证"), pal))
+                .child(label(i18n::t("http.auth"), pal))
                 .child(segmented(
                     cx,
                     "ssh-auth",
-                    &[i18n::t("密码"), "Agent"],
+                    &[i18n::t("ssh.password"), "Agent"],
                     if auth_password { 0 } else { 1 },
                     pal,
                     |v, i| v.ssh_set_auth(i == 0),
@@ -3564,9 +3559,9 @@ impl AppView {
                             theme::hex(pal.warning)
                         })
                         .child(if secrets::available() {
-                            i18n::t("记住连接(凭据保存到系统钥匙串)")
+                            i18n::t("ssh.remember.keychain")
                         } else {
-                            i18n::t("记住连接(系统钥匙串不可用,仅本次会话有效)")
+                            i18n::t("ssh.remember.memory")
                         }),
                 )
                 .into_any_element(),
@@ -3583,7 +3578,7 @@ impl AppView {
         }
 
         let header = dlg_header(
-            i18n::t("SSH 连接"),
+            i18n::t("ssh.connection"),
             pal,
             cx.listener(|v, _e, _w, _cx| v.close_dialog()),
         );
@@ -3603,16 +3598,16 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("ssh-cancel", i18n::t(i18n::t("取消")), false, pal)
+                dlg_btn("ssh-cancel", i18n::t("common.cancel"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
                 dlg_btn(
                     "ssh-ok",
                     if mode == 0 {
-                        i18n::t(i18n::t("连接"))
+                        i18n::t("common.connect")
                     } else {
-                        i18n::t("运行")
+                        i18n::t("common.run")
                     },
                     true,
                     pal,
@@ -3637,7 +3632,7 @@ impl AppView {
             true,
             &f.fields,
             pal,
-            i18n::t("本机命令不经过 shell:管道与重定向不生效,参数按引号拆分。"),
+            i18n::t("command.local_shell_hint"),
             |v, i, w, cx| v.cmd_set_preset(i, w, cx),
             |v| v.cmd_toggle_restart(),
         );
@@ -3653,7 +3648,7 @@ impl AppView {
         }
 
         let header = dlg_header(
-            i18n::t("运行命令"),
+            i18n::t("command.run"),
             pal,
             cx.listener(|v, _e, _w, _cx| v.close_dialog()),
         );
@@ -3673,11 +3668,11 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("cmd-cancel", i18n::t(i18n::t("取消")), false, pal)
+                dlg_btn("cmd-cancel", i18n::t("common.cancel"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
-                dlg_btn("cmd-ok", i18n::t("运行"), true, pal)
+                dlg_btn("cmd-ok", i18n::t("common.run"), true, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.cmd_submit(cx))),
             );
         dlg_shell("dlg-cmd", header, body, footer, pal, ui_font)
@@ -3722,27 +3717,23 @@ impl AppView {
             .px(px(16.0))
             .py(px(14.0))
             .max_w(px(560.0))
-            .child(field(i18n::t("主机"), host, false))
-            .child(field(i18n::t("算法"), algo, false))
-            .child(field(i18n::t("指纹"), fp, true))
+            .child(field(i18n::t("ssh.host"), host, false))
+            .child(field(i18n::t("ssh.host_key.algorithm"), algo, false))
+            .child(field(i18n::t("ssh.host_key.fingerprint"), fp, true))
             .child(
                 div()
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child(i18n::t(
-                        "首次连接该主机,无法自动校验身份。请与服务器管理员提供的指纹核对;",
-                    )),
+                    .child(i18n::t("ssh.host_key.warning")),
             )
             .child(
                 div()
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child(i18n::t(
-                        "不一致时可能存在中间人攻击。选择「记住」后,密钥变化将直接拒绝连接。",
-                    )),
+                    .child(i18n::t("ssh.host_key.mismatch_hint")),
             );
         let header = dlg_header(
-            i18n::t("确认主机密钥"),
+            i18n::t("ssh.host_key.confirm"),
             pal,
             cx.listener(|v, _e, _w, _cx| v.host_key_respond(false, false)),
         );
@@ -3755,15 +3746,15 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("hk-cancel", i18n::t(i18n::t("取消")), false, pal)
+                dlg_btn("hk-cancel", i18n::t("common.cancel"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(false, false))),
             )
             .child(
-                dlg_btn("hk-once", i18n::t("仅本次信任"), false, pal)
+                dlg_btn("hk-once", i18n::t("ssh.trust.once"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(true, false))),
             )
             .child(
-                dlg_btn("hk-remember", i18n::t("信任并记住"), true, pal)
+                dlg_btn("hk-remember", i18n::t("ssh.trust.remember"), true, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.host_key_respond(true, true))),
             );
         dlg_shell("dlg-hostkey", header, body, footer, pal, ui_font)
@@ -3783,18 +3774,18 @@ impl AppView {
         self.cred_notice = Some(if accept {
             if remember {
                 i18n::tf(
-                    "已信任并记住 {host}:{port} 的主机密钥",
+                    "ssh.trusted.saved",
                     &[("host", host.clone()), ("port", port.to_string())],
                 )
             } else {
                 i18n::tf(
-                    "已信任 {host}:{port} 的主机密钥(仅本次)",
+                    "ssh.trusted.once",
                     &[("host", host.clone()), ("port", port.to_string())],
                 )
             }
         } else {
             i18n::tf(
-                "已取消连接 {host}:{port}",
+                "ssh.trust.cancelled",
                 &[("host", host.clone()), ("port", port.to_string())],
             )
         });
@@ -3870,16 +3861,16 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label(i18n::t("认证"), pal))
+                .child(label(i18n::t("http.auth"), pal))
                 .child(segmented(
                     cx,
                     "url-auth",
                     &[
-                        i18n::t("无"),
+                        i18n::t("common.none"),
                         "Basic",
                         "Bearer",
                         "API Key",
-                        i18n::t("自定义头"),
+                        i18n::t("http.header.custom_short"),
                     ],
                     auth,
                     pal,
@@ -3895,7 +3886,7 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(label(i18n::t("用户名"), pal))
+                        .child(label(i18n::t("ssh.username"), pal))
                         .child(div().flex_1().child(Input::new(&user_e).small()))
                         .into_any_element(),
                 );
@@ -3904,7 +3895,7 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(label(i18n::t("密码"), pal))
+                        .child(label(i18n::t("ssh.password"), pal))
                         .child(secret(&pass_e))
                         .into_any_element(),
                 );
@@ -3924,7 +3915,7 @@ impl AppView {
                         .pl(px(96.0))
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child(i18n::t("以 Authorization: Bearer <token> 发送"))
+                        .child(i18n::t("http.auth.bearer_hint"))
                         .into_any_element(),
                 );
             }
@@ -3934,7 +3925,7 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(label(i18n::t("头名称"), pal))
+                        .child(label(i18n::t("http.header.name"), pal))
                         .child(div().flex_1().child(Input::new(&hname_e).small()))
                         .into_any_element(),
                 );
@@ -3943,7 +3934,7 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(label(i18n::t("头值"), pal))
+                        .child(label(i18n::t("http.header.value_short"), pal))
                         .child(secret(&hvalue_e))
                         .into_any_element(),
                 );
@@ -3953,9 +3944,9 @@ impl AppView {
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
                         .child(if auth == 3 {
-                            i18n::t("API Key 以请求头发送,名称默认 X-API-Key,可修改")
+                            i18n::t("http.auth.api_key_hint")
                         } else {
-                            i18n::t("自定义请求头,例如 X-Api-Key、X-Token 等")
+                            i18n::t("http.header.hint")
                         })
                         .into_any_element(),
                 );
@@ -3966,7 +3957,7 @@ impl AppView {
                         .pl(px(96.0))
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child(i18n::t("不携带认证信息"))
+                        .child(i18n::t("http.auth.none_hint"))
                         .into_any_element(),
                 );
             }
@@ -3976,7 +3967,7 @@ impl AppView {
                 .pl(px(96.0))
                 .text_size(px(theme::scaled(11.0)))
                 .text_color(theme::hex(pal.text3))
-                .child(i18n::t("认证头只发送到初始主机,重定向到其他域名时不携带;密码/token/头值默认不写入最近打开。"))
+                .child(i18n::t("http.auth.security_note"))
                 .into_any_element(),
         );
         rows.push(
@@ -3984,11 +3975,14 @@ impl AppView {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label(i18n::t("凭据"), pal))
+                .child(label(i18n::t("http.credentials"), pal))
                 .child(segmented(
                     cx,
                     "url-remember",
-                    &[i18n::t("保存凭据"), i18n::t("仅记录历史")],
+                    &[
+                        i18n::t("http.save_credentials"),
+                        i18n::t("http.history_only"),
+                    ],
                     if remember { 0 } else { 1 },
                     pal,
                     |v, i| v.url_set_remember(i == 0),
@@ -4001,11 +3995,11 @@ impl AppView {
                 .text_size(px(theme::scaled(11.0)))
                 .text_color(theme::hex(pal.text3))
                 .child(if !remember {
-                    i18n::t("只记录地址与认证方式到最近打开,不保存密码/token;已保存的旧凭据不会自动删除,可在设置→连接里管理")
+                    i18n::t("http.history_only.desc")
                 } else if secrets::available() {
-                    i18n::t("写入系统钥匙串,下次连接自动回填")
+                    i18n::t("http.save_credentials.desc")
                 } else {
-                    i18n::t("系统钥匙串不可用,凭据仅本次会话有效")
+                    i18n::t("http.keychain_unavailable")
                 })
                 .into_any_element(),
         );
@@ -4021,7 +4015,7 @@ impl AppView {
         }
 
         let header = dlg_header(
-            i18n::t("打开 URL"),
+            i18n::t("dialog.open_url"),
             pal,
             cx.listener(|v, _e, _w, _cx| v.close_dialog()),
         );
@@ -4041,11 +4035,11 @@ impl AppView {
             .border_t_1()
             .border_color(theme::hex(pal.split))
             .child(
-                dlg_btn("url-cancel", i18n::t(i18n::t("取消")), false, pal)
+                dlg_btn("url-cancel", i18n::t("common.cancel"), false, pal)
                     .on_click(cx.listener(|v, _e, _w, _cx| v.close_dialog())),
             )
             .child(
-                dlg_btn("url-ok", i18n::t("打开"), true, pal)
+                dlg_btn("url-ok", i18n::t("common.open"), true, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.url_submit(cx))),
             );
         dlg_shell("dlg-url", header, body, footer, pal, ui_font)
@@ -4082,7 +4076,7 @@ impl AppView {
         for (i, _id, name, built_in, on) in configs {
             let mut label = name;
             if built_in {
-                label.push_str(i18n::t(" · 内置"));
+                label.push_str(i18n::t("configs.builtin_marker_alt"));
             }
             list = list.child(
                 div()
@@ -4162,7 +4156,7 @@ impl AppView {
                                 .py(px(2.0))
                                 .text_size(px(theme::scaled(11.0)))
                                 .text_color(theme::hex(pal.text3))
-                                .child(i18n::t("分析配置(当前标签页)")),
+                                .child(i18n::t("analysis.for_tab")),
                         )
                         .child(list)
                         .child(div().h(px(1.0)).my(px(2.0)).bg(theme::hex(pal.split)))
@@ -4176,7 +4170,7 @@ impl AppView {
                                 .text_size(px(theme::scaled(12.0)))
                                 .text_color(theme::hex(pal.primary))
                                 .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                                .child(i18n::t("在设置中管理…"))
+                                .child(i18n::t("settings.manage_link"))
                                 .on_click(cx.listener(|v, _e, window, cx| {
                                     v.config_menu = None;
                                     v.open_settings_tab(None, window, cx);
@@ -4229,7 +4223,7 @@ impl AppView {
             .gap(px(2.0))
             .child(link(
                 "welcome-open",
-                i18n::t("打开"),
+                i18n::t("common.open"),
                 pal,
                 move |v, _e, _w, cx| v.welcome_browse(ti, cx),
                 cx,
@@ -4250,14 +4244,14 @@ impl AppView {
             ))
             .child(link(
                 "welcome-cmd",
-                i18n::t("命令"),
+                i18n::t("source.command"),
                 pal,
                 move |v, _e, window, cx| v.open_cmd_dialog(window, cx),
                 cx,
             ))
             .child(link(
                 "welcome-settings",
-                i18n::t("设置"),
+                i18n::t("settings.title"),
                 pal,
                 move |v, _e, window, cx| v.open_settings_tab(Some(ti), window, cx),
                 cx,
@@ -4268,7 +4262,7 @@ impl AppView {
                 .pl(px(10.0))
                 .text_size(px(theme::scaled(11.5)))
                 .text_color(theme::hex(pal.text3))
-                .child(i18n::t("也可以把日志文件直接拖入窗口")),
+                .child(i18n::t("welcome.drag_hint")),
         );
 
         let mut recent_rows: Vec<AnyElement> = Vec::new();
@@ -4350,17 +4344,29 @@ impl AppView {
                 .items_center()
                 .gap(px(2.0))
                 .child(
-                    text_btn("welcome-recents-cancel", i18n::t("取消"), pal.text3)
-                        .on_click(cx.listener(|v, _e, _w, cx| v.welcome_cancel_clear(cx))),
+                    text_btn(
+                        "welcome-recents-cancel",
+                        i18n::t("common.cancel"),
+                        pal.text3,
+                    )
+                    .on_click(cx.listener(|v, _e, _w, cx| v.welcome_cancel_clear(cx))),
                 )
                 .child(
-                    text_btn("welcome-recents-clear", i18n::t("确认清除"), pal.error)
-                        .on_click(cx.listener(|v, _e, _w, cx| v.welcome_clear_recents(cx))),
+                    text_btn(
+                        "welcome-recents-clear",
+                        i18n::t("dialog.clear.title"),
+                        pal.error,
+                    )
+                    .on_click(cx.listener(|v, _e, _w, cx| v.welcome_clear_recents(cx))),
                 )
         } else {
             div().child(
-                text_btn("welcome-recents-clear", i18n::t("清除"), pal.text3)
-                    .on_click(cx.listener(|v, _e, _w, cx| v.welcome_clear_recents(cx))),
+                text_btn(
+                    "welcome-recents-clear",
+                    i18n::t("dialog.clear.action"),
+                    pal.text3,
+                )
+                .on_click(cx.listener(|v, _e, _w, cx| v.welcome_clear_recents(cx))),
             )
         };
 
@@ -4373,7 +4379,7 @@ impl AppView {
                 div()
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child(i18n::t("最近打开")),
+                    .child(i18n::t("menu.recent")),
             )
             .child(div().flex_1())
             .child(clear_ctl);
@@ -4545,9 +4551,7 @@ impl AppView {
                     .py(px(12.0))
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child(i18n::t(
-                        "还没有保存的主机;可点下方「新增主机」,或从最近打开导入",
-                    ))
+                    .child(i18n::t("ssh.hosts.empty"))
                     .into_any_element(),
             );
         }
@@ -4590,7 +4594,7 @@ impl AppView {
                                 .text_size(px(theme::scaled(11.0)))
                                 .text_color(theme::hex(pal.text3))
                                 .child(i18n::tf(
-                                    "{host}:{port} · 用户 {user}",
+                                    "ssh.host.user",
                                     &[
                                         ("host", host.to_string()),
                                         ("port", port.to_string()),
@@ -4602,7 +4606,7 @@ impl AppView {
                 .child(
                     host_btn(
                         SharedString::from(format!("set-host-edit-{i}")),
-                        i18n::t("编辑"),
+                        i18n::t("common.edit"),
                         false,
                         pal,
                     )
@@ -4614,7 +4618,7 @@ impl AppView {
                 .child(
                     host_btn(
                         SharedString::from(format!("set-host-del-{i}")),
-                        i18n::t("删除"),
+                        i18n::t("common.delete"),
                         false,
                         pal,
                     )
@@ -4630,9 +4634,7 @@ impl AppView {
                     .pb(px(4.0))
                     .text_size(px(theme::scaled(11.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child(i18n::t(
-                        "删除会同时清理「最近打开」中的同名服务器;系统钥匙串里的凭据不受影响",
-                    ))
+                    .child(i18n::t("ssh.hosts.delete_note"))
                     .into_any_element(),
             );
         }
@@ -4645,7 +4647,7 @@ impl AppView {
                     .px(px(16.0))
                     .py(px(10.0))
                     .child(
-                        host_btn("set-host-add".into(), i18n::t("＋ 新增主机"), true, pal)
+                        host_btn("set-host-add".into(), i18n::t("ssh.hosts.add"), true, pal)
                             .on_click(cx.listener(|v, _e, w, cx| {
                                 v.host_begin_new(w, cx);
                                 cx.notify();
@@ -4654,7 +4656,7 @@ impl AppView {
                     .child(
                         host_btn(
                             "set-host-import".into(),
-                            i18n::t("从最近打开导入"),
+                            i18n::t("ssh.hosts.import_recent"),
                             false,
                             pal,
                         )
@@ -4663,7 +4665,7 @@ impl AppView {
                     .child(
                         host_btn(
                             "set-host-import-ssh".into(),
-                            i18n::t("从 ~/.ssh/config 导入"),
+                            i18n::t("ssh.hosts.import_ssh_config"),
                             false,
                             pal,
                         )
@@ -4687,32 +4689,32 @@ impl AppView {
                             .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                             .text_color(theme::hex(pal.text2))
                             .child(if ed == HostEdit::New {
-                                i18n::t("新增主机")
+                                i18n::t("ssh.hosts.add_short")
                             } else {
-                                i18n::t("编辑主机")
+                                i18n::t("ssh.hosts.edit")
                             }),
                     )
                     .child(settings_row(
                         pal,
-                        i18n::t("备注"),
-                        Some(i18n::t("用于区分同一主机的不同用途,可留空").into()),
+                        i18n::t("ssh.hosts.note"),
+                        Some(i18n::t("ssh.hosts.note_placeholder").into()),
                         text_input(&hn_e, 220.0),
                     ))
                     .child(settings_row(
                         pal,
-                        i18n::t("主机"),
+                        i18n::t("ssh.host"),
                         None,
                         text_input(&hh_e, 220.0),
                     ))
                     .child(settings_row(
                         pal,
-                        i18n::t("端口"),
+                        i18n::t("ssh.port"),
                         None,
                         text_input(&hp_e, 96.0),
                     ))
                     .child(settings_row(
                         pal,
-                        i18n::t("用户名"),
+                        i18n::t("ssh.username"),
                         None,
                         text_input(&hu_e, 220.0),
                     ));
@@ -4731,14 +4733,22 @@ impl AppView {
                                 .flex()
                                 .gap(px(8.0))
                                 .child(
-                                    host_btn("set-host-save".into(), i18n::t("保存"), true, pal)
-                                        .on_click(cx.listener(|v, _e, _w, cx| v.host_save(cx))),
+                                    host_btn(
+                                        "set-host-save".into(),
+                                        i18n::t("common.save"),
+                                        true,
+                                        pal,
+                                    )
+                                    .on_click(cx.listener(|v, _e, _w, cx| v.host_save(cx))),
                                 )
                                 .child(
-                                    host_btn("set-host-cancel".into(), i18n::t("取消"), false, pal)
-                                        .on_click(
-                                            cx.listener(|v, _e, _w, cx| v.host_edit_cancel(cx)),
-                                        ),
+                                    host_btn(
+                                        "set-host-cancel".into(),
+                                        i18n::t("common.cancel"),
+                                        false,
+                                        pal,
+                                    )
+                                    .on_click(cx.listener(|v, _e, _w, cx| v.host_edit_cancel(cx))),
                                 ),
                         )
                         .into_any_element(),
@@ -4811,9 +4821,7 @@ impl AppView {
                     .py(px(12.0))
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text3))
-                    .child(i18n::t(
-                        "没有保存的 URL 凭据;在「打开 URL」里选「保存凭据」后会出现在这里",
-                    ))
+                    .child(i18n::t("http.creds.empty"))
                     .into_any_element(),
             );
         }
@@ -4858,7 +4866,7 @@ impl AppView {
                     .child(
                         host_btn(
                             SharedString::from(format!("set-urlcred-del-{i}")),
-                            i18n::t("删除"),
+                            i18n::t("common.delete"),
                             false,
                             pal,
                         )
@@ -4899,20 +4907,17 @@ impl AppView {
                 "最近打开记录保存条数 条数 上限 history limit".into(),
                 settings_row(
                     pal,
-                    i18n::t("保存条数"),
-                    Some(i18n::t("最多保留多少条最近打开记录(1–500)").into()),
-                    num_input(&rl_e, 96.0, i18n::t("条"), pal),
+                    i18n::t("settings.recents_limit"),
+                    Some(i18n::t("settings.recents_limit.desc").into()),
+                    num_input(&rl_e, 96.0, i18n::t("unit.items"), pal),
                 ),
             ),
             (
                 "删除 url 最近打开记录时清除凭据 钥匙串 keychain 密码 token".into(),
                 settings_row(
                     pal,
-                    i18n::t("删除 URL 记录时清除凭据"),
-                    Some(
-                        i18n::t("移除或清空 URL 最近打开记录时,同时删除系统钥匙串中的对应凭据")
-                            .into(),
-                    ),
+                    i18n::t("settings.recents_purge"),
+                    Some(i18n::t("settings.recents_purge.desc").into()),
                     switch_el("set-recents-purge", purge_creds, pal)
                         .on_click(cx.listener(|v, _e, _w, cx| v.toggle_recents_purge(cx)))
                         .into_any_element(),
@@ -4925,8 +4930,8 @@ impl AppView {
             "显示行号 行号 line numbers".into(),
             settings_row(
                 pal,
-                i18n::t("显示行号"),
-                Some(i18n::t("在日志行左侧显示行号").into()),
+                i18n::t("settings.line_numbers"),
+                Some(i18n::t("settings.line_numbers.desc").into()),
                 switch_el("set-ln", show_ln, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_show_line_numbers(cx)))
                     .into_any_element(),
@@ -4936,13 +4941,8 @@ impl AppView {
             "显示时间戳 时间戳 timestamp time 输出时间".into(),
             settings_row(
                 pal,
-                i18n::t("显示时间戳"),
-                Some(
-                    i18n::t(
-                        "在日志行左侧显示该行的本地时间(本次查看期间新到达的行;已存在的历史行留空)",
-                    )
-                    .into(),
-                ),
+                i18n::t("settings.timestamps"),
+                Some(i18n::t("settings.timestamps.desc").into()),
                 switch_el("set-ts", show_ts, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_show_timestamps(cx)))
                     .into_any_element(),
@@ -4952,8 +4952,8 @@ impl AppView {
             "默认自动换行 换行 wrap".into(),
             settings_row(
                 pal,
-                i18n::t("默认自动换行"),
-                Some(i18n::t("新标签页的初始值;标签页内可单独切换").into()),
+                i18n::t("settings.wrap_default"),
+                Some(i18n::t("settings.wrap_default.desc").into()),
                 switch_el("set-wrap", wrap_default, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_wrap_default(cx)))
                     .into_any_element(),
@@ -4991,8 +4991,8 @@ impl AppView {
             "界面语言 language language 文".into(),
             settings_row(
                 pal,
-                i18n::t("界面语言"),
-                Some(i18n::t("切换界面文案;未翻译的内容依次回退英文、中文").into()),
+                i18n::t("settings.language"),
+                Some(i18n::t("settings.language.desc").into()),
                 lang_picker.into_any_element(),
             ),
         ));
@@ -5001,8 +5001,8 @@ impl AppView {
                 "界面字号 字号 font size".into(),
                 settings_row(
                     pal,
-                    i18n::t("界面字号"),
-                    Some(i18n::t("设置、工具栏等界面文字大小(9–24 pt)").into()),
+                    i18n::t("settings.ui_font_size"),
+                    Some(i18n::t("settings.ui_font_size.desc").into()),
                     num_input(&ui_size_e, 96.0, "pt", pal),
                 ),
             ),
@@ -5010,8 +5010,8 @@ impl AppView {
                 "日志字号 字号 font size".into(),
                 settings_row(
                     pal,
-                    i18n::t("日志字号"),
-                    Some(i18n::t("日志文本大小,行高随之等比变化(9–24 pt)").into()),
+                    i18n::t("settings.log_font_size"),
+                    Some(i18n::t("settings.log_font_size.desc").into()),
                     num_input(&log_size_e, 96.0, "pt", pal),
                 ),
             ),
@@ -5019,8 +5019,8 @@ impl AppView {
                 "界面字体 字体 family".into(),
                 settings_row(
                     pal,
-                    i18n::t("界面字体"),
-                    Some(i18n::t("留空跟随系统 UI 字体(如 PingFang SC)").into()),
+                    i18n::t("settings.ui_font"),
+                    Some(i18n::t("settings.ui_font.desc").into()),
                     text_input(&ui_fam_e, 220.0),
                 ),
             ),
@@ -5028,8 +5028,8 @@ impl AppView {
                 "日志字体 等宽 字体 family".into(),
                 settings_row(
                     pal,
-                    i18n::t("日志字体"),
-                    Some(i18n::t("留空跟随系统等宽字体(如 Menlo、JetBrains Mono)").into()),
+                    i18n::t("settings.log_font"),
+                    Some(i18n::t("settings.log_font.desc").into()),
                     text_input(&log_fam_e, 220.0),
                 ),
             ),
@@ -5049,7 +5049,7 @@ impl AppView {
                     .w(px(theme_w))
                     .text_size(px(theme::scaled(10.5)))
                     .text_color(theme::hex(pal.text3))
-                    .child(i18n::t("主题")),
+                    .child(i18n::t("settings.theme")),
             )
             .child(
                 div()
@@ -5059,7 +5059,7 @@ impl AppView {
                     .text_size(px(theme::scaled(10.5)))
                     .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                     .text_color(theme::hex(pal.text2))
-                    .child(i18n::t("日志级别")),
+                    .child(i18n::t("settings.level_colors")),
             )
             .child(
                 div()
@@ -5069,7 +5069,7 @@ impl AppView {
                     .text_size(px(theme::scaled(10.5)))
                     .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                     .text_color(theme::hex(pal.text2))
-                    .child(i18n::t("搜索高亮")),
+                    .child(i18n::t("settings.search_highlight")),
             );
         let mut head2 = div()
             .flex()
@@ -5094,7 +5094,7 @@ impl AppView {
                 .justify_center()
                 .text_size(px(theme::scaled(10.0)))
                 .text_color(theme::hex(pal.text3))
-                .child(i18n::t("底色")),
+                .child(i18n::t("settings.background")),
         );
         let mut body = div().flex().flex_col().gap(px(4.0));
         for light_row in [false, true] {
@@ -5114,9 +5114,9 @@ impl AppView {
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text1))
                     .child(if light_row {
-                        i18n::t("亮色")
+                        i18n::t("theme.light")
                     } else {
-                        i18n::t("暗色")
+                        i18n::t("theme.dark")
                     }),
             );
             for i in 0..LEVEL_COUNT {
@@ -5126,7 +5126,7 @@ impl AppView {
             body = body.child(row);
         }
         let color_rows: Vec<(String, AnyElement)> = vec![(
-            i18n::t("颜色管理 颜色 日志级别 搜索高亮 高亮 暗色 亮色 hex").into(),
+            "颜色管理 颜色 日志级别 搜索高亮 高亮 暗色 亮色 hex".into(),
             div()
                 .flex()
                 .flex_col()
@@ -5150,9 +5150,7 @@ impl AppView {
                         .border_color(theme::hex(pal.split))
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child(i18n::t(
-                            "级别颜色同时用于级别文字与行底色;搜索高亮用于检索命中文本的底色。",
-                        )),
+                        .child(i18n::t("settings.level_colors.desc")),
                 )
                 .into_any_element(),
         )];
@@ -5163,8 +5161,8 @@ impl AppView {
                 "轮询间隔 poll ms".into(),
                 settings_row(
                     pal,
-                    i18n::t("轮询间隔"),
-                    Some(i18n::t("检查新增内容的间隔(≥200 ms)").into()),
+                    i18n::t("settings.poll_interval"),
+                    Some(i18n::t("settings.poll_interval.desc").into()),
                     num_input(&poll_e, 110.0, "ms", pal),
                 ),
             ),
@@ -5172,8 +5170,8 @@ impl AppView {
                 "初始加载 initial mb".into(),
                 settings_row(
                     pal,
-                    i18n::t("初始加载"),
-                    Some(i18n::t("打开日志时从开头读取的大小(1–512 MB)").into()),
+                    i18n::t("settings.initial_load"),
+                    Some(i18n::t("settings.initial_load.desc").into()),
                     num_input(&init_e, 110.0, "MB", pal),
                 ),
             ),
@@ -5181,8 +5179,8 @@ impl AppView {
                 "尾部加载上限 tail mb".into(),
                 settings_row(
                     pal,
-                    i18n::t("尾部加载上限"),
-                    Some(i18n::t("「跳到末尾」一次读取的大小(1–512 MB)").into()),
+                    i18n::t("settings.tail_limit"),
+                    Some(i18n::t("settings.tail_limit.desc").into()),
                     num_input(&tail_e, 110.0, "MB", pal),
                 ),
             ),
@@ -5191,9 +5189,9 @@ impl AppView {
             "行数上限 max lines 内存".into(),
             settings_row(
                 pal,
-                i18n::t("行数上限"),
-                Some(i18n::t("超出后环形丢弃最旧行(≥1000)").into()),
-                num_input(&max_e, 130.0, i18n::t("行"), pal),
+                i18n::t("settings.max_lines"),
+                Some(i18n::t("settings.max_lines.desc").into()),
+                num_input(&max_e, 130.0, i18n::t("unit.lines"), pal),
             ),
         )];
 
@@ -5211,25 +5209,26 @@ impl AppView {
                 .text_size(px(theme::scaled(12.0)))
                 .text_color(theme::hex(pal.text1))
                 .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                .child(i18n::t("编辑"))
+                .child(i18n::t("common.edit"))
                 .on_click(cx.listener(move |v, _e, window, cx| v.open_config_page(i, window, cx)))
                 .into_any_element();
-            let meta = i18n::tf(
-                "{status} · {n} 条规则{suffix}",
+            let meta = i18n::tnf(
+                *rules_n as u64,
+                "configs.summary",
                 &[
                     (
                         "status",
                         if *enabled {
-                            i18n::t("已启用").to_string()
+                            i18n::t("common.enabled").to_string()
                         } else {
-                            i18n::t("未启用").to_string()
+                            i18n::t("common.disabled").to_string()
                         },
                     ),
                     ("n", rules_n.to_string()),
                     (
                         "suffix",
                         if *built_in {
-                            i18n::t(" · 内置").to_string()
+                            i18n::t("configs.builtin_marker_alt").to_string()
                         } else {
                             String::new()
                         },
@@ -5247,12 +5246,22 @@ impl AppView {
         let mut cfg_act = div().flex().items_center().gap(px(8.0));
         cfg_act = cfg_act
             .child(
-                host_btn("cfg-import".into(), i18n::t("导入 JSON"), false, pal)
-                    .on_click(cx.listener(|v, _e, _w, cx| v.import_configs(cx))),
+                host_btn(
+                    "cfg-import".into(),
+                    i18n::t("configs.import_json"),
+                    false,
+                    pal,
+                )
+                .on_click(cx.listener(|v, _e, _w, cx| v.import_configs(cx))),
             )
             .child(
-                host_btn("cfg-export".into(), i18n::t("导出 JSON"), false, pal)
-                    .on_click(cx.listener(|v, _e, _w, cx| v.export_configs(cx))),
+                host_btn(
+                    "cfg-export".into(),
+                    i18n::t("configs.export_json"),
+                    false,
+                    pal,
+                )
+                .on_click(cx.listener(|v, _e, _w, cx| v.export_configs(cx))),
             );
         if let Some(n) = cfg_notice {
             cfg_act = cfg_act.child(
@@ -5266,8 +5275,8 @@ impl AppView {
             "配置 导入 导出 json 备份 恢复".into(),
             settings_row(
                 pal,
-                i18n::t("配置导入 / 导出"),
-                Some(i18n::t("导出全部分析配置为 JSON;导入会整体替换现有配置").into()),
+                i18n::t("settings.config_io"),
+                Some(i18n::t("settings.config_io.desc").into()),
                 cfg_act.into_any_element(),
             ),
         ));
@@ -5325,14 +5334,16 @@ impl AppView {
                                 div()
                                     .text_size(px(theme::scaled(10.5)))
                                     .text_color(theme::hex(pal.text3))
-                                    .child(i18n::tf(
-                                        "{n} 条规则{suffix}",
+                                    .child(i18n::tnf(
+                                        *rules_n as u64,
+                                        "configs.rules_count",
                                         &[
                                             ("n", rules_n.to_string()),
                                             (
                                                 "suffix",
                                                 if *built_in {
-                                                    i18n::t(" · 内置").to_string()
+                                                    i18n::t("configs.builtin_marker_alt")
+                                                        .to_string()
                                                 } else {
                                                     String::new()
                                                 },
@@ -5344,15 +5355,15 @@ impl AppView {
                     .on_click(cx.listener(move |v, _e, window, cx| v.select_config(i, window, cx)));
                 list = list.child(item);
             }
-            let add = dlg_btn("cfg-add", i18n::t("＋ 新建配置"), false, pal)
+            let add = dlg_btn("cfg-add", i18n::t("configs.new"), false, pal)
                 .on_click(cx.listener(|v, _e, window, cx| v.add_config(window, cx)));
             list = list.child(div().pt(px(6.0)).child(add));
             // 导入 / 导出 / 恢复内置默认:放在左栏底部,避免被配置详情掩盖
-            let imp = dlg_btn("cfg-import", i18n::t("导入 JSON"), false, pal)
+            let imp = dlg_btn("cfg-import", i18n::t("configs.import_json"), false, pal)
                 .on_click(cx.listener(|v, _e, _window, cx| v.import_configs(cx)));
-            let exp = dlg_btn("cfg-export", i18n::t("导出 JSON"), false, pal)
+            let exp = dlg_btn("cfg-export", i18n::t("configs.export_json"), false, pal)
                 .on_click(cx.listener(|v, _e, _w, cx| v.export_configs(cx)));
-            let rst = dlg_btn("cfg-reset", i18n::t("恢复内置默认"), false, pal)
+            let rst = dlg_btn("cfg-reset", i18n::t("configs.restore_builtin"), false, pal)
                 .on_click(cx.listener(|v, _e, window, cx| v.reset_all_builtins(window, cx)));
             list = list.child(
                 div()
@@ -5405,9 +5416,9 @@ impl AppView {
                             .text_size(px(theme::scaled(10.5)))
                             .text_color(theme::hex(pal.text3))
                             .child(if *built_in {
-                                i18n::t("内置配置")
+                                i18n::t("configs.builtin")
                             } else {
-                                i18n::t("自定义配置")
+                                i18n::t("configs.custom")
                             }),
                     )
                     .child(div().flex_1())
@@ -5415,23 +5426,27 @@ impl AppView {
                         div()
                             .text_size(px(theme::scaled(12.0)))
                             .text_color(theme::hex(pal.text2))
-                            .child(i18n::t("启用(新标签页默认)")),
+                            .child(i18n::t("configs.enabled_default")),
                     )
                     .child(switch_el("cfg-enable", *enabled, pal).on_click(
                         cx.listener(move |v, _e, _w, cx| v.toggle_config_enabled(sel, cx)),
                     ));
                 if !*built_in {
                     head = head.child(
-                        dlg_btn("cfg-del", i18n::t("删除配置"), false, pal)
+                        dlg_btn("cfg-del", i18n::t("configs.delete"), false, pal)
                             .on_click(cx.listener(|v, _e, window, cx| v.del_config(window, cx))),
                     );
                 } else {
                     head = head.child(
-                        dlg_btn("cfg-reset-one", i18n::t("恢复默认"), false, pal).on_click(
-                            cx.listener(move |v, _e, window, cx| {
-                                v.reset_builtin_config(sel, window, cx)
-                            }),
-                        ),
+                        dlg_btn(
+                            "cfg-reset-one",
+                            i18n::t("configs.restore_default"),
+                            false,
+                            pal,
+                        )
+                        .on_click(cx.listener(move |v, _e, window, cx| {
+                            v.reset_builtin_config(sel, window, cx)
+                        })),
                     );
                 }
                 detail = detail.child(head);
@@ -5449,10 +5464,10 @@ impl AppView {
                         .text_size(px(theme::scaled(10.5)))
                         .text_color(theme::hex(pal.text3))
                         .child(div().w(px(24.0)).child("#"))
-                        .child(div().flex_1().child(i18n::t("正则(捕获组 1 取级别文本)")))
-                        .child(div().w(px(56.0)).child(i18n::t("标志")))
-                        .child(div().w(px(44.0)).child(i18n::t("自动")))
-                        .child(div().w(px(72.0)).child(i18n::t("级别")))
+                        .child(div().flex_1().child(i18n::t("configs.regex_auto")))
+                        .child(div().w(px(56.0)).child(i18n::t("configs.flags")))
+                        .child(div().w(px(44.0)).child(i18n::t("configs.auto")))
+                        .child(div().w(px(72.0)).child(i18n::t("configs.level")))
                         .child(div().w(px(18.0)).child(""))
                         .into_any_element(),
                 );
@@ -5499,7 +5514,7 @@ impl AppView {
                             .w(px(72.0))
                             .text_size(px(theme::scaled(10.5)))
                             .text_color(theme::hex(pal.text3))
-                            .child(i18n::t("取捕获组"))
+                            .child(i18n::t("configs.capture_group"))
                             .into_any_element()
                     } else {
                         let lname = names.get(*level as usize).copied().unwrap_or("—");
@@ -5545,24 +5560,24 @@ impl AppView {
                         .px(px(12.0))
                         .py(px(8.0))
                         .child(
-                            dlg_btn("rule-add", i18n::t("＋ 添加规则"), false, pal)
+                            dlg_btn("rule-add", i18n::t("configs.add_rule"), false, pal)
                                 .on_click(cx.listener(|v, _e, window, cx| v.add_rule(window, cx))),
                         )
                         .into_any_element(),
                 );
-                detail = detail.child(settings_group(i18n::t("匹配规则"), rule_rows, pal));
+                detail = detail.child(settings_group(i18n::t("configs.rules"), rule_rows, pal));
                 detail = detail.child(
                     div()
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child(i18n::t("自动 = 取正则捕获组 1 的文本映射级别(err→ERROR、info→INFO 等);关闭后用所选固定级别。改动立即重分析全部标签。")),
+                        .child(i18n::t("configs.auto.desc")),
                 );
             } else {
                 detail = detail.child(
                     div()
                         .text_size(px(theme::scaled(12.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child(i18n::t("暂无配置,点击左侧「新建配置」创建")),
+                        .child(i18n::t("configs.empty")),
                 );
             }
 
@@ -5587,7 +5602,7 @@ impl AppView {
                     div()
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.primary))
-                        .child(i18n::t("按下组合键…")),
+                        .child(i18n::t("shortcut.press")),
                 );
             } else {
                 ctl = ctl.child(shortcut_caps(&spec, pal));
@@ -5603,9 +5618,9 @@ impl AppView {
                     .text_color(theme::hex(pal.primary))
                     .hover(|s| s.bg(theme::hex(pal.fill_hover)))
                     .child(if capturing {
-                        i18n::t("取消")
+                        i18n::t("common.cancel")
                     } else {
-                        i18n::t("修改")
+                        i18n::t("shortcut.change")
                     })
                     .on_click(cx.listener(move |v, _e, w, cx| {
                         if capturing {
@@ -5625,7 +5640,7 @@ impl AppView {
                     .text_size(px(theme::scaled(11.0)))
                     .text_color(theme::hex(pal.text3))
                     .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                    .child(i18n::t("恢复默认"))
+                    .child(i18n::t("configs.restore_default"))
                     .on_click(cx.listener(move |v, _e, _w, cx| v.reset_shortcut(action, cx))),
             );
             shortcut_entries.push((
@@ -5634,8 +5649,8 @@ impl AppView {
             ));
         }
         for (keys, desc) in [
-            ("⏎", i18n::t("检索框内跳到下一处命中")),
-            ("Esc", i18n::t("关闭弹层 / 取消快捷键录制")),
+            ("⏎", i18n::t("shortcut.hint.next_match")),
+            ("Esc", i18n::t("shortcut.hint.close_popups")),
         ] {
             let caps: AnyElement = div()
                 .flex()
@@ -5645,12 +5660,12 @@ impl AppView {
                 .into_any_element();
             shortcut_entries.push((
                 format!("{desc} {keys}"),
-                settings_row(pal, desc, Some(i18n::t("固定绑定").into()), caps),
+                settings_row(pal, desc, Some(i18n::t("shortcut.fixed").into()), caps),
             ));
         }
         if let Some(n) = d.sc_notice.clone() {
             shortcut_entries.push((
-                i18n::t("快捷键提示").to_string(),
+                i18n::t("shortcut.hints").to_string(),
                 div()
                     .px(px(16.0))
                     .py(px(8.0))
@@ -5664,30 +5679,30 @@ impl AppView {
         // —— 分组数据:按分类/分组组织,搜索时跨分类过滤 ——
         type SettingsGroup = (usize, &'static str, Vec<(String, AnyElement)>);
         let groups_all: Vec<SettingsGroup> = vec![
-            (0, i18n::t("界面"), appearance),
-            (0, i18n::t("字号与字体"), typography),
-            (0, i18n::t("颜色管理"), color_rows),
-            (1, i18n::t("加载与自动追加"), load),
-            (1, i18n::t("内存"), memory),
-            (2, i18n::t("分析配置"), cfg_entries),
-            (3, i18n::t("已保存的 SSH 主机"), host_entries),
-            (3, i18n::t("已保存的 URL 凭据"), url_cred_entries),
-            (3, i18n::t("最近打开"), recents_cfg),
-            (4, i18n::t("键盘快捷键"), shortcut_entries),
+            (0, i18n::t("settings.group.interface"), appearance),
+            (0, i18n::t("settings.group.typography"), typography),
+            (0, i18n::t("settings.group.colors"), color_rows),
+            (1, i18n::t("settings.group.loading"), load),
+            (1, i18n::t("settings.group.memory"), memory),
+            (2, i18n::t("settings.group.analysis"), cfg_entries),
+            (3, i18n::t("settings.group.ssh_hosts"), host_entries),
+            (3, i18n::t("settings.group.url_creds"), url_cred_entries),
+            (3, i18n::t("menu.recent"), recents_cfg),
+            (4, i18n::t("settings.group.keyboard"), shortcut_entries),
         ];
         let page_titles = [
-            i18n::t("外观与显示"),
-            i18n::t("日志与性能"),
-            i18n::t(i18n::t("分析配置")),
-            i18n::t(i18n::t("连接")),
-            i18n::t("快捷键"),
+            i18n::t("settings.group.appearance"),
+            i18n::t("settings.group.logging"),
+            i18n::t("settings.group.analysis"),
+            i18n::t("common.connect"),
+            i18n::t("settings.group.shortcuts"),
         ];
         let page_descs = [
-            i18n::t("界面行号换行、字号字体与颜色管理"),
-            i18n::t("自动追加、加载大小与内存上限"),
-            i18n::t("级别分析配置:正则规则、级别映射与启用状态"),
-            i18n::t("已保存的主机、URL 凭据与最近打开记录的管理"),
-            i18n::t("全局快捷键一览(固定绑定)"),
+            i18n::t("settings.section.appearance.desc"),
+            i18n::t("settings.section.logging.desc"),
+            i18n::t("settings.section.analysis.desc"),
+            i18n::t("settings.section.connections.desc"),
+            i18n::t("settings.section.shortcuts.desc"),
         ];
 
         let mut matched = 0usize;
@@ -5733,7 +5748,7 @@ impl AppView {
                         .py(px(24.0))
                         .text_size(px(theme::scaled(12.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child(i18n::t("没有匹配的设置项")),
+                        .child(i18n::t("settings.search.no_match")),
                 );
             } else {
                 scroll = scroll.children(groups);
@@ -5743,19 +5758,17 @@ impl AppView {
 
         // —— 页头 ——
         let head_title = if searching {
-            i18n::t("搜索结果").to_string()
+            i18n::t("settings.search.results").to_string()
         } else {
             page_titles[tab_sel].to_string()
         };
         let head_desc = if searching {
             if matched == 0 {
-                i18n::tf(
-                    "没有与「{query}」匹配的设置项",
-                    &[("query", query.to_string())],
-                )
+                i18n::tf("settings.search.empty", &[("query", query.to_string())])
             } else {
-                i18n::tf(
-                    "{n} 项设置匹配「{query}」",
+                i18n::tnf(
+                    matched as u64,
+                    "settings.search.matches",
                     &[("n", matched.to_string()), ("query", query.to_string())],
                 )
             }
@@ -5801,11 +5814,11 @@ impl AppView {
                     .child(Input::new(&search_e).small().w_full()),
             );
         for (i, label) in [
-            i18n::t("外观与显示"),
-            i18n::t("日志与性能"),
-            i18n::t("分析配置"),
-            i18n::t("连接"),
-            i18n::t("快捷键"),
+            i18n::t("settings.group.appearance"),
+            i18n::t("settings.group.logging"),
+            i18n::t("settings.group.analysis"),
+            i18n::t("common.connect"),
+            i18n::t("settings.group.shortcuts"),
         ]
         .iter()
         .enumerate()
@@ -5839,9 +5852,9 @@ impl AppView {
                 .text_size(px(theme::scaled(10.5)))
                 .text_color(theme::hex(pal.text3))
                 .child(if saved_recent {
-                    i18n::t("已自动保存")
+                    i18n::t("settings.saved_auto")
                 } else {
-                    i18n::t("更改即时生效")
+                    i18n::t("settings.changes_live")
                 }),
         );
 
@@ -5864,13 +5877,13 @@ impl AppView {
                             .text_size(px(theme::scaled(14.0)))
                             .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                             .text_color(theme::hex(pal.text1))
-                            .child(i18n::t("设置")),
+                            .child(i18n::t("settings.title")),
                     )
                     .child(
                         div()
                             .text_size(px(theme::scaled(11.0)))
                             .text_color(theme::hex(pal.text3))
-                            .child(i18n::t("所有更改立即生效并自动保存")),
+                            .child(i18n::t("settings.changes_live.desc")),
                     ),
             );
 
@@ -6086,7 +6099,7 @@ impl AppView {
                         tab.rebuild_view();
                     }
                     Msg::Truncated { size } => {
-                        tab.store.insert_separator(i18n::t("── 检测到日志轮换 ──"));
+                        tab.store.insert_separator(i18n::t("banner.rotation"));
                         tab.store.set_total(size);
                         tab.rebuild_matched();
                         tab.rebuild_view();
@@ -6100,16 +6113,16 @@ impl AppView {
                     Msg::Exited { code, retry_in } => {
                         let note = match (code, retry_in) {
                             (Some(c), Some(s)) => i18n::tf(
-                                "命令退出(code={code}),{secs}s 后重试",
+                                "command.retry.after_exit",
                                 &[("code", c.to_string()), ("secs", s.to_string())],
                             ),
                             (Some(c), None) => {
-                                i18n::tf("命令已退出(code={code})", &[("code", c.to_string())])
+                                i18n::tf("command.exited.code", &[("code", c.to_string())])
                             }
                             (None, Some(s)) => {
-                                i18n::tf("命令结束,{secs}s 后重试", &[("secs", s.to_string())])
+                                i18n::tf("command.retry.after_end", &[("secs", s.to_string())])
                             }
-                            (None, None) => i18n::t("命令已退出").to_string(),
+                            (None, None) => i18n::t("command.exited").to_string(),
                         };
                         let bad = code.is_some_and(|c| c != 0) || retry_in.is_some();
                         tab.exit_note = Some((note, bad));
@@ -6530,7 +6543,7 @@ impl AppView {
                     let target_open = target.clone();
                     menu = menu.item(
                         PopupMenuItem::new(i18n::tf(
-                            "在新标签页打开 {target}",
+                            "links.open_in_tab",
                             &[("target", short_link(&target))],
                         ))
                         .on_click(move |_, _, cx| {
@@ -6543,21 +6556,25 @@ impl AppView {
                     }
                     if kind == LinkKind::Url {
                         let target_browser = target.clone();
-                        menu = menu.item(PopupMenuItem::new(i18n::t("在浏览器打开")).on_click(
-                            move |_, _, _| {
-                                let _ = open::that(&target_browser);
-                            },
-                        ));
+                        menu = menu.item(
+                            PopupMenuItem::new(i18n::t("links.open_in_browser")).on_click(
+                                move |_, _, _| {
+                                    let _ = open::that(&target_browser);
+                                },
+                            ),
+                        );
                     } else {
                         let target_local = target.clone();
-                        menu = menu.item(PopupMenuItem::new(i18n::t("作为本地文件打开")).on_click(
-                            move |_, _, _| {
-                                let _ = open::that(&target_local);
-                            },
-                        ));
+                        menu = menu.item(
+                            PopupMenuItem::new(i18n::t("links.open_local_file")).on_click(
+                                move |_, _, _| {
+                                    let _ = open::that(&target_local);
+                                },
+                            ),
+                        );
                     }
                     let target_copy = target.clone();
-                    menu = menu.item(PopupMenuItem::new(i18n::t("复制链接")).on_click(
+                    menu = menu.item(PopupMenuItem::new(i18n::t("links.copy_link")).on_click(
                         move |_, _, cx| {
                             cx.write_to_clipboard(ClipboardItem::new_string(target_copy.clone()));
                         },
@@ -6569,22 +6586,24 @@ impl AppView {
 
                 let copy_row = row_text.clone();
                 let this_end = this.clone();
-                menu.item(
-                    PopupMenuItem::new(i18n::t("复制整行")).on_click(move |_, _, cx| {
+                menu.item(PopupMenuItem::new(i18n::t("links.copy_line")).on_click(
+                    move |_, _, cx| {
                         cx.write_to_clipboard(ClipboardItem::new_string(copy_row.clone()));
-                    }),
-                )
+                    },
+                ))
                 .item(
-                    PopupMenuItem::new(i18n::t("复制选中文本")).on_click(|_, window, cx| {
-                        let sel = gpui_kit::base::TextSelection::selected_text(window, cx);
-                        if !sel.is_empty() {
-                            cx.write_to_clipboard(ClipboardItem::new_string(sel));
-                        }
-                    }),
+                    PopupMenuItem::new(i18n::t("links.copy_selection")).on_click(
+                        |_, window, cx| {
+                            let sel = gpui_kit::base::TextSelection::selected_text(window, cx);
+                            if !sel.is_empty() {
+                                cx.write_to_clipboard(ClipboardItem::new_string(sel));
+                            }
+                        },
+                    ),
                 )
                 .separator()
                 .item(
-                    PopupMenuItem::new(i18n::t("跳到末尾")).on_click(move |_, _, cx| {
+                    PopupMenuItem::new(i18n::t("toolbar.jump_to_end")).on_click(move |_, _, cx| {
                         this_end.update(cx, |v, _| v.jump_to_end());
                     }),
                 )
@@ -6763,7 +6782,7 @@ impl AppView {
                 t.rebuild_matched();
                 self.rows_cache.invalidate();
             }
-            Err(e) => t.err = Some(i18n::tf("保存失败:{e}", &[("e", e.to_string())])),
+            Err(e) => t.err = Some(i18n::tf("error.save_failed", &[("e", e.to_string())])),
         }
         cx.notify();
     }
@@ -6850,7 +6869,7 @@ impl AppView {
     ) {
         if let Some(d) = self.settings_panel.as_mut() {
             d.capture = Some(action.to_string());
-            d.sc_notice = Some(i18n::t("请按下组合键;Esc 取消").into());
+            d.sc_notice = Some(i18n::t("shortcut.record_hint").into());
         }
         let h = self.focus_handle.clone();
         window.focus(&h, cx);
@@ -6881,10 +6900,8 @@ impl AppView {
         if let Some(d) = self.settings_panel.as_mut() {
             d.capture = None;
             d.sc_notice = Some(match conflict {
-                Some((_, desc)) => {
-                    i18n::tf("已与「{desc}」互换快捷键", &[("desc", i18n::td(desc))])
-                }
-                None => i18n::tf("已设为 {shortcut}", &[("shortcut", shortcut_label(&spec))]),
+                Some((_, desc)) => i18n::tf("shortcut.swapped", &[("desc", i18n::td(desc))]),
+                None => i18n::tf("shortcut.set", &[("shortcut", shortcut_label(&spec))]),
             });
         }
         cx.notify();
@@ -6895,7 +6912,7 @@ impl AppView {
         crate::store::save(&self.settings);
         if let Some(d) = self.settings_panel.as_mut() {
             d.capture = None;
-            d.sc_notice = Some(i18n::t("已恢复默认快捷键").into());
+            d.sc_notice = Some(i18n::t("shortcut.restored").into());
         }
         cx.notify();
     }
@@ -6908,7 +6925,7 @@ impl AppView {
             // 录制中优先取消录制
             if let Some(d) = self.settings_panel.as_mut() {
                 if d.capture.take().is_some() {
-                    d.sc_notice = Some(i18n::t("已取消修改").into());
+                    d.sc_notice = Some(i18n::t("common.discard").into());
                     cx.notify();
                     return;
                 }
@@ -6930,7 +6947,7 @@ impl AppView {
                 Some(spec) => self.assign_shortcut(&action, spec, cx),
                 None => {
                     if let Some(d) = self.settings_panel.as_mut() {
-                        d.sc_notice = Some(i18n::t("需要含修饰键的组合(如 ⌘/Ctrl + 字母)").into());
+                        d.sc_notice = Some(i18n::t("shortcut.modifier_required").into());
                     }
                     cx.notify();
                 }
@@ -7014,7 +7031,10 @@ impl AppView {
         let is_md = code_doc.is_some_and(|d| d.lang == Some(crate::code::Lang::Markdown));
         let code_bar: Option<AnyElement> = code_doc.map(|d| {
             let editing = d.editing;
-            let lang = d.lang.map(|l| l.label()).unwrap_or(i18n::t("纯文本"));
+            let lang = d
+                .lang
+                .map(|l| l.label())
+                .unwrap_or(i18n::t("code.plain_text"));
             let mut bar = div().flex().items_center().gap(px(6.0)).child(
                 div()
                     .px(px(6.0))
@@ -7030,9 +7050,9 @@ impl AppView {
                     "code-edit",
                     "icons/edit.svg",
                     SharedString::from(if editing {
-                        i18n::t("只读预览(点击退出编辑)")
+                        i18n::t("code.preview.readonly")
                     } else {
-                        i18n::t("编辑源码(⌘S 保存)")
+                        i18n::t("code.edit_source")
                     }),
                     editing,
                     pal,
@@ -7063,7 +7083,7 @@ impl AppView {
                             gpui_kit::component::tooltip::Tooltip::element(|_, _| {
                                 div()
                                     .text_size(px(theme::scaled(11.0)))
-                                    .child(i18n::t("保存修改(⌘S)"))
+                                    .child(i18n::t("code.save"))
                             })
                             .build(window, cx)
                         })
@@ -7078,7 +7098,7 @@ impl AppView {
                     div()
                         .text_size(px(theme::scaled(10.5)))
                         .text_color(theme::hex(pal.text2))
-                        .child(i18n::t("文档较大,已显示源码")),
+                        .child(i18n::t("code.too_large")),
                 );
             }
             bar.into_any_element()
@@ -7204,14 +7224,14 @@ impl AppView {
                     .context_menu({
                         let ent = ent_tab.clone();
                         move |menu, _window, _cx| {
-                            menu.item(PopupMenuItem::new(i18n::t("关闭")).on_click({
+                            menu.item(PopupMenuItem::new(i18n::t("common.close")).on_click({
                                 let ent = ent.clone();
                                 move |_, w, cx| {
                                     ent.update(cx, |v, cx| v.close_tab(idx, w, cx));
                                 }
                             }))
                             .item(
-                                PopupMenuItem::new(i18n::t("关闭其他")).on_click({
+                                PopupMenuItem::new(i18n::t("tab.close_others")).on_click({
                                     let ent = ent.clone();
                                     move |_, w, cx| {
                                         ent.update(cx, |v, cx| v.close_other_tabs(idx, w, cx));
@@ -7337,8 +7357,8 @@ impl AppView {
             let others = 240.0
                 + w_at(".*", btn_size) + 16.0
                 + w_at("Aa", btn_size) + 16.0
-                + w_at(i18n::t("高亮"), btn_size) + 20.0
-                + w_at(i18n::t("过滤"), btn_size) + 20.0
+                + w_at(i18n::t("search.highlight"), btn_size) + 20.0
+                + w_at(i18n::t("search.filter"), btn_size) + 20.0
                 + nav_w
                 + 5.0 + 14.0 + 3.0
                 + w_at(&format!("{cfg_on}/{cfg_total}"), theme::scaled(10.5))
@@ -7371,17 +7391,18 @@ impl AppView {
                 ChipStyle::Short => format!("{head} · {}", counts[idx]),
                 ChipStyle::Letter => head,
             };
-            let tip = SharedString::from(i18n::tf(
-                "{name}:{n} 行(点击{action})",
+            let tip = SharedString::from(i18n::tnf(
+                counts[idx],
+                "tab.title_rows",
                 &[
                     ("name", lname.to_string()),
                     ("n", counts[idx].to_string()),
                     (
                         "action",
                         if on {
-                            i18n::t("隐藏").to_string()
+                            i18n::t("search.hide").to_string()
                         } else {
-                            i18n::t("显示").to_string()
+                            i18n::t("search.show").to_string()
                         },
                     ),
                 ],
@@ -7467,7 +7488,7 @@ impl AppView {
             )
             .tooltip(move |window, cx| {
                 let tip = SharedString::from(i18n::tf(
-                    "分析配置:{on}/{total} 已启用,点击选择",
+                    "analysis.summary",
                     &[("on", cfg_on.to_string()), ("total", cfg_total.to_string())],
                 ));
                 gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
@@ -7485,9 +7506,9 @@ impl AppView {
             "btn-wrap",
             "icons/wrap.svg",
             SharedString::from(if wrap_on {
-                i18n::t("自动换行:已开启(点击关闭)")
+                i18n::t("wrap.on")
             } else {
-                i18n::t("自动换行:已关闭(点击开启)")
+                i18n::t("wrap.off")
             }),
             wrap_on,
             pal,
@@ -7557,15 +7578,15 @@ impl AppView {
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.text3))
                     .child(i18n::tf(
-                        "已加载头部 {loaded} / {total}(文件更大)",
+                        "status.head_loaded",
                         &[("loaded", fmt_mb(loaded)), ("total", fmt_mb(total))],
                     ))
                     .child(
-                        banner_btn("ban-all", i18n::t("加载全部"))
+                        banner_btn("ban-all", i18n::t("toolbar.load_all"))
                             .on_click(cx.listener(|v, _e, _w, _cx| v.load_all())),
                     )
                     .child(
-                        banner_btn("ban-end", i18n::t("跳到末尾"))
+                        banner_btn("ban-end", i18n::t("toolbar.jump_to_end"))
                             .on_click(cx.listener(|v, _e, _w, _cx| v.jump_to_end())),
                     )
                     .into_any_element(),
@@ -7585,11 +7606,11 @@ impl AppView {
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.text3))
                     .child(i18n::tf(
-                        "已跳至末尾,从字节 {off} / {total} 开始 — 新日志将自动追加",
+                        "status.jumped_end",
                         &[("off", off.to_string()), ("total", total.to_string())],
                     ))
                     .child(
-                        banner_btn("ban-head", i18n::t("从头加载"))
+                        banner_btn("ban-head", i18n::t("toolbar.load_from_start"))
                             .on_click(cx.listener(|v, _e, _w, _cx| v.load_all())),
                     )
                     .child(
@@ -7701,7 +7722,7 @@ impl AppView {
                                 } else {
                                     theme::hex(pal.text2)
                                 })
-                                .child(i18n::t("高亮"))
+                                .child(i18n::t("search.highlight"))
                                 .on_click(cx.listener(|v, _e, _w, _cx| v.set_filter_mode(false))),
                         )
                         .child(
@@ -7721,7 +7742,7 @@ impl AppView {
                                 } else {
                                     theme::hex(pal.text2)
                                 })
-                                .child(i18n::t("过滤"))
+                                .child(i18n::t("search.filter"))
                                 .on_click(cx.listener(|v, _e, _w, _cx| v.set_filter_mode(true))),
                         ),
                 )
@@ -7740,9 +7761,9 @@ impl AppView {
                             "icons/tail-off.svg"
                         },
                         SharedString::from(if follow {
-                            i18n::t("跟进中(点击暂停跟随)")
+                            i18n::t("status.following_hint")
                         } else {
-                            i18n::t("已暂停(点击恢复跟随并跳到末尾)")
+                            i18n::t("status.paused_hint")
                         }),
                         follow,
                         pal,
@@ -7753,7 +7774,7 @@ impl AppView {
                     toolbar_icon_btn(
                         "btn-end",
                         "icons/jump-end.svg",
-                        SharedString::from(i18n::t("跳到末尾(只读文件尾部并继续跟随)")),
+                        SharedString::from(i18n::t("toolbar.jump_to_end.hint")),
                         false,
                         pal,
                     )
@@ -7763,7 +7784,7 @@ impl AppView {
                     toolbar_icon_btn(
                         "btn-clear",
                         "icons/clear.svg",
-                        SharedString::from(i18n::t("清屏(保留读取位置,新日志继续追加)")),
+                        SharedString::from(i18n::t("toolbar.clear.hint")),
                         false,
                         pal,
                     )
@@ -7773,7 +7794,7 @@ impl AppView {
                     toolbar_icon_btn(
                         "btn-all",
                         "icons/load-all.svg",
-                        SharedString::from(i18n::t("从头加载全部(大文件可能耗时较久)")),
+                        SharedString::from(i18n::t("toolbar.load_all.confirm")),
                         false,
                         pal,
                     )
@@ -7792,18 +7813,21 @@ impl AppView {
         let mut segs: Vec<(String, Hsla)> = Vec::new();
         if let Some(t) = cur {
             segs.push((
-                i18n::tf("{n} 行", &[("n", t.view.len().to_string())]),
+                i18n::tn(t.view.len() as u64, "status.rows"),
                 theme::hex(pal.text2),
             ));
             if t.store.dropped > 0 {
                 segs.push((
-                    i18n::tf("已丢弃 {n}", &[("n", t.store.dropped.to_string())]),
+                    i18n::tf("status.dropped", &[("n", t.store.dropped.to_string())]),
                     theme::hex(pal.text3),
                 ));
             }
             segs.push((
                 if t.stream {
-                    i18n::tf("已接收 {size}", &[("size", fmt_size(t.store.bytes_loaded))])
+                    i18n::tf(
+                        "status.received",
+                        &[("size", fmt_size(t.store.bytes_loaded))],
+                    )
                 } else {
                     format!(
                         "{}/{}",
@@ -7826,47 +7850,50 @@ impl AppView {
                     0.0
                 };
                 segs.push((
-                    i18n::tf("加载中 {pct}%", &[("pct", format!("{pct:.0}"))]),
+                    i18n::tf("status.loading", &[("pct", format!("{pct:.0}"))]),
                     theme::hex(pal.primary),
                 ));
             }
             segs.push((
-                i18n::tf("轮询 {ms}ms", &[("ms", self.settings.poll_ms.to_string())]),
+                i18n::tf(
+                    "status.polling",
+                    &[("ms", self.settings.poll_ms.to_string())],
+                ),
                 theme::hex(pal.text3),
             ));
             if cur.is_some_and(|t| t.relevel.is_some()) {
-                segs.push((i18n::t("重新分析级别中…").into(), theme::hex(pal.warning)));
-            }
-            if no_follow {
                 segs.push((
-                    i18n::t("该源不支持自动跟随").into(),
+                    i18n::t("status.reanalyzing").into(),
                     theme::hex(pal.warning),
                 ));
             }
+            if no_follow {
+                segs.push((i18n::t("status.no_follow").into(), theme::hex(pal.warning)));
+            }
             if paused {
-                segs.push((i18n::t("已暂停").into(), theme::hex(pal.warning)));
+                segs.push((i18n::t("status.paused").into(), theme::hex(pal.warning)));
             } else if follow {
-                segs.push((i18n::t("跟进中").into(), theme::hex(pal.primary)));
+                segs.push((i18n::t("status.following").into(), theme::hex(pal.primary)));
             } else if pending_new > 0 {
                 segs.push((
-                    i18n::tf("+{n} 新行", &[("n", pending_new.to_string())]),
+                    i18n::tn(pending_new as u64, "status.new_lines_plus"),
                     theme::hex(pal.primary),
                 ));
             }
             if !filter_mode && t.query_active() && match_err.is_none() {
                 segs.push((
-                    i18n::tf("匹配 {n} 行", &[("n", matched_n.to_string())]),
+                    i18n::tn(matched_n as u64, "status.matched"),
                     theme::hex(pal.text2),
                 ));
             }
             if let Some(e) = match_err {
-                segs.push((i18n::tf("正则错误:{e}", &[("e", e)]), theme::hex(pal.error)));
+                segs.push((i18n::tf("error.regex", &[("e", e)]), theme::hex(pal.error)));
             }
             if let Some(e) = err_text {
                 segs.push((e, theme::hex(pal.error)));
             }
         } else {
-            segs.push((i18n::t("就绪").into(), theme::hex(pal.text3)));
+            segs.push((i18n::t("status.ready").into(), theme::hex(pal.text3)));
         }
         if let Some(n) = &self.cred_notice {
             segs.push((i18n::td(n), theme::hex(pal.warning)));
@@ -7934,7 +7961,7 @@ impl AppView {
                                         div()
                                             .text_size(px(theme::scaled(10.5)))
                                             .text_color(theme::hex(pal.text3))
-                                            .child(i18n::t("双击复制完整路径")),
+                                            .child(i18n::t("toolbar.copy_path.hint")),
                                     )
                             })
                             .build(window, cx)
@@ -7942,7 +7969,7 @@ impl AppView {
                         .on_click(cx.listener(move |v, e: &ClickEvent, _w, cx| {
                             if e.click_count() >= 2 {
                                 cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()));
-                                v.show_toast(i18n::t("已复制路径"), e.position(), cx);
+                                v.show_toast(i18n::t("toast.path_copied"), e.position(), cx);
                             }
                         })),
                 )
@@ -7998,7 +8025,7 @@ impl AppView {
                     .bg(theme::hex(pal.primary))
                     .text_size(px(theme::scaled(11.5)))
                     .text_color(theme::hex(pal.on_primary))
-                    .child(i18n::tf("↓ {n} 条新行", &[("n", pending_new.to_string())]))
+                    .child(i18n::tn(pending_new as u64, "banner.new_lines"))
                     .on_click(cx.listener(|v, _e, _w, _cx| v.jump_to_end())),
             )
         } else {
@@ -8339,21 +8366,21 @@ fn is_auth_error(msg: &str) -> bool {
 fn http_auth_label(k: crate::source::HttpAuthKind) -> &'static str {
     use crate::source::HttpAuthKind as K;
     match k {
-        K::None => i18n::t("无认证"),
+        K::None => i18n::t("http.auth.none"),
         K::Basic => "Basic",
         K::Bearer => "Bearer",
         K::ApiKey => "API Key",
-        K::Header => i18n::t("自定义请求头"),
+        K::Header => i18n::t("http.header.custom"),
     }
 }
 
 /// SSH 表单校验:主机/用户名、远程路径、端口依次校验,返回第一条错误
 fn validate_ssh(host: &str, user: &str, path: &str, port_txt: &str) -> Option<String> {
     if host.trim().is_empty() || user.trim().is_empty() {
-        return Some(i18n::t("请填写主机与用户名").to_string());
+        return Some(i18n::t("validation.host_user_required").to_string());
     }
     if path.trim().is_empty() {
-        return Some(i18n::t("请填写远程日志路径(例如 /var/log/app.log)").to_string());
+        return Some(i18n::t("validation.remote_path_required").to_string());
     }
     validate_ssh_conn(host, user, port_txt)
 }
@@ -8361,12 +8388,12 @@ fn validate_ssh(host: &str, user: &str, path: &str, port_txt: &str) -> Option<St
 /// SSH 命令模式:不需要远程路径
 fn validate_ssh_conn(host: &str, user: &str, port_txt: &str) -> Option<String> {
     if host.trim().is_empty() || user.trim().is_empty() {
-        return Some(i18n::t("请填写主机与用户名").to_string());
+        return Some(i18n::t("validation.host_user_required").to_string());
     }
     match port_txt.trim().parse::<u16>() {
         Ok(p) if p > 0 => None,
-        Ok(_) => Some(i18n::t("端口需为 1–65535").to_string()),
-        Err(e) => Some(i18n::tf("端口无效: {e}", &[("e", e.to_string())])),
+        Ok(_) => Some(i18n::t("validation.port_range").to_string()),
+        Err(e) => Some(i18n::tf("error.port_invalid", &[("e", e.to_string())])),
     }
 }
 
@@ -8420,7 +8447,7 @@ fn command_params(
     if fields.preset == 0 {
         let text = fields.text.read(cx).value().trim().to_string();
         if text.is_empty() {
-            return Err(i18n::t("请填写命令").into());
+            return Err(i18n::t("validation.command_required").into());
         }
         let argv = if local {
             command::split_argv(&text)?
@@ -8428,7 +8455,7 @@ fn command_params(
             vec![text]
         };
         if argv.is_empty() {
-            return Err(i18n::t("请填写命令").into());
+            return Err(i18n::t("validation.command_required").into());
         }
         return Ok(SourceParams::Command {
             target,
@@ -8440,7 +8467,9 @@ fn command_params(
         });
     }
     let list = command::presets_for(presets, local);
-    let p = list.get(fields.preset - 1).ok_or(i18n::t("预设不存在"))?;
+    let p = list
+        .get(fields.preset - 1)
+        .ok_or(i18n::t("error.command.preset_missing"))?;
     let mut values = BTreeMap::new();
     for (f, e) in &fields.inputs {
         values.insert(f.key.clone(), e.read(cx).value().to_string());
@@ -8469,7 +8498,7 @@ fn command_rows(
     on_restart: impl Fn(&mut AppView) + 'static,
 ) -> Vec<AnyElement> {
     let list = command::presets_for(presets, local);
-    let mut names: Vec<String> = vec![i18n::t("自定义").into()];
+    let mut names: Vec<String> = vec![i18n::t("configs.custom_tag").into()];
     names.extend(list.iter().map(|p| i18n::td(&p.name)));
     let sel = fields.preset.min(names.len().saturating_sub(1));
 
@@ -8524,7 +8553,7 @@ fn command_rows(
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(label(i18n::t("命令"), pal))
+                .child(label(i18n::t("source.command"), pal))
                 .child(div().flex_1().child(Input::new(&fields.text).small()))
                 .into_any_element(),
         );
@@ -8551,7 +8580,7 @@ fn command_rows(
                     .text_size(px(theme::scaled(11.0)))
                     .text_color(theme::hex(pal.text3))
                     .child(i18n::tf(
-                        "将执行:{cmd}",
+                        "command.will_run",
                         &[("cmd", command::display(&plan.argv))],
                     ))
                     .into_any_element(),
@@ -8581,7 +8610,7 @@ fn command_rows(
                 div()
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text2))
-                    .child(i18n::t("退出后自动重试(断线、设备重连)")),
+                    .child(i18n::t("command.restart_hint")),
             )
             .into_any_element(),
     );
@@ -8600,10 +8629,10 @@ fn command_rows(
 fn validate_url_addr(url: &str) -> Option<String> {
     let u = url.trim();
     if u.is_empty() {
-        return Some(i18n::t("请填写日志地址(例如 https://example.com/app.log)").to_string());
+        return Some(i18n::t("validation.url_required").to_string());
     }
     if !(u.starts_with("http://") || u.starts_with("https://")) {
-        return Some(i18n::t("URL 需以 http:// 或 https:// 开头").to_string());
+        return Some(i18n::t("validation.url_scheme").to_string());
     }
     None
 }
@@ -9066,11 +9095,11 @@ mod tests {
     #[test]
     fn auth_kind_labels() {
         use crate::source::HttpAuthKind as K;
-        assert_eq!(http_auth_label(K::None), i18n::t("无认证"));
+        assert_eq!(http_auth_label(K::None), i18n::t("http.auth.none"));
         assert_eq!(http_auth_label(K::Basic), "Basic");
         assert_eq!(http_auth_label(K::Bearer), "Bearer");
         assert_eq!(http_auth_label(K::ApiKey), "API Key");
-        assert_eq!(http_auth_label(K::Header), i18n::t("自定义请求头"));
+        assert_eq!(http_auth_label(K::Header), i18n::t("http.header.custom"));
     }
 
     #[test]
@@ -9090,16 +9119,16 @@ mod tests {
         assert!(validate_ssh("h", "u", "/var/log/app.log", "22").is_none());
         assert!(validate_ssh("", "u", "/a.log", "22")
             .unwrap()
-            .contains(i18n::t("主机")));
+            .contains(i18n::t("ssh.host")));
         assert!(validate_ssh("h", "", "/a.log", "22")
             .unwrap()
-            .contains(i18n::t("用户名")));
+            .contains(i18n::t("ssh.username")));
         assert!(validate_ssh("h", "u", "/a.log", "0")
             .unwrap()
-            .contains(i18n::t("端口")));
+            .contains(i18n::t("ssh.port")));
         assert!(validate_ssh("h", "u", "/a.log", "abc")
             .unwrap()
-            .contains(i18n::t("端口")));
+            .contains(i18n::t("ssh.port")));
     }
 
     #[test]

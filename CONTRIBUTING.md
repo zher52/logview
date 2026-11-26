@@ -61,6 +61,16 @@ cargo clippy --all-targets --locked
 
 内置预设定义在 `src/command.rs` 的 `builtin_presets()`,只放通用、无争议的命令;厂商专用或需要固定主机/路径的预设建议由用户自行添加(设置文件里直接加即可)。新增内置项时保留既有 id,`store.rs` 的迁移只按 id 追加缺失项,不会覆盖用户修改。改完请补 `command.rs` 的单元测试(模板展开、可选参数丢弃、必填校验)。
 
+## 贡献翻译
+
+界面文案以语义 ID 为键，三种语言各一份 TOML：
+
+- `locales/zh.toml` 是源语言（唯一权威文案）；`locales/en.toml`、`locales/ru.toml` 必须与它的键集合完全一致，缺项或多出都会让 `cargo build` 直接失败。
+- 只改译文不需要动 Rust：改完跑 `cargo build && cargo test --locked` 即可验证。
+- 计数文案用复数 ID：基础键是带 `{n}` 的模板，另有 `.one` / `.few` 变体（英文 one；俄语 one/few，other 用基础键）。不要在文案里手写 `1 lines` 这种固定词形。
+- 源码用 `i18n::t("id")` / `tf("id", …)` / `tn(n, "id")` 引用；`cargo test` 会扫描源码，确保每个 ID 都存在。
+- `td()` 按中文原文反查 ID，供运行时消息与历史数据（预设名、配置名）使用，因此不要删除 `zh.toml` 里的中文原文。
+
 ## 提交规范
 
 提交信息使用中文，格式：

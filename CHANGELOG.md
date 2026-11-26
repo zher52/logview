@@ -11,9 +11,10 @@
 - SSH 连接比对已有主机密钥，不一致时拒绝连接。
 - SSH 未知主机 TOFU 确认：弹窗展示算法与 SHA256 指纹，支持仅本次信任或写入 `known_hosts`。
 - 中英文界面：设置 → 界面语言即时切换，覆盖工具栏、对话框、设置页、状态栏、命令预设与常见错误提示；未收录词条回退中文。
-- 俄语界面：新增 `ru` 语言与完整俄文词典（`src/i18n/ru.rs`），设置中的语言改为「中文 / English / Русский」三态选择；俄文缺失词条依次回退英文、中文。
+- 俄语界面：新增 `ru` 语言与完整俄文语言包，设置中的语言改为「中文 / English / Русский」三态选择。
+- i18n 重构为「语义 ID + 语言包」：文案键改为 `common.cancel`、`error.sftp.read` 这类 ID，译文移出 Rust 到 `locales/{zh,en,ru}.toml`，由 `build.rs` 编译期生成查表并校验三语键集合一致；新增 `i18n::tn` 按语言处理复数（俄语 one/few/other），修正 `1 строк`/`1 lines` 一类错误；`cargo test` 会扫描源码，确保引用的 ID 全部存在。
 - README 增加真实界面截图与自动追加 GIF。
-- 补齐 ssrf / search / links / i18n 单元测试（当前共 74 项）。
+- 补齐 ssrf / search / links / i18n 单元测试（当前共 78 项）。
 
 ### Changed
 

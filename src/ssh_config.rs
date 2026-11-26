@@ -25,11 +25,11 @@ pub fn config_path() -> Option<PathBuf> {
 /// 读取并解析 `~/.ssh/config`;文件不存在或不可读时返回面向用户的错误
 pub fn load() -> Result<Vec<SavedHost>, String> {
     let Some(path) = config_path() else {
-        return Err(i18n::t("无法定位用户主目录,未导入").to_string());
+        return Err(i18n::t("ssh.import.no_home").to_string());
     };
     let text = std::fs::read_to_string(&path).map_err(|e| {
         i18n::tf(
-            "读取 {path} 失败: {e}",
+            "error.file.read",
             &[("path", path.display().to_string()), ("e", e.to_string())],
         )
     })?;

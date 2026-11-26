@@ -31,7 +31,7 @@
 ```bash
 cargo build                      # 调试构建(依赖按 opt-level=2 编译)
 cargo run -- sample/app.log      # 打开示例日志
-cargo test --locked              # 71 项单元测试
+cargo test --locked              # 78 项单元测试
 cargo fmt --all                  # CI 会检查
 cargo clippy --all-targets --locked
 
@@ -61,7 +61,7 @@ src/
 ├── store.rs       settings.json 读写(含 configs、ssh_hosts、command_presets)、旧数据迁移
 ├── secrets.rs     系统钥匙串存取(不可用时退回仅内存)
 ├── ssh_config.rs  解析系统 ssh 配置,导入已保存主机(跳过通配与 Match)
-├── i18n.rs       中/英词典与 t/td/tf 取词（俄文表在 i18n/ru.rs；中文原文为 key，缺失回退英文、中文）
+├── i18n.rs       语义 ID 取词：t/tf/td/tn；译文在 locales/*.toml，由 build.rs 编译期生成查表
 ├── code_input.rs  正则输入框的词法着色
 └── code.rs        代码/配置语法高亮、Markdown 渲染辅助、大小限制常量
 ```
@@ -143,7 +143,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
   // Copyright (C) 2026 zher52
   ```
 - 提交前：`cargo fmt --all`、`cargo build`、`cargo test --locked`。
-- i18n：静态 UI 文案用 `i18n::t("...")`，带插值用 `i18n::tf("...{name}...", args)`，运行时错误/提示用 `i18n::td(&msg)`；俄文/英文未收录时依次回退英文、中文。
+- i18n：文案用语义 ID（如 `i18n::t("common.cancel")`），译文只改 `locales/{zh,en,ru}.toml`，`build.rs` 校验三语键一致后才生成查表；带插值用 `i18n::tf("id", args)`，计数用 `i18n::tn(n, "status.rows")`（英文 one、俄语 one/few），运行时消息与历史数据（预设名、配置名）用 `i18n::td(&text)` 按中文原文反查。新增文案必须同时补三份 TOML，`cargo test` 会校验源码里的 ID 是否存在。
 
 ## 已知限制（勿当 bug 修）
 

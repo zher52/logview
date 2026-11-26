@@ -31,8 +31,9 @@ Chrome DevTools console. The interface supports **Chinese, English and Russian**
   Linux Secret Service); settings files never contain secrets.
 - **SSH host keys** — TOFU confirmation with the SHA256 fingerprint; unknown hosts can be trusted once
   or written to `known_hosts`, while changed keys are rejected.
-- **Multilingual UI** — switch between Chinese, English and Russian in Settings; untranslated entries fall
-  back to English, then Chinese.
+- **Multilingual UI** — switch between Chinese, English and Russian in Settings; entries fall back to
+  English, then Chinese. Translations live in `locales/{zh,en,ru}.toml` and can be edited without touching
+  Rust; counts use per-language plural forms.
 
 ## Requirements
 
@@ -208,7 +209,7 @@ Tail worker thread per tab (poll size → incremental reads, 1 MB chunks, ≤8 M
 | `secrets.rs` | OS keychain storage, in-memory fallback |
 | `store.rs` | `settings.json` read/write and legacy migration |
 | `tail.rs` | Worker protocol and file/stream loops |
-| `i18n.rs` | Chinese→English dictionary and `t` / `td` / `tf` lookups (`i18n/ru.rs` holds the Russian table) |
+| `i18n.rs` | semantic-ID lookups (`t` / `tf` / `td` / `tn`); translations live in `locales/*.toml` and are compiled by `build.rs` |
 | `code_input.rs` | Regex input highlighting |
 | `code.rs` | Code/Markdown highlighting and preview limits |
 
@@ -259,7 +260,9 @@ is possible and auto-follow is disabled.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md). Code comments and commit
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md). To improve translations, edit
+`locales/en.toml` or `locales/ru.toml` — the build fails if the three files have different keys, and
+`cargo test` verifies that every ID used in the source exists. Code comments and commit
 messages are in Chinese; the UI is available in Chinese, English and Russian; identifiers are English.
 
 ## License

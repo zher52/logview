@@ -216,7 +216,7 @@ impl SourceParams {
 
     pub fn summary(&self) -> String {
         match self {
-            Self::Local { path } => i18n::tf("本地 {path}", &[("path", path.clone())]),
+            Self::Local { path } => i18n::tf("toolbar.source.local", &[("path", path.clone())]),
             Self::Ssh {
                 host,
                 port,
@@ -231,11 +231,13 @@ impl SourceParams {
             Self::Command { target, argv, .. } => {
                 let cmd = crate::command::display(argv);
                 match target {
-                    ExecTarget::Local => i18n::tf("命令(本机) {cmd}", &[("cmd", cmd.clone())]),
+                    ExecTarget::Local => {
+                        i18n::tf("toolbar.source.command_local", &[("cmd", cmd.clone())])
+                    }
                     ExecTarget::Ssh {
                         host, port, user, ..
                     } => i18n::tf(
-                        "命令 {user}@{host}:{port} {cmd}",
+                        "toolbar.source.command_ssh",
                         &[
                             ("user", user.clone()),
                             ("host", host.clone()),
@@ -384,7 +386,7 @@ pub fn open(p: &SourceParams, ask: HostKeyAsk) -> Result<Opened, String> {
         SourceParams::Local { path } => {
             if !std::path::Path::new(path).is_file() {
                 return Err(i18n::tf(
-                    "文件不存在或不是普通文件: {path}",
+                    "error.file.not_regular",
                     &[("path", path.to_string())],
                 ));
             }
@@ -436,11 +438,14 @@ pub fn open(p: &SourceParams, ask: HostKeyAsk) -> Result<Opened, String> {
                 || status == reqwest::StatusCode::FORBIDDEN
             {
                 return Err(i18n::tf(
-                    "HTTP {status}(认证失败)",
+                    "error.http.auth_status",
                     &[("status", status.to_string())],
                 ));
             }
-            Err(i18n::tf("HTTP {status}", &[("status", status.to_string())]))
+            Err(i18n::tf(
+                "status.http_status",
+                &[("status", status.to_string())],
+            ))
         }
     }
 }
@@ -449,7 +454,7 @@ pub fn meta(o: &mut Opened) -> Result<SourceMeta, String> {
     match o {
         Opened::Local { path } => {
             let m = std::fs::metadata(path)
-                .map_err(|e| i18n::tf("stat 失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.stat", &[("e", e.to_string())]))?;
             Ok(SourceMeta {
                 size: m.len(),
                 supports_range: true,
@@ -458,10 +463,10 @@ pub fn meta(o: &mut Opened) -> Result<SourceMeta, String> {
         Opened::Ssh { sess, path, .. } => {
             let sftp = sess
                 .sftp()
-                .map_err(|e| i18n::tf("SFTP 通道失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.sftp.channel", &[("e", e.to_string())]))?;
             let st = sftp
                 .stat(std::path::Path::new(path))
-                .map_err(|e| i18n::tf("SFTP stat 失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.sftp.stat", &[("e", e.to_string())]))?;
             Ok(SourceMeta {
                 size: st.size.unwrap_or(0),
                 supports_range: true,
@@ -484,22 +489,22 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
     match o {
         Opened::Local { path } => {
             let total = std::fs::metadata(path.as_path())
-                .map_err(|e| i18n::tf("stat 失败: {e}", &[("e", e.to_string())]))?
+                .map_err(|e| i18n::tf("error.stat", &[("e", e.to_string())]))?
                 .len();
             if off >= total {
                 return Ok((Vec::new(), total));
             }
             let mut f = std::fs::File::open(path.as_path())
-                .map_err(|e| i18n::tf("打开失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.open", &[("e", e.to_string())]))?;
             f.seek(SeekFrom::Start(off))
-                .map_err(|e| i18n::tf("seek 失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.seek", &[("e", e.to_string())]))?;
             let want = ((total - off) as usize).min(max);
             let mut buf = vec![0u8; want];
             let mut got = 0;
             while got < want {
                 let n = f
                     .read(&mut buf[got..])
-                    .map_err(|e| i18n::tf("读取失败: {e}", &[("e", e.to_string())]))?;
+                    .map_err(|e| i18n::tf("error.read", &[("e", e.to_string())]))?;
                 if n == 0 {
                     break;
                 }
@@ -511,10 +516,10 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
         Opened::Ssh { sess, path, .. } => {
             let sftp = sess
                 .sftp()
-                .map_err(|e| i18n::tf("SFTP 通道失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.sftp.channel", &[("e", e.to_string())]))?;
             let total = sftp
                 .stat(std::path::Path::new(path))
-                .map_err(|e| i18n::tf("SFTP stat 失败: {e}", &[("e", e.to_string())]))?
+                .map_err(|e| i18n::tf("error.sftp.stat", &[("e", e.to_string())]))?
                 .size
                 .unwrap_or(0);
             if off >= total {
@@ -522,9 +527,9 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             }
             let mut f = sftp
                 .open(std::path::Path::new(path))
-                .map_err(|e| i18n::tf("SFTP open 失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.sftp.open", &[("e", e.to_string())]))?;
             f.seek(SeekFrom::Start(off))
-                .map_err(|e| i18n::tf("SFTP seek 失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.sftp.seek", &[("e", e.to_string())]))?;
             let want = ((total - off) as usize).min(max);
             let mut buf = vec![0u8; want];
             let mut got = 0;
@@ -533,7 +538,7 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
                     Ok(0) => break,
                     Ok(n) => got += n,
                     Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                    Err(e) => return Err(i18n::tf("SFTP 读取失败: {e}", &[("e", e.to_string())])),
+                    Err(e) => return Err(i18n::tf("error.sftp.read", &[("e", e.to_string())])),
                 }
             }
             buf.truncate(got);
@@ -565,7 +570,7 @@ pub fn read_at(o: &mut Opened, off: u64, max: usize) -> Result<(Vec<u8>, u64), S
             let mut limited = resp.take(max as u64);
             limited
                 .read_to_end(&mut buf)
-                .map_err(|e| i18n::tf("HTTP 读取失败: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.http.read", &[("e", e.to_string())]))?;
             drop(limited);
             Ok((buf, total))
         }
@@ -608,7 +613,7 @@ fn host_key_algo(key: &[u8]) -> String {
             .ok()
             .map(str::to_owned)
     })()
-    .unwrap_or_else(|| i18n::t("未知算法").into())
+    .unwrap_or_else(|| i18n::t("error.ssh.unknown_algorithm").into())
 }
 
 fn host_key_fingerprint(key: &[u8]) -> String {
@@ -625,23 +630,22 @@ fn known_hosts_path() -> Option<PathBuf> {
 
 /// 把当前会话的主机密钥追加到 known_hosts(保留已有条目)
 fn trust_host(sess: &ssh2::Session, host: &str, port: u16) -> Result<(), String> {
-    let path =
-        known_hosts_path().ok_or(i18n::t("找不到用户目录,无法写入 known_hosts").to_string())?;
+    let path = known_hosts_path().ok_or(i18n::t("error.known_hosts.no_home").to_string())?;
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)
-            .map_err(|e| i18n::tf("创建 ~/.ssh 失败:{e}", &[("e", e.to_string())]))?;
+            .map_err(|e| i18n::tf("error.known_hosts.mkdir", &[("e", e.to_string())]))?;
     }
     let mut known_hosts = sess
         .known_hosts()
-        .map_err(|e| i18n::tf("known_hosts 初始化失败:{e}", &[("e", e.to_string())]))?;
+        .map_err(|e| i18n::tf("error.known_hosts.init", &[("e", e.to_string())]))?;
     if path.is_file() {
         known_hosts
             .read_file(&path, ssh2::KnownHostFileKind::OpenSSH)
-            .map_err(|e| i18n::tf("读取 known_hosts 失败:{e}", &[("e", e.to_string())]))?;
+            .map_err(|e| i18n::tf("error.known_hosts.read", &[("e", e.to_string())]))?;
     }
     let (key, kind) = sess
         .host_key()
-        .ok_or(i18n::t("无法获取服务器主机密钥").to_string())?;
+        .ok_or(i18n::t("error.ssh.host_key_missing").to_string())?;
     // 非默认端口需写成 [host]:port,与 OpenSSH 一致
     let name = if port == 22 {
         host.to_string()
@@ -655,10 +659,10 @@ fn trust_host(sess: &ssh2::Session, host: &str, port: u16) -> Result<(), String>
             "added by logview",
             ssh2::KnownHostKeyFormat::from(kind),
         )
-        .map_err(|e| i18n::tf("写入 known_hosts 失败:{e}", &[("e", e.to_string())]))?;
+        .map_err(|e| i18n::tf("error.known_hosts.write", &[("e", e.to_string())]))?;
     known_hosts
         .write_file(&path, ssh2::KnownHostFileKind::OpenSSH)
-        .map_err(|e| i18n::tf("保存 known_hosts 失败:{e}", &[("e", e.to_string())]))?;
+        .map_err(|e| i18n::tf("error.known_hosts.save", &[("e", e.to_string())]))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
@@ -688,7 +692,7 @@ fn verify_known_host(
                 .is_err()
         {
             return Err(i18n::tf(
-                "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取",
+                "error.known_hosts.unreadable",
                 &[("host", host.to_string()), ("port", port.to_string())],
             ));
         }
@@ -696,12 +700,11 @@ fn verify_known_host(
     match known_hosts.check_port(host, port, key) {
         ssh2::CheckResult::Match => Ok(()),
         ssh2::CheckResult::Mismatch => Err(i18n::tf(
-            "SSH 主机密钥与 known_hosts 记录不一致({host}:{port}),可能存在中间人攻击;\
-             确认服务器换过密钥后请先更新 known_hosts",
+            "error.known_hosts.mismatch",
             &[("host", host.to_string()), ("port", port.to_string())],
         )),
         ssh2::CheckResult::Failure => Err(i18n::tf(
-            "SSH 主机密钥校验失败({host}:{port}):known_hosts 无法读取",
+            "error.known_hosts.unreadable",
             &[("host", host.to_string()), ("port", port.to_string())],
         )),
         ssh2::CheckResult::NotFound => {
@@ -719,7 +722,7 @@ fn verify_known_host(
                     Ok(())
                 }
                 HostKeyDecision::Reject => Err(i18n::tf(
-                    "已取消连接:{host}:{port} 的主机密钥未确认",
+                    "error.ssh.host_key_unconfirmed",
                     &[("host", host.to_string()), ("port", port.to_string())],
                 )),
             }
@@ -748,7 +751,7 @@ fn ssh_connect_t(
 ) -> Result<ssh2::Session, String> {
     let tcp = std::net::TcpStream::connect((host, port)).map_err(|e| {
         i18n::tf(
-            "SSH 连接失败 {host}:{port}: {e}",
+            "error.ssh.connect",
             &[
                 ("host", host.to_string()),
                 ("port", port.to_string()),
@@ -760,7 +763,7 @@ fn ssh_connect_t(
     sess.set_tcp_stream(tcp);
     sess.set_timeout(timeout_ms);
     sess.handshake()
-        .map_err(|e| i18n::tf("SSH 握手失败: {e}", &[("e", e.to_string())]))?;
+        .map_err(|e| i18n::tf("error.ssh.handshake", &[("e", e.to_string())]))?;
     verify_known_host(&sess, host, port, ask)?;
     let ok = match auth {
         SshAuth::Password(p) => sess.userauth_password(user, p).is_ok(),
@@ -794,7 +797,7 @@ pub fn http_client(v: &Validated) -> Result<reqwest::blocking::Client, String> {
         .connect_timeout(std::time::Duration::from_secs(15))
         .user_agent(concat!("LogView/", env!("CARGO_PKG_VERSION")))
         .build()
-        .map_err(|e| i18n::tf("HTTP client 构建失败: {e}", &[("e", e.to_string())]))
+        .map_err(|e| i18n::tf("error.http.client_build", &[("e", e.to_string())]))
 }
 
 /// 根据源参数构造认证头(只保留用户显式填写的方式)
@@ -827,7 +830,7 @@ fn build_http_auth(p: &SourceParams) -> Result<Option<HttpAuthHeader>, String> {
                 return Ok(None);
             };
             let value = reqwest::header::HeaderValue::from_str(&format!("Bearer {token}"))
-                .map_err(|e| i18n::tf("Bearer token 无效: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.http.token_invalid", &[("e", e.to_string())]))?;
             Ok(Some(HttpAuthHeader::Header {
                 name: reqwest::header::AUTHORIZATION,
                 value,
@@ -847,14 +850,15 @@ fn build_http_auth(p: &SourceParams) -> Result<Option<HttpAuthHeader>, String> {
                 "host" | "content-length" | "transfer-encoding" | "connection"
             ) {
                 return Err(i18n::tf(
-                    "不允许设置请求头: {name}",
+                    "error.header_not_allowed",
                     &[("name", name.to_string())],
                 ));
             }
             let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
-                .map_err(|e| i18n::tf("请求头名称无效: {e}", &[("e", e.to_string())]))?;
-            let value = reqwest::header::HeaderValue::from_str(value)
-                .map_err(|e| i18n::tf("请求头值无效: {e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.http.header_name_invalid", &[("e", e.to_string())]))?;
+            let value = reqwest::header::HeaderValue::from_str(value).map_err(|e| {
+                i18n::tf("error.http.header_value_invalid", &[("e", e.to_string())])
+            })?;
             Ok(Some(HttpAuthHeader::Header { name, value }))
         }
     }
@@ -891,25 +895,25 @@ fn http_get(
         }
         let resp = req
             .send()
-            .map_err(|e| i18n::tf("HTTP 请求失败: {e}", &[("e", e.to_string())]))?;
+            .map_err(|e| i18n::tf("error.http.request", &[("e", e.to_string())]))?;
         if resp.status().is_redirection() {
             let loc = resp
                 .headers()
                 .get(reqwest::header::LOCATION)
                 .and_then(|h| h.to_str().ok())
-                .ok_or(i18n::t("重定向缺少 Location"))?
+                .ok_or(i18n::t("error.http.redirect_location_missing"))?
                 .to_owned();
             cur = v
                 .url
                 .join(&loc)
-                .map_err(|_| i18n::t("重定向 Location 无效").to_string())?;
+                .map_err(|_| i18n::t("error.http.redirect_location_invalid").to_string())?;
             *v = validate_url(cur.as_str())?;
             *client = http_client(v)?;
             continue;
         }
         return Ok(resp);
     }
-    Err(i18n::t("重定向次数过多").into())
+    Err(i18n::t("error.http.too_many_redirects").into())
 }
 
 fn total_from_headers(resp: &reqwest::blocking::Response, v: &Validated) -> Option<u64> {
@@ -1039,15 +1043,15 @@ fn spawn_pipe_reader(mut r: impl Read + Send + 'static, tx: crossbeam_channel::S
 
 fn spawn_error(prog: &str, e: &std::io::Error) -> String {
     match e.kind() {
-        std::io::ErrorKind::NotFound => i18n::tf(
-            "未找到命令 {prog}(请确认已安装,并在 PATH 中)",
+        std::io::ErrorKind::NotFound => {
+            i18n::tf("error.command.not_found", &[("prog", prog.to_string())])
+        }
+        std::io::ErrorKind::PermissionDenied => i18n::tf(
+            "error.command.permission_denied",
             &[("prog", prog.to_string())],
         ),
-        std::io::ErrorKind::PermissionDenied => {
-            i18n::tf("没有执行权限:{prog}", &[("prog", prog.to_string())])
-        }
         _ => i18n::tf(
-            "无法启动命令 {prog}:{e}",
+            "error.command.spawn",
             &[("prog", prog.to_string()), ("e", e.to_string())],
         ),
     }
@@ -1095,7 +1099,7 @@ fn capture_local(argv: &[String]) -> Result<String, String> {
     let prog = argv
         .first()
         .filter(|s| !s.trim().is_empty())
-        .ok_or(i18n::t("取值命令为空").to_string())?;
+        .ok_or(i18n::t("error.command.value_empty").to_string())?;
     let mut cmd = std::process::Command::new(prog);
     cmd.args(&argv[1..]).stdin(std::process::Stdio::null());
     #[cfg(windows)]
@@ -1109,11 +1113,11 @@ fn capture_local(argv: &[String]) -> Result<String, String> {
         let err = err.trim();
         return Err(if err.is_empty() {
             i18n::tf(
-                "取值命令失败(code={code})",
+                "error.command.value_exit",
                 &[("code", out.status.code().unwrap_or(-1).to_string())],
             )
         } else {
-            i18n::tf("取值命令失败:{err}", &[("err", err.to_string())])
+            i18n::tf("error.command.value_failed", &[("err", err.to_string())])
         });
     }
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
@@ -1137,14 +1141,14 @@ fn capture_ssh(target: &ExecTarget, argv: &[String], ask: HostKeyAsk) -> Result<
         .join(" ");
     let mut ch = sess
         .channel_session()
-        .map_err(|e| i18n::tf("SSH 通道创建失败:{e}", &[("e", e.to_string())]))?;
+        .map_err(|e| i18n::tf("error.ssh.channel", &[("e", e.to_string())]))?;
     ch.handle_extended_data(ssh2::ExtendedData::Merge)
-        .map_err(|e| i18n::tf("SSH stderr 合并失败:{e}", &[("e", e.to_string())]))?;
+        .map_err(|e| i18n::tf("error.ssh.stderr_merge", &[("e", e.to_string())]))?;
     ch.exec(&remote)
-        .map_err(|e| i18n::tf("远端取值命令执行失败:{e}", &[("e", e.to_string())]))?;
+        .map_err(|e| i18n::tf("error.command.remote_value", &[("e", e.to_string())]))?;
     let mut buf = String::new();
     ch.read_to_string(&mut buf)
-        .map_err(|e| i18n::tf("远端取值命令读取失败:{e}", &[("e", e.to_string())]))?;
+        .map_err(|e| i18n::tf("error.command.remote_value_read", &[("e", e.to_string())]))?;
     let _ = ch.wait_close();
     Ok(buf)
 }
@@ -1181,7 +1185,7 @@ pub fn open_command(
         let value = out.split_whitespace().next().unwrap_or("").to_string();
         if value.is_empty() {
             return Err(i18n::tf(
-                "取值失败:{key} 没有输出(目标是否在运行?参数是否正确?)",
+                "error.command.value_empty_output",
                 &[("key", r.key.clone())],
             ));
         }
@@ -1192,7 +1196,7 @@ pub fn open_command(
     }
     if let Some(a) = argv.iter().find(|a| a.contains("${")) {
         return Err(i18n::tf(
-            "命令中有未解析的占位符:{a}",
+            "error.command.unresolved_placeholder",
             &[("a", a.to_string())],
         ));
     }
@@ -1215,11 +1219,11 @@ pub fn open_command(
             let sess = ssh_connect_stream(host, *port, user, auth, ask)?;
             let mut ch = sess
                 .channel_session()
-                .map_err(|e| i18n::tf("SSH 通道创建失败:{e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.ssh.channel", &[("e", e.to_string())]))?;
             ch.handle_extended_data(ssh2::ExtendedData::Merge)
-                .map_err(|e| i18n::tf("SSH stderr 合并失败:{e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.ssh.stderr_merge", &[("e", e.to_string())]))?;
             ch.exec(&remote)
-                .map_err(|e| i18n::tf("远端命令执行失败:{e}", &[("e", e.to_string())]))?;
+                .map_err(|e| i18n::tf("error.command.remote_run", &[("e", e.to_string())]))?;
             let stop = Arc::new(AtomicBool::new(false));
             let exit = Arc::new(Mutex::new(None));
             Ok(Opened::Stream(StreamHandle {

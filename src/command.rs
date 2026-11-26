@@ -314,12 +314,15 @@ pub fn plan(
     for f in &preset.fields {
         let v = values.get(&f.key).map(|s| s.trim()).unwrap_or("");
         if v.is_empty() && !f.optional {
-            return Err(i18n::tf("请填写{label}", &[("label", i18n::td(&f.label))]));
+            return Err(i18n::tf(
+                "validation.field_required",
+                &[("label", i18n::td(&f.label))],
+            ));
         }
     }
     let argv = expand_argv(&preset.argv, values);
     if argv.is_empty() {
-        return Err(i18n::t("展开后的命令为空").into());
+        return Err(i18n::t("error.command.expanded_empty").into());
     }
     let resolve = preset
         .resolve
@@ -416,7 +419,10 @@ pub fn split_argv(text: &str) -> Result<Vec<String>, String> {
         }
     }
     if let Some(q) = quote {
-        return Err(i18n::tf("引号未闭合: {q}", &[("q", q.to_string())]));
+        return Err(i18n::tf(
+            "error.command.unclosed_quote",
+            &[("q", q.to_string())],
+        ));
     }
     if has {
         out.push(cur);

@@ -474,10 +474,10 @@ pub fn stub_missing_images(md: &str, base_dir: &std::path::Path) -> String {
             if full.is_file() {
                 whole.to_string()
             } else if alt.is_empty() {
-                i18n::tf("⚠ 图片缺失:{decoded}", &[("decoded", decoded)])
+                i18n::tf("error.markdown.image_missing", &[("decoded", decoded)])
             } else {
                 i18n::tf(
-                    "⚠ 图片缺失:{decoded}({alt})",
+                    "error.markdown.image_missing_alt",
                     &[("decoded", decoded), ("alt", alt.to_string())],
                 )
             }

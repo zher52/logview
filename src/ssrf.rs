@@ -14,46 +14,40 @@ pub struct Validated {
 }
 
 pub fn validate_url(raw: &str) -> Result<Validated, String> {
-    let url =
-        reqwest::Url::parse(raw).map_err(|e| i18n::tf("URL 无效: {e}", &[("e", e.to_string())]))?;
+    let url = reqwest::Url::parse(raw)
+        .map_err(|e| i18n::tf("error.url.invalid", &[("e", e.to_string())]))?;
     match url.scheme() {
         "http" | "https" => {}
-        s => {
-            return Err(i18n::tf(
-                "仅允许 http/https 协议(收到: {s})",
-                &[("s", s.to_string())],
-            ))
-        }
+        s => return Err(i18n::tf("error.url.scheme", &[("s", s.to_string())])),
     }
     if !url.username().is_empty() || url.password().is_some() {
-        return Err(i18n::t("不支持携带用户名/密码的 URL").into());
+        return Err(i18n::t("error.url.userinfo").into());
     }
     let host = url
         .host_str()
-        .ok_or(i18n::t("URL 缺少主机名"))?
+        .ok_or(i18n::t("error.url.missing_host"))?
         .to_ascii_lowercase();
-    let port = url.port_or_known_default().ok_or(i18n::t("URL 缺少端口"))?;
+    let port = url
+        .port_or_known_default()
+        .ok_or(i18n::t("error.url.missing_port"))?;
     if host == "localhost" || host.ends_with(".localhost") || host.ends_with(".local") {
-        return Err(i18n::t("拒绝 localhost/.local 地址(SSRF 防护)").into());
+        return Err(i18n::t("error.ssrf.localhost").into());
     }
     let ips: Vec<IpAddr> = if let Ok(ip) = host.parse::<IpAddr>() {
         vec![ip]
     } else {
         (host.as_str(), port)
             .to_socket_addrs()
-            .map_err(|e| i18n::tf("DNS 解析失败: {e}", &[("e", e.to_string())]))?
+            .map_err(|e| i18n::tf("error.ssrf.dns", &[("e", e.to_string())]))?
             .map(|a| a.ip())
             .collect()
     };
     if ips.is_empty() {
-        return Err(i18n::t("DNS 解析无结果").into());
+        return Err(i18n::t("error.ssrf.dns_empty").into());
     }
     for ip in &ips {
         if is_banned(*ip) {
-            return Err(i18n::tf(
-                "拒绝内网/环回/保留地址 {ip}(SSRF 防护,仅允许公网地址)",
-                &[("ip", ip.to_string())],
-            ));
+            return Err(i18n::tf("error.ssrf.blocked", &[("ip", ip.to_string())]));
         }
     }
     Ok(Validated {
