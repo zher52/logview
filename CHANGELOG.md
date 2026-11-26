@@ -6,11 +6,12 @@
 
 ### Added
 
-- 开源配套：MIT 许可证、第三方素材声明、贡献与安全策略、Issue/PR 模板。
+- 开源配套：AGPL-3.0 许可证、第三方素材声明、贡献与安全策略、Issue/PR 模板。
 - GitHub Actions：格式 / lint / 测试，依赖安全审计，依赖更新提醒。
 
 ### Changed
 
+- 许可证采用 GNU AGPL-3.0（SPDX：`AGPL-3.0-only`）。
 - 统一 rustfmt 格式。
 
 ## [0.2.0] - 2026-11-26

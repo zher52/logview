@@ -69,5 +69,9 @@ and UI text are in Chinese; identifiers are English.
 
 ## License
 
-[MIT](LICENSE). Bundled Ionicons icons are MIT; dependency licenses are listed in
+[GNU AGPL-3.0](LICENSE) (SPDX: `AGPL-3.0-only`), Copyright (C) 2026 zher52.
+
+If you modify and distribute this program, or offer it to users over a network, you must make the
+complete corresponding source available as required by section 13 of the AGPL.
+Bundled Ionicons icons are MIT; dependency licenses are listed in
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

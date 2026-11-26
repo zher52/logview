@@ -231,7 +231,8 @@ Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.gith
 
 ## 许可证
 
-本项目以 [MIT](LICENSE) 发布。
+本项目以 [GNU AGPL-3.0](LICENSE) 发布(SPDX:`AGPL-3.0-only`),Copyright (C) 2026 zher52。
 
+- 分发修改版,或以网络服务方式向用户提供本程序时,需按 AGPL 第 13 条向使用者提供完整的对应源代码。
 - 内置图标来自 Ionicons(MIT);依赖与素材声明见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
 - 界面与日志字体从操作系统读取,不再分发字体文件。
