@@ -263,7 +263,7 @@ impl Tab {
     /// 设置标签页:与空白页相同的占位结构,内容由 AppView.settings_panel 渲染
     fn settings(settings: &Settings) -> Tab {
         let mut t = Tab::blank(settings);
-        t.title = "设置".into();
+        t.title = i18n::t("设置").into();
         t.welcome = false;
         t.settings = true;
         t
@@ -1562,7 +1562,7 @@ impl AppView {
             e
         };
         let s = &self.settings;
-        let search = cx.new(|cx| InputState::new(window, cx).placeholder("搜索设置"));
+        let search = cx.new(|cx| InputState::new(window, cx).placeholder(i18n::t("搜索设置")));
         let color_dark: Vec<Entity<InputState>> = s
             .level_colors_hex(false)
             .into_iter()
@@ -4225,7 +4225,7 @@ impl AppView {
             ))
             .child(link(
                 "welcome-settings",
-                "设置",
+                i18n::t("设置"),
                 pal,
                 move |v, _e, window, cx| v.open_settings_tab(Some(ti), window, cx),
                 cx,
@@ -4835,8 +4835,8 @@ impl AppView {
                 "最近打开记录保存条数 条数 上限 history limit".into(),
                 settings_row(
                     pal,
-                    "保存条数",
-                    Some("最多保留多少条最近打开记录(1–500)".into()),
+                    i18n::t("保存条数"),
+                    Some(i18n::t("最多保留多少条最近打开记录(1–500)").into()),
                     num_input(&rl_e, 96.0, "条", pal),
                 ),
             ),
@@ -4844,8 +4844,11 @@ impl AppView {
                 "删除 url 最近打开记录时清除凭据 钥匙串 keychain 密码 token".into(),
                 settings_row(
                     pal,
-                    "删除 URL 记录时清除凭据",
-                    Some("移除或清空 URL 最近打开记录时,同时删除系统钥匙串中的对应凭据".into()),
+                    i18n::t("删除 URL 记录时清除凭据"),
+                    Some(
+                        i18n::t("移除或清空 URL 最近打开记录时,同时删除系统钥匙串中的对应凭据")
+                            .into(),
+                    ),
                     switch_el("set-recents-purge", purge_creds, pal)
                         .on_click(cx.listener(|v, _e, _w, cx| v.toggle_recents_purge(cx)))
                         .into_any_element(),
@@ -4859,8 +4862,8 @@ impl AppView {
             "显示行号 行号 line numbers".into(),
             settings_row(
                 pal,
-                "显示行号",
-                Some("在日志行左侧显示行号".into()),
+                i18n::t("显示行号"),
+                Some(i18n::t("在日志行左侧显示行号").into()),
                 switch_el("set-ln", show_ln, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_show_line_numbers(cx)))
                     .into_any_element(),
@@ -4870,10 +4873,12 @@ impl AppView {
             "显示时间戳 时间戳 timestamp time 输出时间".into(),
             settings_row(
                 pal,
-                "显示时间戳",
+                i18n::t("显示时间戳"),
                 Some(
-                    "在日志行左侧显示该行的本地时间(本次查看期间新到达的行;已存在的历史行留空)"
-                        .into(),
+                    i18n::t(
+                        "在日志行左侧显示该行的本地时间(本次查看期间新到达的行;已存在的历史行留空)",
+                    )
+                    .into(),
                 ),
                 switch_el("set-ts", show_ts, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_show_timestamps(cx)))
@@ -4884,8 +4889,8 @@ impl AppView {
             "默认自动换行 换行 wrap".into(),
             settings_row(
                 pal,
-                "默认自动换行",
-                Some("新标签页的初始值;标签页内可单独切换".into()),
+                i18n::t("默认自动换行"),
+                Some(i18n::t("新标签页的初始值;标签页内可单独切换").into()),
                 switch_el("set-wrap", wrap_default, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_wrap_default(cx)))
                     .into_any_element(),
@@ -4908,8 +4913,8 @@ impl AppView {
                 "界面字号 字号 font size".into(),
                 settings_row(
                     pal,
-                    "界面字号",
-                    Some("设置、工具栏等界面文字大小(9–24 pt)".into()),
+                    i18n::t("界面字号"),
+                    Some(i18n::t("设置、工具栏等界面文字大小(9–24 pt)").into()),
                     num_input(&ui_size_e, 96.0, "pt", pal),
                 ),
             ),
@@ -4917,8 +4922,8 @@ impl AppView {
                 "日志字号 字号 font size".into(),
                 settings_row(
                     pal,
-                    "日志字号",
-                    Some("日志文本大小,行高随之等比变化(9–24 pt)".into()),
+                    i18n::t("日志字号"),
+                    Some(i18n::t("日志文本大小,行高随之等比变化(9–24 pt)").into()),
                     num_input(&log_size_e, 96.0, "pt", pal),
                 ),
             ),
@@ -4926,8 +4931,8 @@ impl AppView {
                 "界面字体 字体 family".into(),
                 settings_row(
                     pal,
-                    "界面字体",
-                    Some("留空跟随系统 UI 字体(如 PingFang SC)".into()),
+                    i18n::t("界面字体"),
+                    Some(i18n::t("留空跟随系统 UI 字体(如 PingFang SC)").into()),
                     text_input(&ui_fam_e, 220.0),
                 ),
             ),
@@ -4935,8 +4940,8 @@ impl AppView {
                 "日志字体 等宽 字体 family".into(),
                 settings_row(
                     pal,
-                    "日志字体",
-                    Some("留空跟随系统等宽字体(如 Menlo、JetBrains Mono)".into()),
+                    i18n::t("日志字体"),
+                    Some(i18n::t("留空跟随系统等宽字体(如 Menlo、JetBrains Mono)").into()),
                     text_input(&log_fam_e, 220.0),
                 ),
             ),
@@ -4956,7 +4961,7 @@ impl AppView {
                     .w(px(theme_w))
                     .text_size(px(theme::scaled(10.5)))
                     .text_color(theme::hex(pal.text3))
-                    .child("主题"),
+                    .child(i18n::t("主题")),
             )
             .child(
                 div()
@@ -4966,7 +4971,7 @@ impl AppView {
                     .text_size(px(theme::scaled(10.5)))
                     .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                     .text_color(theme::hex(pal.text2))
-                    .child("日志级别"),
+                    .child(i18n::t("日志级别")),
             )
             .child(
                 div()
@@ -4976,7 +4981,7 @@ impl AppView {
                     .text_size(px(theme::scaled(10.5)))
                     .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                     .text_color(theme::hex(pal.text2))
-                    .child("搜索高亮"),
+                    .child(i18n::t("搜索高亮")),
             );
         let mut head2 = div()
             .flex()
@@ -5001,7 +5006,7 @@ impl AppView {
                 .justify_center()
                 .text_size(px(theme::scaled(10.0)))
                 .text_color(theme::hex(pal.text3))
-                .child("底色"),
+                .child(i18n::t("底色")),
         );
         let mut body = div().flex().flex_col().gap(px(4.0));
         for light_row in [false, true] {
@@ -5020,7 +5025,11 @@ impl AppView {
                     .w(px(theme_w))
                     .text_size(px(theme::scaled(12.0)))
                     .text_color(theme::hex(pal.text1))
-                    .child(if light_row { "亮色" } else { "暗色" }),
+                    .child(if light_row {
+                        i18n::t("亮色")
+                    } else {
+                        i18n::t("暗色")
+                    }),
             );
             for i in 0..LEVEL_COUNT {
                 row = row.child(color_cell(&picks[i], &inputs[i], cell_w));
@@ -5029,7 +5038,7 @@ impl AppView {
             body = body.child(row);
         }
         let color_rows: Vec<(String, AnyElement)> = vec![(
-            "颜色管理 颜色 日志级别 搜索高亮 高亮 暗色 亮色 hex".into(),
+            i18n::t("颜色管理 颜色 日志级别 搜索高亮 高亮 暗色 亮色 hex").into(),
             div()
                 .flex()
                 .flex_col()
@@ -5053,7 +5062,9 @@ impl AppView {
                         .border_color(theme::hex(pal.split))
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child("级别颜色同时用于级别文字与行底色;搜索高亮用于检索命中文本的底色。"),
+                        .child(i18n::t(
+                            "级别颜色同时用于级别文字与行底色;搜索高亮用于检索命中文本的底色。",
+                        )),
                 )
                 .into_any_element(),
         )];
@@ -5064,8 +5075,8 @@ impl AppView {
                 "轮询间隔 poll ms".into(),
                 settings_row(
                     pal,
-                    "轮询间隔",
-                    Some("检查新增内容的间隔(≥200 ms)".into()),
+                    i18n::t("轮询间隔"),
+                    Some(i18n::t("检查新增内容的间隔(≥200 ms)").into()),
                     num_input(&poll_e, 110.0, "ms", pal),
                 ),
             ),
@@ -5073,8 +5084,8 @@ impl AppView {
                 "初始加载 initial mb".into(),
                 settings_row(
                     pal,
-                    "初始加载",
-                    Some("打开日志时从开头读取的大小(1–512 MB)".into()),
+                    i18n::t("初始加载"),
+                    Some(i18n::t("打开日志时从开头读取的大小(1–512 MB)").into()),
                     num_input(&init_e, 110.0, "MB", pal),
                 ),
             ),
@@ -5082,8 +5093,8 @@ impl AppView {
                 "尾部加载上限 tail mb".into(),
                 settings_row(
                     pal,
-                    "尾部加载上限",
-                    Some("「跳到末尾」一次读取的大小(1–512 MB)".into()),
+                    i18n::t("尾部加载上限"),
+                    Some(i18n::t("「跳到末尾」一次读取的大小(1–512 MB)").into()),
                     num_input(&tail_e, 110.0, "MB", pal),
                 ),
             ),
@@ -5092,8 +5103,8 @@ impl AppView {
             "行数上限 max lines 内存".into(),
             settings_row(
                 pal,
-                "行数上限",
-                Some("超出后环形丢弃最旧行(≥1000)".into()),
+                i18n::t("行数上限"),
+                Some(i18n::t("超出后环形丢弃最旧行(≥1000)").into()),
                 num_input(&max_e, 130.0, "行", pal),
             ),
         )];
@@ -5151,8 +5162,8 @@ impl AppView {
             "配置 导入 导出 json 备份 恢复".into(),
             settings_row(
                 pal,
-                "配置导入 / 导出",
-                Some("导出全部分析配置为 JSON;导入会整体替换现有配置".into()),
+                i18n::t("配置导入 / 导出"),
+                Some(i18n::t("导出全部分析配置为 JSON;导入会整体替换现有配置").into()),
                 cfg_act.into_any_element(),
             ),
         ));
@@ -5281,9 +5292,9 @@ impl AppView {
                             .text_size(px(theme::scaled(10.5)))
                             .text_color(theme::hex(pal.text3))
                             .child(if *built_in {
-                                "内置配置"
+                                i18n::t("内置配置")
                             } else {
-                                "自定义配置"
+                                i18n::t("自定义配置")
                             }),
                     )
                     .child(div().flex_1())
@@ -5291,7 +5302,7 @@ impl AppView {
                         div()
                             .text_size(px(theme::scaled(12.0)))
                             .text_color(theme::hex(pal.text2))
-                            .child("启用(新标签页默认)"),
+                            .child(i18n::t("启用(新标签页默认)")),
                     )
                     .child(switch_el("cfg-enable", *enabled, pal).on_click(
                         cx.listener(move |v, _e, _w, cx| v.toggle_config_enabled(sel, cx)),
@@ -5325,10 +5336,10 @@ impl AppView {
                         .text_size(px(theme::scaled(10.5)))
                         .text_color(theme::hex(pal.text3))
                         .child(div().w(px(24.0)).child("#"))
-                        .child(div().flex_1().child("正则(捕获组 1 取级别文本)"))
-                        .child(div().w(px(56.0)).child("标志"))
-                        .child(div().w(px(44.0)).child("自动"))
-                        .child(div().w(px(72.0)).child("级别"))
+                        .child(div().flex_1().child(i18n::t("正则(捕获组 1 取级别文本)")))
+                        .child(div().w(px(56.0)).child(i18n::t("标志")))
+                        .child(div().w(px(44.0)).child(i18n::t("自动")))
+                        .child(div().w(px(72.0)).child(i18n::t("级别")))
                         .child(div().w(px(18.0)).child(""))
                         .into_any_element(),
                 );
@@ -5375,7 +5386,7 @@ impl AppView {
                             .w(px(72.0))
                             .text_size(px(theme::scaled(10.5)))
                             .text_color(theme::hex(pal.text3))
-                            .child("取捕获组")
+                            .child(i18n::t("取捕获组"))
                             .into_any_element()
                     } else {
                         let lname = names.get(*level as usize).copied().unwrap_or("—");
@@ -5426,7 +5437,7 @@ impl AppView {
                         )
                         .into_any_element(),
                 );
-                detail = detail.child(settings_group("匹配规则", rule_rows, pal));
+                detail = detail.child(settings_group(i18n::t("匹配规则"), rule_rows, pal));
                 detail = detail.child(
                     div()
                         .text_size(px(theme::scaled(11.0)))
@@ -5438,7 +5449,7 @@ impl AppView {
                     div()
                         .text_size(px(theme::scaled(12.0)))
                         .text_color(theme::hex(pal.text3))
-                        .child("暂无配置,点击左侧「新建配置」创建"),
+                        .child(i18n::t("暂无配置,点击左侧「新建配置」创建")),
                 );
             }
 
@@ -5462,7 +5473,7 @@ impl AppView {
                     div()
                         .text_size(px(theme::scaled(11.0)))
                         .text_color(theme::hex(pal.primary))
-                        .child("按下组合键…"),
+                        .child(i18n::t("按下组合键…")),
                 );
             } else {
                 ctl = ctl.child(shortcut_caps(&spec, pal));
@@ -5477,7 +5488,11 @@ impl AppView {
                     .text_size(px(theme::scaled(11.0)))
                     .text_color(theme::hex(pal.primary))
                     .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                    .child(if capturing { "取消" } else { "修改" })
+                    .child(if capturing {
+                        "取消"
+                    } else {
+                        i18n::t("修改")
+                    })
                     .on_click(cx.listener(move |v, _e, w, cx| {
                         if capturing {
                             v.cancel_shortcut_capture(cx);
@@ -5553,11 +5568,11 @@ impl AppView {
             i18n::t("快捷键"),
         ];
         let page_descs = [
-            "界面行号换行、字号字体与颜色管理",
-            "自动追加、加载大小与内存上限",
-            "级别分析配置:正则规则、级别映射与启用状态",
-            "已保存的主机、URL 凭据与最近打开记录的管理",
-            "全局快捷键一览(固定绑定)",
+            i18n::t("界面行号换行、字号字体与颜色管理"),
+            i18n::t("自动追加、加载大小与内存上限"),
+            i18n::t("级别分析配置:正则规则、级别映射与启用状态"),
+            i18n::t("已保存的主机、URL 凭据与最近打开记录的管理"),
+            i18n::t("全局快捷键一览(固定绑定)"),
         ];
 
         let mut matched = 0usize;
@@ -5722,7 +5737,7 @@ impl AppView {
                             .text_size(px(theme::scaled(14.0)))
                             .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                             .text_color(theme::hex(pal.text1))
-                            .child("设置"),
+                            .child(i18n::t("设置")),
                     )
                     .child(
                         div()
@@ -6431,9 +6446,11 @@ impl AppView {
                     }),
                 )
                 .separator()
-                .item(PopupMenuItem::new("跳到末尾").on_click(move |_, _, cx| {
-                    this_end.update(cx, |v, _| v.jump_to_end());
-                }))
+                .item(
+                    PopupMenuItem::new(i18n::t("跳到末尾")).on_click(move |_, _, cx| {
+                        this_end.update(cx, |v, _| v.jump_to_end());
+                    }),
+                )
             });
             out.push(row.into_any_element());
         }
@@ -6858,7 +6875,7 @@ impl AppView {
         let is_md = code_doc.map_or(false, |d| d.lang == Some(crate::code::Lang::Markdown));
         let code_bar: Option<AnyElement> = code_doc.map(|d| {
             let editing = d.editing;
-            let lang = d.lang.map(|l| l.label()).unwrap_or("纯文本");
+            let lang = d.lang.map(|l| l.label()).unwrap_or(i18n::t("纯文本"));
             let mut bar = div().flex().items_center().gap(px(6.0)).child(
                 div()
                     .px(px(6.0))
@@ -6874,9 +6891,9 @@ impl AppView {
                     "code-edit",
                     "icons/edit.svg",
                     SharedString::from(if editing {
-                        "只读预览(点击退出编辑)"
+                        i18n::t("只读预览(点击退出编辑)")
                     } else {
-                        "编辑源码(⌘S 保存)"
+                        i18n::t("编辑源码(⌘S 保存)")
                     }),
                     editing,
                     pal,
@@ -6907,7 +6924,7 @@ impl AppView {
                             gpui_kit::component::tooltip::Tooltip::element(|_, _| {
                                 div()
                                     .text_size(px(theme::scaled(11.0)))
-                                    .child("保存修改(⌘S)")
+                                    .child(i18n::t("保存修改(⌘S)"))
                             })
                             .build(window, cx)
                         })
@@ -6922,7 +6939,7 @@ impl AppView {
                     div()
                         .text_size(px(theme::scaled(10.5)))
                         .text_color(theme::hex(pal.text2))
-                        .child("文档较大,已显示源码"),
+                        .child(i18n::t("文档较大,已显示源码")),
                 );
             }
             bar.into_any_element()
@@ -7048,14 +7065,14 @@ impl AppView {
                     .context_menu({
                         let ent = ent_tab.clone();
                         move |menu, _window, _cx| {
-                            menu.item(PopupMenuItem::new("关闭").on_click({
+                            menu.item(PopupMenuItem::new(i18n::t("关闭")).on_click({
                                 let ent = ent.clone();
                                 move |_, w, cx| {
                                     ent.update(cx, |v, cx| v.close_tab(idx, w, cx));
                                 }
                             }))
                             .item(
-                                PopupMenuItem::new("关闭其他").on_click({
+                                PopupMenuItem::new(i18n::t("关闭其他")).on_click({
                                     let ent = ent.clone();
                                     move |_, w, cx| {
                                         ent.update(cx, |v, cx| v.close_other_tabs(idx, w, cx));
@@ -7181,8 +7198,8 @@ impl AppView {
             let others = 240.0
                 + w_at(".*", btn_size) + 16.0
                 + w_at("Aa", btn_size) + 16.0
-                + w_at("高亮", btn_size) + 20.0
-                + w_at("过滤", btn_size) + 20.0
+                + w_at(i18n::t("高亮"), btn_size) + 20.0
+                + w_at(i18n::t("过滤"), btn_size) + 20.0
                 + nav_w
                 + 5.0 + 14.0 + 3.0
                 + w_at(&format!("{cfg_on}/{cfg_total}"), theme::scaled(10.5))
@@ -7218,7 +7235,11 @@ impl AppView {
                 "{}:{} 行(点击{})",
                 names[idx],
                 counts[idx],
-                if on { "隐藏" } else { "显示" }
+                if on {
+                    i18n::t("隐藏")
+                } else {
+                    i18n::t("显示")
+                }
             ));
             let mut chip = div()
                 .id(SharedString::from(format!("chip-{idx}")))
@@ -7317,9 +7338,9 @@ impl AppView {
             "btn-wrap",
             "icons/wrap.svg",
             SharedString::from(if wrap_on {
-                "自动换行:已开启(点击关闭)"
+                i18n::t("自动换行:已开启(点击关闭)")
             } else {
-                "自动换行:已关闭(点击开启)"
+                i18n::t("自动换行:已关闭(点击开启)")
             }),
             wrap_on,
             pal,
@@ -7394,11 +7415,11 @@ impl AppView {
                         fmt_mb(total)
                     ))
                     .child(
-                        banner_btn("ban-all", "加载全部")
+                        banner_btn("ban-all", i18n::t("加载全部"))
                             .on_click(cx.listener(|v, _e, _w, _cx| v.load_all())),
                     )
                     .child(
-                        banner_btn("ban-end", "跳到末尾")
+                        banner_btn("ban-end", i18n::t("跳到末尾"))
                             .on_click(cx.listener(|v, _e, _w, _cx| v.jump_to_end())),
                     )
                     .into_any_element(),
@@ -7534,7 +7555,7 @@ impl AppView {
                                 } else {
                                     theme::hex(pal.text2)
                                 })
-                                .child("高亮")
+                                .child(i18n::t("高亮"))
                                 .on_click(cx.listener(|v, _e, _w, _cx| v.set_filter_mode(false))),
                         )
                         .child(
@@ -7554,7 +7575,7 @@ impl AppView {
                                 } else {
                                     theme::hex(pal.text2)
                                 })
-                                .child("过滤")
+                                .child(i18n::t("过滤"))
                                 .on_click(cx.listener(|v, _e, _w, _cx| v.set_filter_mode(true))),
                         ),
                 )
