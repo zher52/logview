@@ -54,6 +54,111 @@ macOS app bundle (document types, Finder "Open With"):
 ./scripts/make_app.sh
 ```
 
+## Usage
+
+### Opening a source (Ctrl/Cmd+T)
+
+| Type | Fields | Notes |
+|---|---|---|
+| Local | File path | Or use **Browse…** to pick a file |
+| SSH | Host / port / user / auth / remote path | Auth: password, key file (path on the server), key text (paste PEM), or ssh-agent |
+| HTTP | URL / auth (none, Basic, Bearer, API key, custom header) | Public addresses only (see Security); following requires `Range` support |
+| Command | Preset + parameters (local) or host + auth + preset + parameters (SSH) | Built-in adb / tail / journalctl / docker / kubectl presets; custom argv allowed |
+
+With **Remember connection** enabled, credentials go to the **OS keychain** (macOS Keychain, Windows
+Credential Manager, Linux Secret Service). `settings.json` only stores non-sensitive fields such as
+host, port, user and path. If the keychain is unavailable, credentials live in memory for the current
+session only. Plaintext credentials from older versions are migrated automatically at startup; on
+failure the plaintext is still removed and you are asked to re-enter it. Pasted private-key text is
+not written to the keychain (it can exceed the Windows 2560-byte entry limit); prefer a key file.
+
+URL credentials have two modes: **Save credentials** (keychain) and **History only** (default,
+sanitized URL). SSH host fields expand saved servers on focus; servers can be managed under
+Settings → Connection, or imported from the system ssh config. The recents limit is configurable
+(default 50). Deleting a URL entry also removes its keychain credentials by default.
+
+### Command sources
+
+Use **Command** on the welcome screen, or switch to the **Command** tab in the SSH dialog. Both share
+the same presets and form.
+
+- **Presets are data** in `command_presets` in `settings.json` (seeded on first run; new built-ins are
+  appended by id). Edit argv or add your own commands without changing code. Empty parameters are
+  dropped together with their adjacent flag.
+- **Local commands** are executed directly by argv, without a shell; the executable is looked up on
+  `PATH` with a clear error when missing.
+- **SSH commands** run in the remote login shell (`sh -c`) with each argument single-quoted, so pipes
+  and redirection work. This is equivalent to typing the command in a terminal; there is no argv-level
+  sandbox or whitelist.
+- **Semantics**: stderr is merged into the same tab; the exit code is shown at the bottom, and
+  **Retry after exit** reopens with backoff (useful for device or container restarts). **Load all** is
+  disabled (streams have no history); **Jump to end** clears the buffer and keeps following.
+- **Auth**: SSH commands reuse the SSH file source credentials and keychain entry for the same
+  `user@host:port`.
+
+### Level profiles
+
+```jsonc
+// the configs array in settings (import/export uses the same format)
+[
+  {
+    "id": "my-nginx",
+    "name": "my-nginx",
+    "enabled": true,
+    "built_in": false,
+    "rules": [
+      { "auto": true,  "level": 2, "regex": "(?:^|\\s)severity=(\\w+)", "flags": "i" },
+      { "auto": false, "level": 4, "regex": "\\b5\\d\\d\\b",        "flags": "" }
+    ]
+  }
+]
+```
+
+- `auto: true` maps capture group 1 text to a level (`err/error→ERROR`, `warn→WARN`,
+  `fatal/critical/panic→FATAL`, `trace→TRACE`, `debug→DEBUG`, `info→INFO`).
+- `auto: false` uses the fixed `level` (0=TRACE … 5=FATAL).
+- Enabled profiles are evaluated in order and **the first match wins**; the toolbar dropdown toggles
+  them per tab.
+
+### Search
+
+| Control | Behavior |
+|---|---|
+| Highlight | All rows stay visible; matches get a highlight background and a match counter; `▲`/`▼`/Enter cycle |
+| Filter | Only matching rows are shown (intersected with level filters); the box shows `visible/total` |
+| `Aa` | Case sensitive |
+| `.*` | Regex mode (invalid patterns show an inline error without breaking the view) |
+
+### Shortcuts
+
+Rebind actions under Settings → Shortcuts: click **Edit**, then press a combination with a modifier.
+One action per combination; conflicts **swap** bindings. Each action can also be reset individually.
+
+| Key | Action |
+|---|---|
+| Ctrl/Cmd+T | Open a source |
+| Ctrl/Cmd+W | Close tab |
+| Ctrl/Cmd+F | Focus search |
+| Ctrl/Cmd+K | Clear screen (keeps the offset; new logs still append) |
+| Ctrl/Cmd+S | Save code-view edits |
+| Ctrl/Cmd+C | Copy selected log rows |
+| Ctrl/Cmd+, | Open settings (applies and saves immediately) |
+| Esc | Close dialogs |
+| Enter (search) | Jump to the next match in highlight mode (fixed) |
+
+**Row selection**: click a row to select it, Shift/Cmd-click to extend, right-click to copy the row or
+selection; Cmd/Ctrl+C also copies. Link context menus add open-in-new-tab / open-in-browser / copy-link.
+
+## Configuration & persistence
+
+Settings file: macOS `~/Library/Application Support/logview/settings.json` · Linux
+`~/.config/logview/settings.json` · Windows `%APPDATA%\logview\settings.json`
+
+It contains level profiles (`configs`), level colors (`colors` / `colors_light`), search highlight
+colors, UI/log font sizes and families, accent color, polling interval, line limit, initial/tail load
+sizes, line-number and timestamp toggles, recents and their limit/purge policy, saved SSH hosts
+(no credentials), and command presets (no credentials).
+
 ## Platform support
 
 | Platform | Status |
@@ -72,6 +177,85 @@ macOS app bundle (document types, Finder "Open With"):
   require explicit TOFU confirmation before connecting (see [SECURITY.md](SECURITY.md)).
 
 Please report vulnerabilities privately via GitHub Security Advisories, not public issues.
+
+## Architecture
+
+```
+UI thread (GPUI + gpui-kit; self-drawn virtual list, visible rows only)
+   │ crossbeam channel → Cmd { Pause | SeekStart | SeekEnd | Stop }
+   ▼                    ← Msg { Append | Replace | Partial | Complete | Truncated | NoFollow | Error }
+Tail worker thread per tab (poll size → incremental reads, 1 MB chunks, ≤8 MB per tick)
+   ├─ LocalSource  fs::metadata + File::seek/read
+   ├─ SshSource    ssh2::Session + SFTP stat/open/seek (5 retries, then fatal)
+   ├─ HttpSource   reqwest blocking + Range (pinned validated IP; redirects re-checked per hop)
+   └─ Command      local child process / SSH exec (merged stdout+stderr, exit code + backoff retry)
+```
+
+| Module | Responsibility |
+|---|---|
+| `main.rs` | GPUI startup, window options, CLI open |
+| `app_view.rs` | Tabs, toolbar, virtual log view, dialogs, settings, message polling, recents, shortcuts |
+| `theme.rs` | antd-v5-style dark/light palettes, fonts and scaling |
+| `assets.rs` | Built-in SVG icon table (ionicons subset) |
+| `level.rs` | Level constants/aliases, `LevelConfig`/`Rule`, regex engine |
+| `lines.rs` | `LineStore`: bytes → lines, counts, line limit |
+| `search.rs` | Search state and matcher (text/regex, highlight ranges) |
+| `links.rs` | URL/path detection, overlap resolution, JSON detection |
+| `ssrf.rs` | URL validation and blocked network ranges |
+| `command.rs` | Command presets, argv expansion, built-in presets |
+| `source.rs` | Source open/meta/read_at, SSH, HTTP client with pinned IP, credentials |
+| `ssh_config.rs` | Import hosts from the system ssh config |
+| `secrets.rs` | OS keychain storage, in-memory fallback |
+| `store.rs` | `settings.json` read/write and legacy migration |
+| `tail.rs` | Worker protocol and file/stream loops |
+| `i18n.rs` | Chinese/English dictionary (`t` / `td` / `tf`) |
+| `code_input.rs` | Regex input highlighting |
+| `code.rs` | Code/Markdown highlighting and preview limits |
+
+## Development
+
+```bash
+cargo build                      # debug build (dependencies at opt-level=2)
+cargo clippy --all-targets       # lint (kept warning-free)
+cargo test --locked              # unit tests (71)
+cargo run -- sample/app.log      # run with the sample log
+```
+
+`dev.sh` / `package.sh` are maintainer-local scripts and are not tracked. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the workflow.
+
+- The UI is fully self-drawn with GPUI components from gpui-kit; palette tokens live in `theme.rs`.
+- Level detection runs when the worker appends; after a profile change the UI re-evaluates in frames
+  (`relevel_step`, 100k lines per frame).
+- Design notes: [DESIGN.md](DESIGN.md); prototype: [prototype.figcraft](prototype.figcraft).
+
+### Packaging
+
+```bash
+cargo build --release            # target/release/logview
+./scripts/make_app.sh            # (macOS) builds the .app bundle and registers file types
+```
+
+The bundle declares log/txt/out/err/json/csv document types, so Finder’s **Open With** works. Windows
+uses “Open with → logview.exe” via argv; Linux packaging (`.desktop` / AppImage) is still missing.
+
+## FAQ
+
+**CJK glyphs show as boxes?** Set a font that contains CJK glyphs under Settings → Appearance →
+Size and fonts, or leave it empty to follow the system font.
+
+**`adb logcat` prints nothing?** Check `adb devices`; leave the device field empty to let adb choose,
+and fill it when several devices are connected. If `adb` is not on `PATH`, use an absolute path in
+the preset.
+
+**Why is “Load all” disabled for command sources?** Command output is a stream with no history;
+use `journalctl -n` or `docker logs --tail` to fetch history in the command itself.
+
+**SSH reports authentication failure?** Check the username and credentials; key-file paths refer to
+the **server’s** filesystem; agent auth needs `SSH_AUTH_SOCK` in the environment.
+
+**HTTP opens with “following unsupported”?** The server ignores `Range`, so only whole-page viewing
+is possible and auto-follow is disabled.
 
 ## Contributing
 
