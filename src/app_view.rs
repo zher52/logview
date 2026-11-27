@@ -793,7 +793,7 @@ struct CmdForm {
 /// 未知 SSH 主机:首次连接时核对指纹(TOFU)
 struct HostKeyForm {
     tab: u64,
-    info: crate::source::HostKeyInfo,
+    info: crate::session::HostKeyInfo,
 }
 
 /// 按预设重建字段输入框(填默认值)
@@ -1437,7 +1437,7 @@ pub struct AppView {
     /// 子线程报告认证失败后的待处理重试(标签页 id, 参数, 错误);下一帧弹出连接表单
     auth_retry: Option<(u64, SourceParams, String)>,
     /// 等待确认的未知主机(标签页 id, 主机密钥);按到达顺序逐个弹窗
-    host_key_queue: Vec<(u64, crate::source::HostKeyInfo)>,
+    host_key_queue: Vec<(u64, crate::session::HostKeyInfo)>,
     /// 根节点焦点:快捷键(⌘T/⌘K… )的接收者
     focus_handle: FocusHandle,
     /// 鼠标上方的短提示(如「已复制」),到期由 poll 清理
@@ -7033,7 +7033,7 @@ impl AppView {
         // 本帧发现的认证失败(标签页索引, 错误):轮询结束后再弹表单,避免嵌套借用
         let mut auth_fail: Option<(usize, String)> = None;
         // 本帧收到的未知主机确认请求(TOFU)
-        let mut host_prompts: Vec<(u64, crate::source::HostKeyInfo)> = Vec::new();
+        let mut host_prompts: Vec<(u64, crate::session::HostKeyInfo)> = Vec::new();
         // 本帧活动标签的视图被重建(跳尾 Replace / 日志轮换),跟随中需要重新贴底
         let mut active_view_reset = false;
         // 本帧活动标签要求滚到顶部(加载全部)
@@ -9329,12 +9329,14 @@ impl Tab {
     }
 }
 
-/// 退出前把排队中的设置同步落盘，避免防抖窗口内的最后一次改动丢失
+/// 退出前把排队中的设置同步落盘，避免防抖窗口内的最后一次改动丢失；
+/// 同时断开共享的 SSH 会话，不把连接留给系统回收
 impl Drop for AppView {
     fn drop(&mut self) {
         if self.save_scheduled {
             store::save(&self.settings);
         }
+        crate::session::close_all();
     }
 }
 

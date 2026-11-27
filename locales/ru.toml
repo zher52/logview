@@ -434,6 +434,8 @@
 "error.command.spawn" = "Не удалось запустить команду {prog}: {e}"
 "error.ssh.channel" = "Не удалось создать SSH-канал: {e}"
 "error.ssh.stderr_merge" = "Не удалось объединить stderr SSH: {e}"
+"error.ssh.timeout" = "Операция SSH не ответила за {secs} с"
+"error.ssh.disconnected" = "Сеанс SSH потерян; ожидается автоматическое переподключение"
 "error.command.remote_value" = "Ошибка выполнения удалённой команды получения: {e}"
 "error.command.remote_value_read" = "Ошибка чтения вывода удалённой команды: {e}"
 "error.command.remote_run" = "Ошибка выполнения удалённой команды: {e}"

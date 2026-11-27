@@ -11,6 +11,7 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use crate::command::CommandPlan;
+use crate::session::{HostKeyDecision, HostKeyInfo};
 use crate::source::{self, Opened, SourceParams};
 
 #[derive(Clone)]
@@ -60,32 +61,28 @@ pub enum Msg {
         retry_in: Option<u64>,
     },
     /// 首次连接未知主机:等用户核对指纹后回 `Cmd::HostKeyDecision`
-    HostKeyPrompt(source::HostKeyInfo),
+    HostKeyPrompt(HostKeyInfo),
 }
 
 /// 询问 UI 是否信任未知主机;等待期间仍响应 Stop
-fn ask_host_key(
-    info: &source::HostKeyInfo,
-    cmd_rx: &Receiver<Cmd>,
-    tx: &Sender<Msg>,
-) -> source::HostKeyDecision {
+fn ask_host_key(info: &HostKeyInfo, cmd_rx: &Receiver<Cmd>, tx: &Sender<Msg>) -> HostKeyDecision {
     if tx.send(Msg::HostKeyPrompt(info.clone())).is_err() {
-        return source::HostKeyDecision::Reject;
+        return HostKeyDecision::Reject;
     }
     loop {
         match cmd_rx.recv_timeout(std::time::Duration::from_millis(200)) {
             Ok(Cmd::HostKeyDecision { accept, remember }) => {
                 return if accept {
-                    source::HostKeyDecision::Accept { remember }
+                    HostKeyDecision::Accept { remember }
                 } else {
-                    source::HostKeyDecision::Reject
+                    HostKeyDecision::Reject
                 };
             }
-            Ok(Cmd::Stop) => return source::HostKeyDecision::Reject,
+            Ok(Cmd::Stop) => return HostKeyDecision::Reject,
             Ok(_) => {}
             Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
             Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
-                return source::HostKeyDecision::Reject;
+                return HostKeyDecision::Reject;
             }
         }
     }

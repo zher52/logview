@@ -17,6 +17,7 @@ mod lines;
 mod links;
 mod search;
 mod secrets;
+mod session;
 mod source;
 mod ssh_config;
 mod ssrf;

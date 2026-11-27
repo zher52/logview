@@ -31,7 +31,7 @@
 ```bash
 cargo build                      # 调试构建(依赖按 opt-level=2 编译)
 cargo run -- sample/app.log      # 打开示例日志
-cargo test --locked              # 100 项单元测试 + 2 项 Linux 打包校验
+cargo test --locked              # 107 项单元测试 + 2 项 Linux 打包校验(另有 1 项真实 SSH 联调用例默认忽略)
 cargo fmt --all                  # CI 会检查
 cargo clippy --all-targets --locked
 
@@ -62,6 +62,7 @@ src/
 ├── store.rs       settings.json 读写(含 configs、ssh_hosts、command_presets)、旧数据迁移
 ├── secrets.rs     系统钥匙串存取(不可用时退回仅内存)
 ├── ssh_config.rs  解析系统 ssh 配置,导入已保存主机(跳过通配与 Match)
+├── session.rs     SSH 会话层:连接复用、空闲关闭、按需重连与主机密钥校验
 ├── i18n.rs       语义 ID 取词：t/tf/td/tn；译文在 locales/*.toml，由 build.rs 编译期生成查表
 ├── code_input.rs  正则输入框的词法着色
 └── code.rs        代码/配置语法高亮、Markdown 渲染辅助、大小限制常量
@@ -112,6 +113,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 - 密码/口令/token/私钥正文默认仅在内存；勾选「记住连接」后写入系统钥匙串（服务名 `io.github.zher52.logview`，与包标识一致），设置文件永远不含凭据，`SourceParams::sanitized()` 用于最近打开。
 - 旧版明文凭据在加载时迁移，迁移失败也要清除明文。
 - SSH 连接握手后比对 `~/.ssh/known_hosts`：**密钥不一致直接拒绝**；未知主机弹出指纹确认（TOFU），可选仅本次信任或写入 `known_hosts`。
+- 会话复用走 `session::acquire`：同一「用户@主机:端口 + 凭据摘要」只建一条连接，多标签共享；最后一句柄释放后保留 30 秒，由清扫线程断开。共享会话工作在非阻塞模式，SFTP 与命令通道遇 `EAGAIN` 重试；连接失效后下一次操作按需重连，代次（`next_generation`）递增以忽略旧通道的迟到错误。
 
 ### 7. UI 与主题
 
