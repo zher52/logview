@@ -30,7 +30,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 
 [build-dependencies]
 # 构建期解析 locales/*.toml 并生成查表
-toml = "0.8"
+toml = "1.2"
 
 [profile.dev]
 opt-level = 1
