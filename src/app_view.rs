@@ -48,9 +48,35 @@ use crate::tail;
 use crate::tail::{Cmd, Msg};
 use crate::theme::{self, Palette};
 
-/// 设置页分类数(外观 / 日志 / 分析配置 / 连接 / 快捷键)
+/// 设置页分类数(外观 / 日志 / 分析配置 / 连接 / 快捷键 / 关于)
 /// 新增分类时:同步更新 page_titles、page_descs、侧栏导航与 groups_all 的页码
-const SETTINGS_PAGE_COUNT: usize = 5;
+const SETTINGS_PAGE_COUNT: usize = 6;
+
+/// 项目坐标:发布仓库、「关于」页链接与检查更新的唯一来源
+const REPO_URL: &str = "https://github.com/zher52/logview";
+const RELEASES_API: &str = "https://api.github.com/repos/zher52/logview/releases/latest";
+
+/// 远端最新发布(检查更新的结果)
+#[derive(Clone)]
+struct Release {
+    tag: String,
+    url: String,
+}
+
+/// 「关于」页的更新检查状态
+#[derive(Clone)]
+enum UpdateState {
+    /// 尚未检查
+    Idle,
+    /// 请求进行中:结果由 poll 从通道取回
+    Checking,
+    /// 已是最新(附远端标签,便于排查)
+    Latest(String),
+    /// 有更新
+    Available(Release),
+    /// 检查失败(网络、限流、仓库未公开等)
+    Failed(String),
+}
 
 /// 单个日志标签:worker 通道 + 行存储 + 检索/过滤状态 + 视图管线
 pub struct Tab {
@@ -112,8 +138,10 @@ pub struct Tab {
     settings: bool,
     /// 代码文件标签页(Some = 只读语法高亮视图,可切换编辑)
     code: Option<CodeDoc>,
-    /// 命令源(单向流):无大小/历史概念,部分按钮语义不同
+    /// 命令源(单向流):大小/历史来自输出缓存(spool),状态栏显示已接收字节
     stream: bool,
+    /// 已加载全部后待滚到顶部(等 Replace 回来再滚,避免被旧视图高度夹住)
+    pending_scroll_top: bool,
     /// 命令退出提示(文案, 是否异常);有新输出时清除
     exit_note: Option<(String, bool)>,
 }
@@ -147,6 +175,34 @@ impl Tab {
         settings.configs.iter().map(|c| c.id.clone()).collect()
     }
 
+    /// 命令源按条件需要启用的级别配置 id(预设声明 + argv 含 logcat 的启发式)
+    fn command_level_configs(settings: &Settings, params: &SourceParams) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        let SourceParams::Command { argv, preset, .. } = params else {
+            return out;
+        };
+        // 本机自定义命令已按引号拆成 argv;SSH 自定义命令是整条原文,再按空白拆一层
+        let is_logcat = argv
+            .iter()
+            .any(|a| a == "logcat" || a.split_whitespace().any(|w| w == "logcat"))
+            || preset
+                .as_deref()
+                .is_some_and(|id| id.starts_with("adb-logcat"));
+        if is_logcat {
+            out.push("builtin-android-logcat".to_string());
+        }
+        if let Some(id) = preset
+            .as_deref()
+            .and_then(|id| command::find(&settings.command_presets, id))
+            .and_then(|p| p.level_config_id.clone())
+        {
+            if !out.contains(&id) {
+                out.push(id);
+            }
+        }
+        out
+    }
+
     /// 标签条显示名:固定语义标题每次取词,文件/日志源标题原样显示
     fn display_title(&self) -> String {
         self.title_id
@@ -165,19 +221,22 @@ impl Tab {
         );
         let title = params.label();
         let mut enabled_ids = Self::default_enabled(settings);
-        // 命令预设声明的日志格式(如 Android logcat)自动启用对应级别配置
-        if let SourceParams::Command {
-            preset: Some(id), ..
-        } = &params
-        {
-            if let Some(p) = command::find(&settings.command_presets, id) {
-                if let Some(lc) = &p.level_config_id {
-                    if !enabled_ids.iter().any(|x| x == lc) {
-                        enabled_ids.push(lc.clone());
-                    }
-                }
+        // 命令源按条件启用对应级别配置:
+        //  1) 预设声明的格式(如 Android logcat);
+        //  2) 自定义/重开命令的 argv 含 logcat 时也启用,避免必须选预设才能正确解析。
+        for id in Self::command_level_configs(settings, &params) {
+            if !enabled_ids.iter().any(|x| x == &id) {
+                enabled_ids.push(id);
             }
         }
+        // logcat 规则是行首锚定的格式规则,必须优先于「通用单词」,否则正文里的
+        // error/warn 会覆盖行首的真实级别。
+        let prefer: &[&str] = if enabled_ids.iter().any(|x| x == "builtin-android-logcat") {
+            &["builtin-android-logcat"]
+        } else {
+            &[]
+        };
+        let engine = Engine::compile_ids_preferring(&settings.configs, &enabled_ids, prefer);
         let stream = matches!(&params, SourceParams::Command { .. });
         Tab {
             id: 0,
@@ -187,7 +246,7 @@ impl Tab {
             cmd_tx: tx,
             msg_rx: rx,
             store: LineStore::new(settings.max_lines),
-            engine: Engine::compile_ids(&settings.configs, &enabled_ids),
+            engine,
             query: String::new(),
             regex: false,
             case_sensitive: false,
@@ -219,6 +278,7 @@ impl Tab {
             settings: false,
             code: None,
             stream,
+            pending_scroll_top: false,
             exit_note: None,
         }
     }
@@ -268,6 +328,7 @@ impl Tab {
             settings: false,
             code: None,
             stream: false,
+            pending_scroll_top: false,
             exit_note: None,
         }
     }
@@ -683,6 +744,8 @@ struct SettingsDialog {
     url_cred_notice: Option<String>,
     /// 配置导入/导出的提示
     cfg_notice: Option<String>,
+    /// 内置配置是否已解锁编辑(默认只读;切换配置或重开面板时回到只读)
+    cfg_unlock: bool,
     /// 正在录制快捷键的动作 id(None = 未录制)
     capture: Option<String>,
     /// 快捷键相关提示
@@ -1091,6 +1154,10 @@ pub struct AppView {
     focus_handle: FocusHandle,
     /// 鼠标上方的短提示(如「已复制」),到期由 poll 清理
     toast: Option<Toast>,
+    /// 「关于」页的更新检查状态
+    update_state: UpdateState,
+    /// 更新检查的结果通道(None = 没有在途请求)
+    update_rx: Option<crossbeam_channel::Receiver<Result<Option<Release>, String>>>,
 }
 
 /// 轻量 toast:在鼠标位置上方短暂提示一条消息
@@ -1140,6 +1207,8 @@ impl AppView {
             host_key_queue: Vec::new(),
             focus_handle: cx.focus_handle(),
             toast: None,
+            update_state: UpdateState::Idle,
+            update_rx: None,
         };
 
         for p in paths {
@@ -1629,6 +1698,7 @@ impl AppView {
             host_notice: None,
             url_cred_notice: None,
             cfg_notice: None,
+            cfg_unlock: false,
             capture: None,
             sc_notice: None,
         };
@@ -2108,11 +2178,42 @@ impl AppView {
         .detach();
     }
 
+    /// 选中配置当前是否只读(内置配置未解锁时只读)
+    fn config_readonly(&self) -> bool {
+        let Some(d) = self.settings_panel.as_ref() else {
+            return false;
+        };
+        !d.cfg_unlock
+            && self
+                .settings
+                .configs
+                .get(d.sel_config)
+                .is_some_and(|c| c.built_in)
+    }
+
+    /// 内置配置的只读 / 编辑切换:回到只读前先把输入框内容落回设置,避免丢改动
+    fn toggle_config_edit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(unlocked) = self.settings_panel.as_ref().map(|d| d.cfg_unlock) else {
+            return;
+        };
+        if unlocked {
+            // 走正常提交路径:写回规则并触发重分析,然后按落盘内容刷新输入框
+            self.commit_set_field(SetField::RuleText, cx);
+            self.load_rule_inputs(window, cx);
+        }
+        if let Some(d) = self.settings_panel.as_mut() {
+            d.cfg_unlock = !unlocked;
+        }
+        cx.notify();
+    }
+
     fn select_config(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_rule_inputs(cx);
         if i < self.settings.configs.len() {
             if let Some(d) = self.settings_panel.as_mut() {
                 d.sel_config = i;
+                // 内置配置默认只读:每切换一次都重新上锁
+                d.cfg_unlock = false;
             }
         }
         self.load_rule_inputs(window, cx);
@@ -2172,6 +2273,7 @@ impl AppView {
             d.tab = 2;
             if i < self.settings.configs.len() {
                 d.sel_config = i;
+                d.cfg_unlock = false;
             }
         }
         if let Some(s) = search {
@@ -2252,6 +2354,8 @@ impl AppView {
         self.rebuild_rule_inputs(window, cx);
         self.settings_apply(true, cx);
         if let Some(d) = self.settings_panel.as_mut() {
+            // 恢复出厂规则后重新上锁,回到只读浏览
+            d.cfg_unlock = false;
             d.cfg_notice = Some(i18n::t("configs.restored_one").into());
         }
         cx.notify();
@@ -2275,6 +2379,9 @@ impl AppView {
     }
 
     fn add_rule(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.config_readonly() {
+            return;
+        }
         self.sync_rule_inputs(cx);
         let Some(d) = self.settings_panel.as_ref() else {
             return;
@@ -2293,6 +2400,9 @@ impl AppView {
     }
 
     fn del_rule(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
+        if self.config_readonly() {
+            return;
+        }
         self.sync_rule_inputs(cx);
         let Some(d) = self.settings_panel.as_ref() else {
             return;
@@ -2308,6 +2418,9 @@ impl AppView {
     }
 
     fn toggle_rule_auto(&mut self, i: usize, cx: &mut Context<Self>) {
+        if self.config_readonly() {
+            return;
+        }
         self.sync_rule_inputs(cx);
         let Some(d) = self.settings_panel.as_ref() else {
             return;
@@ -2325,6 +2438,9 @@ impl AppView {
     }
 
     fn cycle_rule_level(&mut self, i: usize, cx: &mut Context<Self>) {
+        if self.config_readonly() {
+            return;
+        }
         self.sync_rule_inputs(cx);
         let Some(d) = self.settings_panel.as_ref() else {
             return;
@@ -5455,6 +5571,8 @@ impl AppView {
                 .py(px(18.0))
                 .overflow_y_scroll();
             if let Some((name, built_in, enabled, _)) = configs.get(sel) {
+                // 内置配置默认只读:规则输入框不可编辑,解锁后才允许改动
+                let readonly = *built_in && !d.cfg_unlock;
                 let mut head = div()
                     .flex()
                     .items_center()
@@ -5495,7 +5613,7 @@ impl AppView {
                         dlg_btn("cfg-del", i18n::t("configs.delete"), false, pal)
                             .on_click(cx.listener(|v, _e, window, cx| v.del_config(window, cx))),
                     );
-                } else {
+                } else if !readonly {
                     head = head.child(
                         dlg_btn(
                             "cfg-reset-one",
@@ -5554,20 +5672,30 @@ impl AppView {
                                 Textarea::new(re)
                                     .small()
                                     .w_full()
+                                    .readonly(readonly)
                                     .font_family(code_mono.clone())
                                     .text_size(px(theme::scaled(12.0)))
                                     .text_color(theme::hex(pal.text1)),
                             ),
                         )
-                        .child(div().w(px(56.0)).child(Input::new(fl).small().w_full()))
                         .child(
-                            div().w(px(44.0)).child(
-                                switch_el(SharedString::from(format!("rule-auto-{i}")), *auto, pal)
-                                    .on_click(
-                                        cx.listener(move |v, _e, _w, cx| v.toggle_rule_auto(i, cx)),
-                                    ),
-                            ),
-                        );
+                            div()
+                                .w(px(56.0))
+                                .child(Input::new(fl).small().w_full().readonly(readonly)),
+                        )
+                        .child({
+                            // 只读时开关淡出且不挂点击,避免误以为可以改
+                            let sw =
+                                switch_el(SharedString::from(format!("rule-auto-{i}")), *auto, pal);
+                            let sw = if readonly {
+                                sw.opacity(0.5)
+                            } else {
+                                sw.on_click(
+                                    cx.listener(move |v, _e, _w, cx| v.toggle_rule_auto(i, cx)),
+                                )
+                            };
+                            div().w(px(44.0)).child(sw)
+                        });
                     let chip = if *auto {
                         div()
                             .w(px(72.0))
@@ -5584,9 +5712,8 @@ impl AppView {
                             .get(*level as usize)
                             .map(|s| theme::hex(s))
                             .unwrap_or_else(|| theme::hex(pal.text2));
-                        div()
+                        let chip = div()
                             .id(SharedString::from(format!("rule-lvl-{i}")))
-                            .cursor(CursorStyle::PointingHand)
                             .w(px(72.0))
                             .px(px(6.0))
                             .py(px(2.0))
@@ -5594,12 +5721,19 @@ impl AppView {
                             .bg(theme::hex(pal.fill))
                             .text_size(px(theme::scaled(10.5)))
                             .text_color(lc)
-                            .child(format!("{lname} ▸"))
-                            .on_click(cx.listener(move |v, _e, _w, cx| v.cycle_rule_level(i, cx)))
-                            .into_any_element()
+                            .child(format!("{lname} ▸"));
+                        if readonly {
+                            chip.opacity(0.6).into_any_element()
+                        } else {
+                            chip.cursor(CursorStyle::PointingHand)
+                                .on_click(
+                                    cx.listener(move |v, _e, _w, cx| v.cycle_rule_level(i, cx)),
+                                )
+                                .into_any_element()
+                        }
                     };
                     r = r.child(chip);
-                    if rules.len() > 1 {
+                    if rules.len() > 1 && !readonly {
                         r = r.child(
                             div()
                                 .id(SharedString::from(format!("rule-del-{i}")))
@@ -5633,19 +5767,56 @@ impl AppView {
                     }
                     rule_rows.push(r.into_any_element());
                 }
-                rule_rows.push(
-                    div()
-                        .px(px(12.0))
-                        .py(px(8.0))
-                        .child(
-                            dlg_btn("rule-add", i18n::t("configs.add_rule"), false, pal)
-                                .on_click(cx.listener(|v, _e, window, cx| v.add_rule(window, cx))),
+                // 规则块的右上角:新增规则(只读时隐藏)+ 内置配置的只读/编辑切换
+                let mut rules_action = div().flex().items_center().gap(px(2.0));
+                if readonly {
+                    // 内置配置默认只读:给出状态标记,避免误以为输入框坏了
+                    rules_action = rules_action.child(
+                        div()
+                            .px(px(6.0))
+                            .py(px(1.0))
+                            .rounded(px(4.0))
+                            .bg(theme::hex(pal.fill))
+                            .text_size(px(theme::scaled(10.5)))
+                            .text_color(theme::hex(pal.text3))
+                            .child(i18n::t("configs.readonly")),
+                    );
+                }
+                if !readonly {
+                    rules_action = rules_action.child(
+                        panel_icon_btn(
+                            "rule-add",
+                            "icons/rule-add.svg",
+                            SharedString::from(i18n::t("configs.add_rule.tip")),
+                            pal,
                         )
-                        .into_any_element(),
-                );
+                        .on_click(cx.listener(|v, _e, window, cx| v.add_rule(window, cx))),
+                    );
+                }
+                if *built_in {
+                    rules_action = rules_action.child(
+                        panel_icon_btn(
+                            "cfg-edit-toggle",
+                            if readonly {
+                                "icons/edit-outline.svg"
+                            } else {
+                                "icons/lock.svg"
+                            },
+                            SharedString::from(if readonly {
+                                i18n::t("configs.edit.tip")
+                            } else {
+                                i18n::t("configs.readonly.tip")
+                            }),
+                            pal,
+                        )
+                        .on_click(
+                            cx.listener(|v, _e, window, cx| v.toggle_config_edit(window, cx)),
+                        ),
+                    );
+                }
                 detail = detail.child(settings_group(
                     i18n::t("configs.rules"),
-                    None,
+                    Some(rules_action.into_any_element()),
                     rule_rows,
                     pal,
                 ));
@@ -5755,6 +5926,243 @@ impl AppView {
             ));
         }
 
+        // —— 关于:版本与构建、许可证、项目链接、检查更新 ——
+        let version = env!("CARGO_PKG_VERSION");
+        let build = env!("GIT_HASH");
+        let about_mono = theme::mono_family();
+        let ver_control = div()
+            .flex()
+            .items_center()
+            .gap(px(10.0))
+            .child(
+                div()
+                    .font_family(about_mono)
+                    .text_size(px(theme::scaled(12.0)))
+                    .text_color(theme::hex(pal.text2))
+                    .child(format!("{version} · {build}")),
+            )
+            .child(
+                host_btn(
+                    SharedString::from("about-copy"),
+                    i18n::t("about.copy"),
+                    false,
+                    pal,
+                )
+                .on_click(cx.listener(move |v, e: &ClickEvent, _w, cx| {
+                    // 报障时直接粘这一行:版本 + 构建 + 平台
+                    let text = format!(
+                        "{} {} ({build}), {}",
+                        i18n::t("app.name"),
+                        env!("CARGO_PKG_VERSION"),
+                        std::env::consts::OS
+                    );
+                    cx.write_to_clipboard(ClipboardItem::new_string(text));
+                    v.show_toast(i18n::t("about.copied"), e.position(), cx);
+                })),
+            )
+            .into_any_element();
+
+        let license_control = host_btn(
+            SharedString::from("about-license"),
+            i18n::t("about.license.open"),
+            false,
+            pal,
+        )
+        .on_click(cx.listener(|_v, _e, _w, _cx| {
+            let _ = open::that(format!("{REPO_URL}/blob/main/LICENSE"));
+        }))
+        .into_any_element();
+
+        // 外链统一走系统默认程序(与日志内 URL 链接一致)
+        let link_btn = |id: &'static str, url: String| -> AnyElement {
+            host_btn(SharedString::from(id), i18n::t("common.open"), false, pal)
+                .on_click(cx.listener(move |_v, _e, _w, _cx| {
+                    let _ = open::that(&url);
+                }))
+                .into_any_element()
+        };
+
+        let update_control: AnyElement = match self.update_state.clone() {
+            UpdateState::Idle => host_btn(
+                SharedString::from("about-check"),
+                i18n::t("about.update.action"),
+                true,
+                pal,
+            )
+            .on_click(cx.listener(|v, _e, _w, cx| v.check_update(cx)))
+            .into_any_element(),
+            UpdateState::Checking => div()
+                .text_size(px(theme::scaled(12.0)))
+                .text_color(theme::hex(pal.text3))
+                .child(i18n::t("about.update.checking"))
+                .into_any_element(),
+            UpdateState::Latest(tag) => div()
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .child(
+                    div()
+                        .text_size(px(theme::scaled(12.0)))
+                        .text_color(theme::hex(pal.text3))
+                        .child(i18n::tf("about.update.latest", &[("v", tag)])),
+                )
+                .child(
+                    host_btn(
+                        SharedString::from("about-recheck"),
+                        i18n::t("about.update.retry"),
+                        false,
+                        pal,
+                    )
+                    .on_click(cx.listener(|v, _e, _w, cx| v.check_update(cx))),
+                )
+                .into_any_element(),
+            UpdateState::Available(rel) => div()
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .child(
+                    div()
+                        .text_size(px(theme::scaled(12.0)))
+                        .text_color(theme::hex(pal.success))
+                        .child(i18n::tf(
+                            "about.update.available",
+                            &[("v", rel.tag.clone())],
+                        )),
+                )
+                .child(
+                    host_btn(
+                        SharedString::from("about-download"),
+                        i18n::t("about.update.open"),
+                        true,
+                        pal,
+                    )
+                    .on_click(cx.listener(move |_v, _e, _w, _cx| {
+                        let _ = open::that(&rel.url);
+                    })),
+                )
+                .into_any_element(),
+            UpdateState::Failed(err) => div()
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .child(
+                    div()
+                        .max_w(px(360.0))
+                        .text_size(px(theme::scaled(11.5)))
+                        .text_color(theme::hex(pal.error))
+                        .child(i18n::tf("about.update.failed", &[("e", err)])),
+                )
+                .child(
+                    host_btn(
+                        SharedString::from("about-retry"),
+                        i18n::t("about.update.retry"),
+                        false,
+                        pal,
+                    )
+                    .on_click(cx.listener(|v, _e, _w, cx| v.check_update(cx))),
+                )
+                .into_any_element(),
+        };
+
+        // 行标题同时作为设置搜索的命中文本
+        let row = |title: &'static str, desc: &'static str, control: AnyElement| {
+            (
+                title.to_string(),
+                settings_row(pal, title, Some(desc.into()), control),
+            )
+        };
+        let about_rows: Vec<(String, AnyElement)> = vec![
+            row(
+                i18n::t("about.version"),
+                i18n::t("about.version.desc"),
+                ver_control,
+            ),
+            row(
+                i18n::t("about.license"),
+                i18n::t("about.license.desc"),
+                license_control,
+            ),
+        ];
+        let link_rows: Vec<(String, AnyElement)> = vec![
+            row(
+                i18n::t("about.repo"),
+                i18n::t("about.repo.desc"),
+                link_btn("about-link-repo", REPO_URL.to_string()),
+            ),
+            row(
+                i18n::t("about.issues"),
+                i18n::t("about.issues.desc"),
+                link_btn("about-link-issues", format!("{REPO_URL}/issues")),
+            ),
+            row(
+                i18n::t("about.changelog"),
+                i18n::t("about.changelog.desc"),
+                link_btn(
+                    "about-link-changelog",
+                    format!("{REPO_URL}/blob/main/CHANGELOG.md"),
+                ),
+            ),
+        ];
+
+        // GitHub 图标入口:项目链接分组右上角(ionicons logo-github 单色化)
+        let github_action = Some(
+            panel_icon_btn(
+                "about-github",
+                "icons/github.svg",
+                SharedString::from(i18n::t("about.repo.tip")),
+                pal,
+            )
+            .on_click(cx.listener(|_v, _e, _w, _cx| {
+                let _ = open::that(REPO_URL);
+            }))
+            .into_any_element(),
+        );
+
+        // 开源组件:只列直接依赖,版本号与传递依赖见 THIRD_PARTY_LICENSES.md
+        const OSS: &[(&str, &str)] = &[
+            ("gpui-kit / GPUI", "Apache-2.0"),
+            ("ssh2 / libssh2", "MIT OR Apache-2.0 · BSD-3-Clause"),
+            ("reqwest / rustls", "MIT OR Apache-2.0 · Apache-2.0 OR ISC"),
+            ("keyring", "MIT OR Apache-2.0"),
+            ("ropey", "MIT OR Apache-2.0"),
+            ("regex", "MIT OR Apache-2.0"),
+            ("serde / serde_json", "MIT OR Apache-2.0"),
+            ("chrono", "MIT OR Apache-2.0"),
+            ("sha2 / base64", "MIT OR Apache-2.0"),
+            ("crossbeam-channel", "MIT OR Apache-2.0"),
+            ("dirs / open / anyhow", "MIT OR Apache-2.0 · MIT"),
+            ("toml", "MIT OR Apache-2.0"),
+            ("Ionicons 5.0.0", "MIT"),
+        ];
+        let mut oss_rows: Vec<(String, AnyElement)> = OSS
+            .iter()
+            .map(|(name, lic)| {
+                (
+                    (*name).to_string(),
+                    settings_row(pal, *name, Some((*lic).into()), div().into_any_element()),
+                )
+            })
+            .collect();
+        oss_rows.push(row(
+            i18n::t("about.oss.full"),
+            i18n::t("about.oss.full.desc"),
+            host_btn(
+                SharedString::from("about-oss"),
+                i18n::t("common.open"),
+                false,
+                pal,
+            )
+            .on_click(cx.listener(|_v, _e, _w, _cx| {
+                let _ = open::that(format!("{REPO_URL}/blob/main/THIRD_PARTY_LICENSES.md"));
+            }))
+            .into_any_element(),
+        ));
+        let update_rows: Vec<(String, AnyElement)> = vec![row(
+            i18n::t("about.update.check"),
+            i18n::t("about.update.check.desc"),
+            update_control,
+        )];
+
         // —— 分组数据:按分类/分组组织,搜索时跨分类过滤 ——
         type SettingsGroup = (
             usize,
@@ -5788,6 +6196,10 @@ impl AppView {
                 shortcut_entries,
                 None,
             ),
+            (5, i18n::t("about.group.app"), about_rows, None),
+            (5, i18n::t("about.group.links"), link_rows, github_action),
+            (5, i18n::t("about.group.oss"), oss_rows, None),
+            (5, i18n::t("about.group.update"), update_rows, None),
         ];
         let page_titles = [
             i18n::t("settings.group.appearance"),
@@ -5795,6 +6207,7 @@ impl AppView {
             i18n::t("settings.group.analysis"),
             i18n::t("common.connect"),
             i18n::t("settings.group.shortcuts"),
+            i18n::t("settings.group.about"),
         ];
         let page_descs = [
             i18n::t("settings.section.appearance.desc"),
@@ -5802,6 +6215,7 @@ impl AppView {
             i18n::t("settings.section.analysis.desc"),
             i18n::t("settings.section.connections.desc"),
             i18n::t("settings.section.shortcuts.desc"),
+            i18n::t("settings.section.about.desc"),
         ];
 
         let mut matched = 0usize;
@@ -5978,6 +6392,7 @@ impl AppView {
             i18n::t("settings.group.analysis"),
             i18n::t("common.connect"),
             i18n::t("settings.group.shortcuts"),
+            i18n::t("settings.group.about"),
         ]
         .iter()
         .enumerate()
@@ -6167,7 +6582,48 @@ impl AppView {
         cx.notify();
     }
 
+    // ---- 更新检查 ----
+
+    /// 启动一次版本检查:阻塞请求放到独立线程,不占用 UI 线程
+    fn check_update(&mut self, cx: &mut Context<Self>) {
+        if matches!(self.update_state, UpdateState::Checking) {
+            return;
+        }
+        let (tx, rx) = crossbeam_channel::bounded(1);
+        self.update_rx = Some(rx);
+        self.update_state = UpdateState::Checking;
+        std::thread::spawn(move || {
+            // 接收端被丢弃时 send 会失败，忽略即可
+            let _ = tx.send(fetch_latest_release());
+        });
+        cx.notify();
+    }
+
+    /// 取回在途检查的结果(由 poll 每帧调用)
+    fn drain_update(&mut self) {
+        let Some(rx) = self.update_rx.as_ref() else {
+            return;
+        };
+        let Ok(res) = rx.try_recv() else { return };
+        self.update_rx = None;
+        let cur = env!("CARGO_PKG_VERSION");
+        self.update_state = match res {
+            // 404(尚无发布/仓库未公开)与空标签都当作「没有更新」
+            Ok(None) => UpdateState::Latest(cur.to_string()),
+            Ok(Some(rel)) => {
+                if version_newer(&rel.tag, cur) {
+                    UpdateState::Available(rel)
+                } else {
+                    UpdateState::Latest(rel.tag)
+                }
+            }
+            Err(e) => UpdateState::Failed(e),
+        };
+    }
+
     fn poll(&mut self) {
+        // 版本检查结果:由独立线程取回,这里只做无阻塞读取
+        self.drain_update();
         // 短提示到期即清除(渲染侧用同一截止时间判断是否展示)
         if self
             .toast
@@ -6199,6 +6655,8 @@ impl AppView {
         let mut host_prompts: Vec<(u64, crate::source::HostKeyInfo)> = Vec::new();
         // 本帧活动标签的视图被重建(跳尾 Replace / 日志轮换),跟随中需要重新贴底
         let mut active_view_reset = false;
+        // 本帧活动标签要求滚到顶部(加载全部)
+        let mut active_scroll_top = false;
         for ti in 0..self.tabs.len() {
             let mut grew = 0usize;
             while let Ok(m) = self.tabs[ti].msg_rx.try_recv() {
@@ -6253,6 +6711,12 @@ impl AppView {
                             }
                         } else {
                             tab.tail_banner = None;
+                        }
+                        if tab.pending_scroll_top {
+                            tab.pending_scroll_top = false;
+                            if ti == self.active {
+                                active_scroll_top = true;
+                            }
                         }
                         tab.rebuild_matched();
                         tab.rebuild_view();
@@ -6329,6 +6793,11 @@ impl AppView {
         // - 跟随中且本轮有新行:立即贴底,并刷新 1s 宽限(吸收触板惯性产生的残余滚动)
         // - 跟随中但视图已离开底部超过 2 行,连续 2 次轮询才解除跟随(去抖)
         // - 不自动恢复:回到底部后由用户点「继续/跳到末尾」显式恢复(egui 同)
+        if active_scroll_top {
+            self.rows_cache.invalidate();
+            self.list.scroll_to_item(0, ScrollStrategy::Top);
+            self.suppress_follow_until = Some(Instant::now() + Duration::from_millis(1000));
+        }
         let now = Instant::now();
         let following = self.tabs.get(self.active).is_some_and(|t| t.follow);
         if following && (active_grew > 0 || active_view_reset) {
@@ -6821,15 +7290,16 @@ impl AppView {
         self.scroll_to_end();
     }
 
-    /// 从头部全量加载:与 egui 版一致,只发 SeekStart,不改跟随/暂停状态
+    /// 从头部全量加载:进入浏览状态(停止跟随但不暂停 worker),加载完停在顶部。
+    /// 命令源从输出缓存(spool)回放,文件源照旧重读文件;两者语义一致。
     fn load_all(&mut self) {
         if let Some(t) = self.active_tab_mut() {
-            // 命令流无历史可回放
-            if t.stream {
-                return;
-            }
             let _ = t.cmd_tx.send(Cmd::SeekStart);
+            t.follow = false;
+            t.pending_new = 0;
             t.tail_banner = None;
+            t.loading = None;
+            t.pending_scroll_top = true;
         }
     }
 
@@ -6860,7 +7330,8 @@ impl AppView {
         }
     }
 
-    /// 清屏:清空当前标签的行与派生视图,worker 继续追加(egui 版同)
+    /// 清屏:清空当前标签的行与派生视图,worker 继续追加。
+    /// 命令源同时清掉输出缓存(临时文件),保证“从头加载”不会把已清掉的内容找回来。
     fn clear_screen(&mut self, cx: &mut Context<Self>) {
         let Some(t) = self.active_tab_mut() else {
             return;
@@ -6872,6 +7343,12 @@ impl AppView {
         t.pending_new = 0;
         t.sel_anchor = None;
         t.sel_focus = None;
+        t.tail_banner = None;
+        t.pending_tail_banner = false;
+        t.pending_scroll_top = false;
+        if t.stream {
+            let _ = t.cmd_tx.send(Cmd::Clear);
+        }
         cx.notify();
     }
 
@@ -7555,7 +8032,7 @@ impl AppView {
                 + 5.0 + 14.0 + 3.0
                 + w_at(&format!("{cfg_on}/{cfg_total}"), theme::scaled(10.5))
                 + 3.0 + 9.0 + 5.0
-                + 26.0
+                + w_at(i18n::t("wrap.label"), chip_size) + 16.0
                 + 4.0 * 26.0 + 3.0 * 6.0
                 + 7.0 * 6.0 + 20.0
                 // 安全余量:估算与实际排版有几十像素出入(组件内边距/边框),留足避免裁字
@@ -7693,19 +8170,40 @@ impl AppView {
                 v.open_config_menu(f32::from(pos.x), f32::from(pos.y) + 6.0);
             }));
 
-        // 自动换行开关(当前标签页;设置里的默认值只影响新标签页):图标按钮,选中态用主题色
-        let wrap_btn = toolbar_icon_btn(
-            "btn-wrap",
-            "icons/wrap.svg",
-            SharedString::from(if wrap_on {
-                i18n::t("wrap.on")
+        // 自动换行开关(当前标签页;设置里的默认值只影响新标签页):文字按钮,开启态用主题色
+        let wrap_btn = div()
+            .id("btn-wrap")
+            .cursor(CursorStyle::PointingHand)
+            .flex()
+            .items_center()
+            .h(px(26.0))
+            .px(px(8.0))
+            .rounded(px(4.0))
+            .bg(if wrap_on {
+                theme::hexa(pal.primary, 0.12)
             } else {
-                i18n::t("wrap.off")
-            }),
-            wrap_on,
-            pal,
-        )
-        .on_click(cx.listener(|v, _e, _w, _cx| v.toggle_tab_wrap()));
+                gpui_kit::transparent_black()
+            })
+            .text_size(px(theme::scaled(11.0)))
+            .text_color(if wrap_on {
+                theme::hex(pal.primary)
+            } else {
+                theme::hex(pal.text2)
+            })
+            .hover(|s| s.bg(theme::hex(pal.fill_hover)))
+            .child(i18n::t("wrap.label"))
+            .tooltip(move |window, cx| {
+                let tip = SharedString::from(if wrap_on {
+                    i18n::t("wrap.on")
+                } else {
+                    i18n::t("wrap.off")
+                });
+                gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
+                    div().text_size(px(theme::scaled(11.0))).child(tip.clone())
+                })
+                .build(window, cx)
+            })
+            .on_click(cx.listener(|v, _e, _w, _cx| v.toggle_tab_wrap()));
 
         // 检索结果导航:仅高亮模式且存在命中时显示(过滤模式行已筛好,无需跳转)
         let match_nav: Option<AnyElement> = if !filter_mode && matched_n > 0 {
@@ -8016,10 +8514,9 @@ impl AppView {
             }
             segs.push((
                 if t.stream {
-                    i18n::tf(
-                        "status.received",
-                        &[("size", fmt_size(t.store.bytes_loaded))],
-                    )
+                    // 命令源的 size 就是输出缓存(spool)当前长度;跳尾 Replace 后
+                    // bytes_loaded 只是尾部起点,不能代表“已接收多少”,所以用 total。
+                    i18n::tf("status.received", &[("size", fmt_size(t.store.total_size))])
                 } else {
                     format!(
                         "{}/{}",
@@ -8471,6 +8968,78 @@ fn fmt_mb(b: u64) -> String {
 // ---- 设置页小部件(VS Code 风格) ----
 
 /// 设置页一行:左侧标题/说明,右侧控件
+/// 查询 GitHub 最新发布(blocking,调用方必须放到独立线程)。
+///
+/// 404(尚无发布 / 仓库未公开)与缺 `tag_name` 都返回 `Ok(None)`,按「没有更新」处理;
+/// 其余非 2xx 与网络错误返回可读错误文本。只发版本号作 User-Agent,不上报任何本地信息。
+fn fetch_latest_release() -> Result<Option<Release>, String> {
+    // reqwest 默认走系统/环境代理(HTTPS_PROXY 等),国内网络由用户自行配置
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent(concat!("logview/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(RELEASES_API)
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .map_err(|e| e.to_string())?;
+    let status = resp.status();
+    if status == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    if !status.is_success() {
+        return Err(format!("HTTP {}", status.as_u16()));
+    }
+    let body = resp.text().map_err(|e| e.to_string())?;
+    let v: serde_json::Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+    let tag = v["tag_name"]
+        .as_str()
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if tag.is_empty() {
+        return Ok(None);
+    }
+    let url = v["html_url"]
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("{REPO_URL}/releases"));
+    Ok(Some(Release { tag, url }))
+}
+
+/// 拆语义化版本:`v1.2.3-rc.1` → ([1, 2, 3], Some("rc.1"))
+fn split_version(s: &str) -> (Vec<u64>, Option<String>) {
+    let s = s.trim().trim_start_matches(['v', 'V']);
+    let (core, pre) = match s.split_once('-') {
+        Some((c, p)) => (c, Some(p.to_string())),
+        None => (s, None),
+    };
+    let nums = core
+        .split('.')
+        .map(|p| p.trim().parse::<u64>().unwrap_or(0))
+        .collect();
+    (nums, pre)
+}
+
+/// `a` 是否比 `b` 新:缺失段补 0;核心号相同时预发布低于正式版,预发布之间按字符串比。
+fn version_newer(a: &str, b: &str) -> bool {
+    let (mut an, ap) = split_version(a);
+    let (mut bn, bp) = split_version(b);
+    an.resize(3, 0);
+    bn.resize(3, 0);
+    match an.cmp(&bn) {
+        std::cmp::Ordering::Greater => true,
+        std::cmp::Ordering::Less => false,
+        std::cmp::Ordering::Equal => match (ap, bp) {
+            (None, Some(_)) => true,
+            (Some(_), None) => false,
+            (Some(x), Some(y)) => x > y,
+            (None, None) => false,
+        },
+    }
+}
+
 fn settings_row(
     pal: &'static Palette,
     title: impl Into<SharedString>,
@@ -9317,10 +9886,24 @@ fn toolbar_icon_btn(
 mod tests {
     use super::{
         bottom_distance, elide_path, http_auth_label, is_auth_error, pick_chip_style, validate_ssh,
-        validate_url_addr, ChipStyle,
+        validate_url_addr, version_newer, ChipStyle,
     };
     use crate::i18n;
     use gpui_kit::px;
+
+    #[test]
+    fn version_compare_orders_semver() {
+        // 前导 v 忽略；0.10 比 0.9 新（不能按字符串比）
+        assert!(version_newer("v0.4.0", "0.3.0"));
+        assert!(version_newer("0.10.0", "0.9.9"));
+        assert!(!version_newer("v0.3.0", "0.3.0"));
+        assert!(!version_newer("0.3.0", "0.3.1"));
+        // 缺失段补 0；预发布低于同号正式版
+        assert!(!version_newer("0.3", "0.3.0"));
+        assert!(version_newer("1.0.0", "1.0.0-rc.1"));
+        assert!(!version_newer("1.0.0-rc.1", "1.0.0"));
+        assert!(version_newer("1.0.0-rc.2", "1.0.0-rc.1"));
+    }
 
     #[test]
     fn fixed_tab_titles_use_semantic_ids() {

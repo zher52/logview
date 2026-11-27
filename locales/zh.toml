@@ -33,6 +33,10 @@
 "configs.delete" = "删除配置"
 "configs.restore_default" = "恢复默认"
 "configs.add_rule" = "＋ 添加规则"
+"configs.add_rule.tip" = "新增一条匹配规则"
+"configs.edit.tip" = "切换到编辑模式"
+"configs.readonly" = "只读"
+"configs.readonly.tip" = "切换回只读模式"
 "configs.new.tip" = "新建分析配置"
 "configs.import_json.tip" = "从 JSON 文件导入配置(整体替换现有列表)"
 "configs.export_json.tip" = "把全部配置导出为 JSON 文件"
@@ -67,6 +71,7 @@
 "search.show" = "显示"
 
 # ---- wrap ----
+"wrap.label" = "自动换行"
 "wrap.on" = "自动换行:已开启(点击关闭)"
 "wrap.off" = "自动换行:已关闭(点击开启)"
 
@@ -434,6 +439,8 @@
 "error.command.remote_run" = "远端命令执行失败:{e}"
 "error.command.value_empty" = "取值命令为空"
 "error.command.retry_count" = "{e}(重试 {err_count}/5)"
+"error.command.spool" = "无法创建命令输出缓存:{e}(只能继续实时预览,历史与跳转不可用)"
+"error.command.spool_write" = "命令输出缓存写入失败:{e}"
 
 # ---- app ----
 "app.name" = "日志查看器"
@@ -639,3 +646,36 @@
 
 # ---- settings ----
 "settings.recents_purge" = "删除 URL 记录时清除凭据"
+
+# ---- about ----
+"settings.group.about" = "关于"
+"settings.section.about.desc" = "版本、构建提交、许可证与更新检查"
+"about.group.app" = "应用信息"
+"about.version" = "版本"
+"about.version.desc" = "语义化版本号,唯一来源是 Cargo.toml"
+"about.copy" = "复制版本信息"
+"about.copied" = "已复制版本信息"
+"about.license" = "许可证"
+"about.license.desc" = "AGPL-3.0-only:修改后分发须同样开放源码"
+"about.license.open" = "查看许可证"
+"about.group.links" = "项目链接"
+"about.repo" = "项目主页"
+"about.repo.desc" = "源码、构建说明与使用文档"
+"about.issues" = "问题反馈"
+"about.issues.desc" = "报告问题或提出功能需求"
+"about.changelog" = "更新日志"
+"about.changelog.desc" = "各版本的新增、修复与变更"
+"about.group.update" = "更新"
+"about.update.check" = "版本检查"
+"about.update.check.desc" = "向 GitHub Releases 查询最新版本,只发送版本号,不上报任何本地数据"
+"about.update.action" = "检查更新"
+"about.update.checking" = "正在检查…"
+"about.update.latest" = "已是最新版本({v})"
+"about.update.available" = "发现新版本 {v}"
+"about.update.failed" = "检查失败:{e}"
+"about.update.open" = "打开下载页"
+"about.update.retry" = "重新检查"
+"about.group.oss" = "开源组件"
+"about.oss.full" = "完整声明"
+"about.oss.full.desc" = "含传递依赖、图标素材与许可兼容性说明"
+"about.repo.tip" = "在 GitHub 打开仓库"

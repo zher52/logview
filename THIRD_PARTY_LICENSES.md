@@ -6,7 +6,7 @@
 ## 1. 内置图标素材
 
 `assets/icons/*.svg` 取自 **Ionicons 5.0.0** 的子集（chevron-down / clear / configs / edit /
-jump-end / load-all / save / settings / tail-off / tail-on / wrap），经单色化处理后在
+jump-end / load-all / save / settings / tail-off / tail-on / wrap / logo-github），经单色化处理后在
 `src/assets.rs` 中通过 `include_bytes!` 内嵌。
 
 ```

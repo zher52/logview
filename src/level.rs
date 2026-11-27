@@ -50,7 +50,9 @@ fn alias_level(word: &str) -> Option<u8> {
         "info" | "information" | "notice" | "i" => INFO,
         "warn" | "warning" | "caution" | "w" => WARN,
         "error" | "err" | "severe" | "fail" | "failure" | "failed" | "e" => ERROR,
-        "fatal" | "critical" | "crit" | "panic" | "emerg" | "emergency" | "alert" | "f" => FATAL,
+        "fatal" | "critical" | "crit" | "panic" | "emerg" | "emergency" | "alert" | "f" | "a" => {
+            FATAL
+        }
         _ => return None,
     })
 }
@@ -125,11 +127,16 @@ pub fn builtin_configs() -> Vec<LevelConfig> {
                 flags: "".into(),
             }],
         },
-        // Android logcat `-v threadtime`:MM-DD HH:MM:SS.mmm  PID  TID L Tag: msg
+        // Android logcat:默认关闭,只在命令源确实是 logcat(预设或 argv 含 logcat)时
+        // 由标签页自动启用;规则按格式精确锚定,可安全排在通用词规则之前。
+        //   threadtime: MM-DD HH:MM:SS.mmm  PID  TID L Tag: msg
+        //   time:       MM-DD HH:MM:SS.mmm L/Tag( PID): msg
+        //   brief:      L/Tag( PID): msg
+        //   process:    L( PID) msg
         LevelConfig {
             id: "builtin-android-logcat".into(),
-            name: "Android logcat (threadtime)".into(),
-            enabled: true,
+            name: "Android logcat (threadtime / brief / time)".into(),
+            enabled: false,
             built_in: true,
             rules: vec![
                 Rule {
@@ -142,6 +149,24 @@ pub fn builtin_configs() -> Vec<LevelConfig> {
                     auto: true,
                     level: INFO,
                     regex: r"^\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\s+([VDIWEFA])\s".into(),
+                    flags: "".into(),
+                },
+                Rule {
+                    auto: true,
+                    level: INFO,
+                    regex: r"^\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\s+([VDIWEFA])/".into(),
+                    flags: "".into(),
+                },
+                Rule {
+                    auto: true,
+                    level: INFO,
+                    regex: r"^([VDIWEFA])/[^(]+(?:\(\s*\d+\))?:".into(),
+                    flags: "".into(),
+                },
+                Rule {
+                    auto: true,
+                    level: INFO,
+                    regex: r"^([VDIWEFA])\(\s*\d+\)\s".into(),
                     flags: "".into(),
                 },
             ],
@@ -177,8 +202,47 @@ pub struct Engine {
 impl Engine {
     /// 按标签页自己的启用集合编译(顺序仍按配置列表;不在 `enabled` 的跳过)
     pub fn compile_selected(configs: &[LevelConfig], enabled: &[bool]) -> Engine {
+        let order: Vec<usize> = (0..configs.len()).collect();
+        Self::compile_in_order(configs, enabled, &order)
+    }
+
+    /// 按 id 集合编译(标签页记住的是配置 id,配置增删后仍可对齐)
+    pub fn compile_ids(configs: &[LevelConfig], ids: &[String]) -> Engine {
+        Self::compile_ids_preferring(configs, ids, &[])
+    }
+
+    /// 按 id 编译,并把 `first` 里的配置排到最前面。
+    /// 用于格式类规则(如 logcat):行首级别必须压过正文里的通用级别词,
+    /// 否则 `I/xxx: error ...` 会被「通用单词」先判成 ERROR。
+    pub fn compile_ids_preferring(
+        configs: &[LevelConfig],
+        ids: &[String],
+        first: &[&str],
+    ) -> Engine {
+        let enabled: Vec<bool> = configs
+            .iter()
+            .map(|c| ids.iter().any(|id| id == &c.id))
+            .collect();
+        let mut order: Vec<usize> = Vec::with_capacity(configs.len());
+        for id in first {
+            if let Some(i) = configs.iter().position(|c| c.id == *id) {
+                if !order.contains(&i) {
+                    order.push(i);
+                }
+            }
+        }
+        for i in 0..configs.len() {
+            if !order.contains(&i) {
+                order.push(i);
+            }
+        }
+        Self::compile_in_order(configs, &enabled, &order)
+    }
+
+    fn compile_in_order(configs: &[LevelConfig], enabled: &[bool], order: &[usize]) -> Engine {
         let mut rules = Vec::new();
-        for (i, c) in configs.iter().enumerate() {
+        for &i in order {
+            let Some(c) = configs.get(i) else { continue };
             if !enabled.get(i).copied().unwrap_or(false) {
                 continue;
             }
@@ -201,15 +265,6 @@ impl Engine {
             }
         }
         Engine { rules }
-    }
-
-    /// 按 id 集合编译(标签页记住的是配置 id,配置增删后仍可对齐)
-    pub fn compile_ids(configs: &[LevelConfig], ids: &[String]) -> Engine {
-        let enabled: Vec<bool> = configs
-            .iter()
-            .map(|c| ids.iter().any(|id| id == &c.id))
-            .collect();
-        Self::compile_selected(configs, &enabled)
     }
 
     /// 单行级别判定
@@ -249,5 +304,47 @@ mod tests {
         assert_eq!(e.eval("2026-11-26T09:04:00.004Z ERROR worker-4"), ERROR);
         assert_eq!(e.eval("2026-11-26T09:05:00.005Z FATAL worker-5"), FATAL);
         assert_eq!(e.eval("plain text without level"), NONE);
+    }
+
+    #[test]
+    fn android_logcat_is_not_enabled_by_default() {
+        // logcat 规则只在命令源确实是 logcat 时自动启用,不再污染普通文件的默认集合
+        let cfg = builtin_configs();
+        let logcat = cfg
+            .iter()
+            .find(|c| c.id == "builtin-android-logcat")
+            .unwrap();
+        assert!(!logcat.enabled);
+    }
+
+    #[test]
+    fn android_logcat_formats_are_detected() {
+        let cfg = builtin_configs();
+        let ids = vec!["builtin-android-logcat".to_string()];
+        let e = Engine::compile_ids(&cfg, &ids);
+        assert_eq!(
+            e.eval("11-27 10:00:00.123  1234  5678 I ActivityManager: start"),
+            INFO
+        );
+        assert_eq!(e.eval("11-27 10:00:00.123  1234  5678 E Tag: boom"), ERROR);
+        assert_eq!(e.eval("11-27 10:00:00.123 E/Tag( 1234): boom"), ERROR);
+        assert_eq!(e.eval("W/Tag( 1234): slow"), WARN);
+        assert_eq!(e.eval("D( 1234) msg"), DEBUG);
+        assert_eq!(e.eval("A/Tag( 1234): assert"), FATAL);
+        assert_eq!(e.eval("--------- beginning of main"), NONE);
+    }
+
+    #[test]
+    fn logcat_rule_precedes_generic_words() {
+        // 行首级别必须胜过正文里的 "error",否则 logcat 的级别会判错
+        let cfg = builtin_configs();
+        let ids = vec![
+            "builtin-words".to_string(),
+            "builtin-android-logcat".to_string(),
+        ];
+        let line = "11-27 10:00:00.123  1234  5678 I Tag: error while loading";
+        assert_eq!(Engine::compile_ids(&cfg, &ids).eval(line), ERROR);
+        let e = Engine::compile_ids_preferring(&cfg, &ids, &["builtin-android-logcat"]);
+        assert_eq!(e.eval(line), INFO);
     }
 }

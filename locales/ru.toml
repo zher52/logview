@@ -33,6 +33,10 @@
 "configs.delete" = "Удалить конфигурацию"
 "configs.restore_default" = "Сбросить"
 "configs.add_rule" = "＋ Добавить правило"
+"configs.add_rule.tip" = "Добавить правило сопоставления"
+"configs.edit.tip" = "Переключиться в режим редактирования"
+"configs.readonly" = "Только чтение"
+"configs.readonly.tip" = "Вернуться в режим только для чтения"
 "configs.new.tip" = "Новая конфигурация анализа"
 "configs.import_json.tip" = "Импорт конфигураций из JSON (полная замена списка)"
 "configs.export_json.tip" = "Экспортировать все конфигурации в JSON"
@@ -67,6 +71,7 @@
 "search.show" = "Показать"
 
 # ---- wrap ----
+"wrap.label" = "Перенос"
 "wrap.on" = "Перенос строк включён (нажмите, чтобы выключить)"
 "wrap.off" = "Перенос строк выключен (нажмите, чтобы включить)"
 
@@ -434,6 +439,8 @@
 "error.command.remote_run" = "Ошибка выполнения удалённой команды: {e}"
 "error.command.value_empty" = "Команда получения значения пуста"
 "error.command.retry_count" = "{e} (повтор {err_count}/5)"
+"error.command.spool" = "Не удалось создать кэш вывода команды: {e} (продолжается только прямой просмотр; история и переходы недоступны)"
+"error.command.spool_write" = "Не удалось записать кэш вывода команды: {e}"
 
 # ---- app ----
 "app.name" = "Просмотр журналов"
@@ -639,3 +646,36 @@
 
 # ---- settings ----
 "settings.recents_purge" = "Удалять учётные данные при удалении истории URL"
+
+# ---- about ----
+"settings.group.about" = "О программе"
+"settings.section.about.desc" = "Версия, коммит сборки, лицензия и проверка обновлений"
+"about.group.app" = "Приложение"
+"about.version" = "Версия"
+"about.version.desc" = "Семантическая версия, источник — Cargo.toml"
+"about.copy" = "Копировать сведения о версии"
+"about.copied" = "Сведения о версии скопированы"
+"about.license" = "Лицензия"
+"about.license.desc" = "AGPL-3.0-only: производные сборки должны оставаться открытыми"
+"about.license.open" = "Открыть лицензию"
+"about.group.links" = "Ссылки проекта"
+"about.repo" = "Домашняя страница"
+"about.repo.desc" = "Исходный код, сборка и документация"
+"about.issues" = "Обратная связь"
+"about.issues.desc" = "Сообщить об ошибке или предложить улучшение"
+"about.changelog" = "История изменений"
+"about.changelog.desc" = "Что изменилось в каждой версии"
+"about.group.update" = "Обновления"
+"about.update.check" = "Проверка версии"
+"about.update.check.desc" = "Запрос к GitHub Releases: отправляется только номер версии, локальные данные не передаются"
+"about.update.action" = "Проверить обновления"
+"about.update.checking" = "Проверка…"
+"about.update.latest" = "Установлена последняя версия ({v})"
+"about.update.available" = "Доступна новая версия {v}"
+"about.update.failed" = "Ошибка проверки: {e}"
+"about.update.open" = "Открыть страницу загрузки"
+"about.update.retry" = "Проверить снова"
+"about.group.oss" = "Открытые компоненты"
+"about.oss.full" = "Полные уведомления"
+"about.oss.full.desc" = "Транзитивные зависимости, иконки и совместимость лицензий"
+"about.repo.tip" = "Открыть репозиторий на GitHub"

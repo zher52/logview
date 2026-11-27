@@ -21,7 +21,8 @@ Chrome DevTools console. The interface supports **Chinese, English and Russian**
 - **Auto-follow** — per-tab worker polls for appended data, sticky-to-bottom with "N new lines" button,
   rotation/truncation detection.
 - **Large files** — virtual scrolling renders only visible rows; initial head load, "load all" and
-  "jump to end" (tail-aligned) actions.
+  "jump to end" (tail-aligned) actions. Command sources get the same history, pause and seek behaviour
+  through a local spool.
 - **Inline links** — URLs, POSIX/Windows paths and JSON lines open in new tabs; JSON lines get a pretty view.
 - **Code & Markdown** — syntax highlighting for common code/config extensions, Markdown preview,
   optional editing with save.
@@ -91,9 +92,13 @@ the same presets and form.
 - **SSH commands** run in the remote login shell (`sh -c`) with each argument single-quoted, so pipes
   and redirection work. This is equivalent to typing the command in a terminal; there is no argv-level
   sandbox or whitelist.
-- **Semantics**: stderr is merged into the same tab; the exit code is shown at the bottom, and
-  **Retry after exit** reopens with backoff (useful for device or container restarts). **Load all** is
-  disabled (streams have no history); **Jump to end** clears the buffer and keeps following.
+- **Semantics**: stderr is merged into the same tab. Output is also written to a local temporary
+  spool (128 MB cap, mode 0600), so pausing or scrolling away never loses lines and **Load all** /
+  **Jump to end** work exactly like file sources. Clearing the view also clears the spool; closing the
+  tab or quitting deletes it, and leftovers from crashes are swept on the next start (macOS:
+  `~/Library/Caches/logview/spool/`, Windows/Linux: `logview/spool/` under the system cache dir).
+- **Exit & reconnect**: the exit code is shown at the bottom, and **Retry after exit** reopens with
+  backoff (useful for device or container restarts); output from before the reconnect stays in the spool.
 - **Auth**: SSH commands reuse the SSH file source credentials and keychain entry for the same
   `user@host:port`.
 
@@ -249,8 +254,11 @@ Size and fonts, or leave it empty to follow the system font.
 and fill it when several devices are connected. If `adb` is not on `PATH`, use an absolute path in
 the preset.
 
-**Why is “Load all” disabled for command sources?** Command output is a stream with no history;
-use `journalctl -n` or `docker logs --tail` to fetch history in the command itself.
+**Where is command history stored?** Each command tab spools output under `logview/spool/` in the
+system cache directory; it is deleted on tab close or quit, truncated by “clear”, and leftovers are
+swept at startup. The cap is 128 MB (the oldest half is dropped). If the spool cannot be written you
+only get a live preview (with a notice). Spooled log text is briefly written to disk in plain text —
+clear or close the tab if the output contains secrets.
 
 **SSH reports authentication failure?** Check the username and credentials; key-file paths refer to
 the **server’s** filesystem; agent auth needs `SSH_AUTH_SOCK` in the environment.

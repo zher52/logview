@@ -44,7 +44,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
   <key>CFBundleName</key><string>$APP_NAME</string>
   <key>CFBundleDisplayName</key><string>$APP_NAME</string>
-  <key>CFBundleIdentifier</key><string>local.fandd.logview</string>
+  <key>CFBundleIdentifier</key><string>io.github.zher52.logview</string>
   <key>CFBundleExecutable</key><string>$BIN_NAME</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>

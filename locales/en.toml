@@ -33,6 +33,10 @@
 "configs.delete" = "Delete config"
 "configs.restore_default" = "Restore default"
 "configs.add_rule" = "＋ Add rule"
+"configs.add_rule.tip" = "Add a matching rule"
+"configs.edit.tip" = "Switch to edit mode"
+"configs.readonly" = "Read-only"
+"configs.readonly.tip" = "Switch back to read-only"
 "configs.new.tip" = "New analysis config"
 "configs.import_json.tip" = "Import configs from a JSON file (replaces the whole list)"
 "configs.export_json.tip" = "Export all configs as a JSON file"
@@ -67,6 +71,7 @@
 "search.show" = "Show"
 
 # ---- wrap ----
+"wrap.label" = "Word wrap"
 "wrap.on" = "Word wrap: on (click to turn off)"
 "wrap.off" = "Word wrap: off (click to turn on)"
 
@@ -434,6 +439,8 @@
 "error.command.remote_run" = "Remote command execution failed: {e}"
 "error.command.value_empty" = "Value command is empty"
 "error.command.retry_count" = "{e} (retry {err_count}/5)"
+"error.command.spool" = "Failed to create the command output cache: {e} (live preview continues; history and seeking are unavailable)"
+"error.command.spool_write" = "Failed to write the command output cache: {e}"
 
 # ---- app ----
 "app.name" = "Log Viewer"
@@ -639,3 +646,36 @@
 
 # ---- settings ----
 "settings.recents_purge" = "Clear credentials when deleting URL history"
+
+# ---- about ----
+"settings.group.about" = "About"
+"settings.section.about.desc" = "Version, build commit, license and update check"
+"about.group.app" = "Application"
+"about.version" = "Version"
+"about.version.desc" = "Semantic version, sourced from Cargo.toml"
+"about.copy" = "Copy version info"
+"about.copied" = "Version info copied"
+"about.license" = "License"
+"about.license.desc" = "AGPL-3.0-only: redistributions must stay open source"
+"about.license.open" = "View license"
+"about.group.links" = "Project links"
+"about.repo" = "Homepage"
+"about.repo.desc" = "Source code, build instructions and docs"
+"about.issues" = "Issues"
+"about.issues.desc" = "Report a bug or request a feature"
+"about.changelog" = "Changelog"
+"about.changelog.desc" = "What changed in each release"
+"about.group.update" = "Updates"
+"about.update.check" = "Version check"
+"about.update.check.desc" = "Queries GitHub Releases; only the version number is sent, no local data"
+"about.update.action" = "Check for updates"
+"about.update.checking" = "Checking…"
+"about.update.latest" = "Up to date ({v})"
+"about.update.available" = "New version {v} available"
+"about.update.failed" = "Check failed: {e}"
+"about.update.open" = "Open download page"
+"about.update.retry" = "Check again"
+"about.group.oss" = "Open source components"
+"about.oss.full" = "Full notices"
+"about.oss.full.desc" = "Transitive dependencies, icon assets and license compatibility"
+"about.repo.tip" = "Open the repository on GitHub"

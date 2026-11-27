@@ -95,6 +95,17 @@ const ICONS: &[(&str, &[u8])] = &[
         "icons/delete.svg",
         include_bytes!("../assets/icons/delete.svg"),
     ),
+    // 分析配置规则块:新增规则 / 只读锁定
+    (
+        "icons/rule-add.svg",
+        include_bytes!("../assets/icons/rule-add.svg"),
+    ),
+    ("icons/lock.svg", include_bytes!("../assets/icons/lock.svg")),
+    // 「关于」页:GitHub 仓库入口
+    (
+        "icons/github.svg",
+        include_bytes!("../assets/icons/github.svg"),
+    ),
 ];
 
 pub struct AppAssets;

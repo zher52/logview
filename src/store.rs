@@ -35,6 +35,9 @@ pub struct Settings {
     /// 界面语言:"zh" / "en" / "ru"(默认中文)
     #[serde(default = "default_language")]
     pub language: String,
+    /// 设置文件结构版本:用于一次性迁移(0 = 旧版文件)
+    #[serde(default)]
+    pub schema_version: u32,
     /// 日志行默认自动换行(新标签页的初始值;标签页内可单独切换)
     #[serde(default = "default_wrap")]
     pub wrap: bool,
@@ -221,6 +224,7 @@ impl Default for Settings {
             ui_font_family: String::new(),
             log_font_family: String::new(),
             language: default_language(),
+            schema_version: SCHEMA_VERSION,
             wrap: true,
             colors: [
                 "#75757e", "#8c8c8c", "#95de64", "#ffc53d", "#ff7875", "#ff7875", "#d9d9d9",
@@ -250,6 +254,9 @@ impl Default for Settings {
     }
 }
 
+/// 当前设置结构版本。1:logcat 从全局默认启用改为按来源条件启用
+const SCHEMA_VERSION: u32 = 1;
+
 fn config_path() -> Option<std::path::PathBuf> {
     dirs::config_dir().map(|d| d.join("logview").join("settings.json"))
 }
@@ -276,7 +283,29 @@ pub fn load() -> Settings {
     }
     migrate_secrets(&mut s);
     migrate_highlight(&mut s);
+    if migrate_schema(&mut s) {
+        save(&s);
+    }
     s
+}
+
+/// 一次性迁移旧设置文件:
+/// 旧版把 Android logcat 当作全局默认配置启用,导致普通文件也带 logcat 规则;
+/// 现在改为只在命令源确实是 logcat 时由标签页自动启用。
+fn migrate_schema(s: &mut Settings) -> bool {
+    let mut dirty = false;
+    if s.schema_version < 1 {
+        if let Some(c) = s
+            .configs
+            .iter_mut()
+            .find(|c| c.id == "builtin-android-logcat")
+        {
+            c.enabled = false;
+        }
+        s.schema_version = 1;
+        dirty = true;
+    }
+    dirty
 }
 
 /// 旧默认高亮色对比不足(紫罗兰)或与 WARN 级别色过近(琥珀);
@@ -384,6 +413,30 @@ mod tests {
         let s: Settings = serde_json::from_value(v).unwrap();
         assert_eq!(s.recents_limit, 50);
         assert!(s.recents_purge_creds);
+    }
+
+    #[test]
+    fn legacy_settings_disable_global_logcat_config() {
+        // 旧设置文件把 logcat 当全局默认启用:迁移后关闭,改由 logcat 命令标签自动启用
+        let mut v = serde_json::to_value(Settings::default()).unwrap();
+        v.as_object_mut().unwrap().remove("schema_version");
+        let mut s: Settings = serde_json::from_value(v).unwrap();
+        assert_eq!(s.schema_version, 0);
+        for c in &mut s.configs {
+            if c.id == "builtin-android-logcat" {
+                c.enabled = true;
+            }
+        }
+        assert!(migrate_schema(&mut s));
+        assert_eq!(s.schema_version, 1);
+        let logcat = s
+            .configs
+            .iter()
+            .find(|c| c.id == "builtin-android-logcat")
+            .unwrap();
+        assert!(!logcat.enabled);
+        // 再跑一次是幂等的
+        assert!(!migrate_schema(&mut s));
     }
 
     #[test]

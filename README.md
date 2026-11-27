@@ -1,5 +1,9 @@
 # 日志查看器
 
+[![CI](https://github.com/zher52/logview/actions/workflows/ci.yml/badge.svg)](https://github.com/zher52/logview/actions/workflows/ci.yml)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/zher52/logview?sort=semver)](https://github.com/zher52/logview/releases)
+
 Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome DevTools 控制台。
 
 **Rust + GPUI 自绘 UI · 无 WebView · 参考 Chrome DevTools 控制台风格 · 目标全平台(macOS / Windows / Linux)**
@@ -32,7 +36,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 - [x] **拖入打开**:把文件从 Finder/资源管理器拖进窗口即打开(支持一次拖入多个,拖入时窗口有覆盖提示)
 - [x] **系统级打开集成**:macOS 打包为 .app 后,可在 Finder 右键 .log/.txt 等文件 →「打开方式 → 日志查看器」,或双击关联文件;也支持 `open -a 日志查看器.app 文件`(Windows/Linux 以 argv 关联即可)
 - [x] **代码/配置文件视图**:打开 `.json/.rs/.py/.js/.ts/.go/.c/.cpp/.java/.sh/.toml/.yaml/.md` 等文件时按代码格式逐行高亮(只读),工具栏可切换「编辑」并用 `⌘S` 保存(行号 + 语法着色,不做补全/LSP);超过 2 MiB 的文件按日志文件打开,不进代码视图。**Markdown**:只读态直接渲染预览(标题/列表/表格/引用/代码块/链接,围栏代码块按语言着色),点「编辑」显示源码;本地图片按文档所在目录解析并解码 `%20` 等转义,指向不存在文件的图片改写为 `⚠ 图片缺失:路径`;预览上限 512 KiB,超出回落源码着色
-- [x] **大文件友好**:虚拟滚动只渲染可见行;初始加载头部(默认 4MB),banner 提供「加载全部 / 跳到末尾(取尾部 2MB,行对齐)」
+- [x] **大文件友好**:虚拟滚动只渲染可见行;初始加载头部(默认 4MB),banner 提供「加载全部 / 跳到末尾(取尾部 2MB,行对齐)」。命令源通过本机临时缓存获得同样的历史、暂停与跳转语义
 - [x] **界面主题**:自动跟随系统亮暗模式并实时切换;整体视觉基于 antd v5 设计令牌(主色/中性色阶/语义色/圆角/间距体系)构建
 - [x] **主题色可自定义**:设置 → 外观与显示 → 主题色(默认 antd 蓝;暗色主题自动切换深色变体,所有主色元素跟随)
 - [x] **图标化的工具栏**:跟进/跳尾/清屏/加载全部/自动换行/分析配置/编辑保存等动作一律用图标按钮(26px 定宽 + 悬停说明),窄窗口不再把工具栏撑爆;内置 SVG 图标(ionicons 子集)登记在 `assets.rs` 的表里,其余路径回退到 gpui-kit 自带图标库
@@ -43,13 +47,27 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 - [x] **中文 / English / Русский 界面**:设置 → 外观与显示 →「界面语言」即时切换。文案用语义 ID(如 `common.cancel`),译文在 `locales/{zh,en,ru}.toml`,改翻译不必动 Rust;`build.rs` 校验三语键一致,`cargo test` 校验源码里的 ID 是否存在。计数按语言变格(俄语 1 строка / 2 строки / 5 строк)
 - [x] **分析配置管理**:设置 → 分析配置,左栏底部提供「导入 JSON / 导出 JSON / 恢复内置默认」;单个内置配置标题旁也有「恢复默认」,规则被误改后可一键还原
 - [x] **设置页(VS Code 风格)**:独立「设置」标签页,左侧分类与搜索、右侧分组设置项;改动即时生效并自动保存,不设「保存」按钮。级别配置用「列表 + 规则编辑」双栏管理
+- [x] **关于与检查更新**:设置 → 关于 显示版本号与构建提交(`build.rs` 从 git 注入,无 `.git` 时为 `unknown`)、许可证、项目链接与所用开源组件清单(含完整第三方声明入口),并可一键复制「版本 + 构建 + 平台」用于报障;「检查更新」向 GitHub Releases 查询最新版本(手动触发,只发送版本号,不上报任何本地数据),有新版本时直接打开下载页,不自行下载或替换程序
 - [x] **其他**:融合标题栏(macOS:标签栏与红绿灯同一行,拖动标签栏移动窗口)、标签悬停显示关闭按钮、多标签(右键关闭其他)、最近打开(可调保存条数、单条移除与一键清除、超出高度可滚动)、行数上限环形丢弃、配置导入/导出 JSON、快捷键
+
+## 下载
+
+预编译产物在 [Releases](https://github.com/zher52/logview/releases)：macOS 为 `logview-macos.zip`，解压即得「日志查看器.app」。
+
+> 产物是 **ad-hoc 签名、未经公证** 的（没有付费 Apple 开发者账号，拿不到 Developer ID 与公证资格）。
+> 从浏览器下载的 `.app` 首次打开会被 Gatekeeper 拦下，属预期行为：右键 →「打开」→ 再点「打开」，
+> 或到「系统设置 → 隐私与安全性」底部点「仍要打开」；命令行等效：
+> `xattr -dr com.apple.quarantine /Applications/日志查看器.app`。
+> 不放心可核对 Release 附带的 SHA256，或按下面的步骤从源码构建。
+
+Windows / Linux 目前只有 CI 构建检查，安装包与 `.desktop` 尚未提供（见[平台支持](#平台支持)）。也可以直接按下方源码构建。
 
 ## 快速开始
 
 要求 Rust **1.92+**(`rustup` 安装 stable;依赖链中 keyring → zbus → oo7 需要 1.92,macOS/Windows 自 1.91 起可编译)。首编较慢(gpui / ssh2 / reqwest / keyring),之后增量编译很快。
 
 ```bash
+git clone https://github.com/zher52/logview && cd logview
 cargo run                        # 启动,弹出"打开日志源"对话框
 cargo run -- sample/app.log      # CLI 直达打开本地文件
 cargo build --release            # 产物 target/release/logview
@@ -83,7 +101,8 @@ URL 源的凭据分两档:**保存凭据**(写入钥匙串)与**仅记录历史*
 - **预设即数据**:内置预设写在 `settings.json` 的 `command_presets` 里(首次启动自动写入,后续新增内置项按 id 追加),可以直接改 argv、加自己的命令,不需要改代码。参数形如 `["adb", "-s", "${serial}", "logcat", "-v", "threadtime"]`,值为空的参数会连同紧邻的开关一起丢弃。
 - **本地命令按 argv 直接执行**,不经 shell;可执行文件按 `PATH` 查找,找不到会给出明确提示。
 - **SSH 命令由远端登录 shell 执行**(`sh -c`),参数逐个单引号转义,因此可以用管道、重定向;这也意味着它和你在终端里敲命令等价,不提供 argv 级别的最小权限保证。
-- **语义**:stderr 合并进同一标签;进程退出时标签底部显示退出码,勾选「退出后重试」后按退避自动重开(适合 `adb logcat` 设备重连、`docker logs -f` 容器重启)。「加载全部」对命令源禁用(没有文件可回溯),「跳到末尾」= 清空缓冲后继续。
+- **语义**:stderr 合并进同一标签;输出同时写入本机临时缓存(spool,默认上限 128MB,权限 0600),因此暂停/取消跟随不会丢日志,「加载全部」和「跳到末尾」与文件源一样可用。清屏会同时清掉缓存;关闭标签或退出应用时删除缓存,异常退出留下的文件在下次启动时清理。缓存目录:macOS `~/Library/Caches/logview/spool/`,Windows/Linux 为系统缓存目录下的 `logview/spool/`。
+- **退出与重连**:进程退出时标签底部显示退出码,勾选「退出后重试」后按退避自动重开(适合 `adb logcat` 设备重连、`docker logs -f` 容器重启);重连前的输出仍保留在缓存里。
 - **认证**:SSH 命令复用 SSH 文件源的认证方式与钥匙串条目(同一 `用户@主机:端口`),无需重复输入。
 
 ### 级别配置
@@ -157,7 +176,7 @@ URL 源的凭据分两档:**保存凭据**(写入钥匙串)与**仅记录历史*
 
 **命令源**:本地命令不经过 shell,直接 `exec` 预设里的 argv;SSH 命令交给远端登录 shell 执行,工具只做单引号转义,不做命令白名单——预设由使用者自己维护,运行前请确认命令内容。命令继承本进程环境变量(本地)或登录 shell 环境(SSH),不会读取 `settings.json` 里的其他凭据。
 
-**凭据**:密码/口令/token 默认只存于本次会话内存(用于保持连接与「SSH 内打开路径」);勾选「记住连接」后由 `keyring` 写入系统钥匙串(服务名 `logview`,条目按 `ssh|用户@主机:端口` / `http|URL` 聚合为一条 JSON),设置文件始终不含凭据。启动时会把旧版明文凭据自动迁移进钥匙串并立即改写配置文件;钥匙串不可用(如 Linux 无 Secret Service)时退回仅内存 + 手动输入,不落盘。SSH 私钥正文不写入钥匙串(Windows 单条 2560 字节上限),建议改用私钥文件方式。清理入口:设置「连接 → 已保存的 URL 凭据」可逐条删除(同时删钥匙串条目);欢迎页最近打开对单条点「×」或点「清除」(两步确认,确认前可取消)时,若「删除 URL 记录时清除凭据」开启,对应 URL 条目会被一并删除。SSH 凭据不随最近记录或已保存主机删除,目前需在系统钥匙串中手动移除。
+**凭据**:密码/口令/token 默认只存于本次会话内存(用于保持连接与「SSH 内打开路径」);勾选「记住连接」后由 `keyring` 写入系统钥匙串(服务名 `io.github.zher52.logview`,与 macOS 包标识一致),条目按 `ssh|用户@主机:端口` / `http|URL` 聚合为一条 JSON,设置文件始终不含凭据。启动时会把旧版明文凭据自动迁移进钥匙串并立即改写配置文件;钥匙串不可用(如 Linux 无 Secret Service)时退回仅内存 + 手动输入,不落盘。SSH 私钥正文不写入钥匙串(Windows 单条 2560 字节上限),建议改用私钥文件方式。清理入口:设置「连接 → 已保存的 URL 凭据」可逐条删除(同时删钥匙串条目);欢迎页最近打开对单条点「×」或点「清除」(两步确认,确认前可取消)时,若「删除 URL 记录时清除凭据」开启,对应 URL 条目会被一并删除。SSH 凭据不随最近记录或已保存主机删除,目前需在系统钥匙串中手动移除。
 
 **SSH 主机密钥**:连接后读取 `~/.ssh/known_hosts` 比对服务器密钥,与已有记录不一致会直接拒绝连接并提示可能的中间人攻击;未知主机会弹窗显示主机、算法与 SHA256 指纹,可选择「仅本次信任」或「信任并记住」(写入 `known_hosts`)。
 
@@ -179,7 +198,7 @@ Tail Worker 线程 × 每标签(轮询 size → 分块增量读,1MB/块,每周�
 | `main.rs` | GPUI 应用启动、窗口参数、CLI 直达 |
 | `app_view.rs` | 主视图:标签栏、工具栏(检索/级别 chips/配置选择器)、日志区虚拟滚动与着色、打开源/设置对话框、消息轮询、最近打开、快捷键 |
 | `theme.rs` | antd v5 风格暗/亮双配色令牌、字号与行高系统 |
-| `assets.rs` | 内置图标 SVG 表(ionicons 子集,工具栏/设置用它),其余路径回退到 gpui-kit 图标库 |
+| `assets.rs` | 内置图标 SVG 表(ionicons 子集,含 GitHub 标志,工具栏/设置用它),其余路径回退到 gpui-kit 图标库 |
 | `code_input.rs` | 正则代码框的词法着色 |
 | `level.rs` | Level 常量与别名映射、LevelConfig/Rule、Engine(正则编译与逐行判定) |
 | `lines.rs` | LineStore:字节流→行(按 `\n` 切分,天然 UTF-8 断字安全)、计数、行数上限 |
@@ -192,6 +211,8 @@ Tail Worker 线程 × 每标签(轮询 size → 分块增量读,1MB/块,每周�
 | `secrets.rs` | 凭据存取:系统钥匙串优先,不可用退回仅内存 |
 | `store.rs` | settings.json 读写、旧版明文凭据迁移 |
 | `tail.rs` | worker 协议与轮询循环、初始/尾部/全量加载、轮换;命令源为流式模式(合并读取、退出重试) |
+
+`build.rs`:构建期把 `locales/*.toml` 编译成 `&'static str` 查表(校验三语键集合一致),并用 `git rev-parse --short=8 HEAD` 注入 `GIT_HASH`(无 `.git` 时为 `unknown`)。
 
 ## 开发
 
@@ -222,6 +243,9 @@ cargo build --release            # 裸二进制 target/release/logview
 随后 `lsregister` 刷新注册 —— Finder 右键日志文件即可在「打开方式」中看到 **日志查看器**。
 拖入窗口与 CLI(`logview 文件...`)同样支持多文件。
 
+> 发布产物是 **ad-hoc 签名、未经公证** 的（无付费 Apple 开发者账号）：`make_app.sh` 会优先找
+> Apple Development 证书，找不到就用 ad-hoc 签名；首次打开需右键「打开」或到系统设置放行，详见[下载](#下载)。
+
 Windows:文件右键「打开方式 → 选择其他应用 → logview.exe(始终)」,经 argv 传入,程序已支持。
 Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 
@@ -230,10 +254,12 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 - [x] macOS .app 打包与文件关联(`./scripts/make_app.sh`,支持 Finder 右键打开)
 - [ ] Windows / Linux 打包与关联脚本(msi/AppImage + `.desktop` `Exec=logview %f`)
 - [x] 命令源(本地 / SSH 执行命令,内置 adb / journalctl / docker / kubectl / tail 预设)
+- [x] 「关于」页与检查更新(版本 + 构建提交 + 许可证 + 开源组件清单;检查更新只跳下载页)
+- [x] 长行折行模式(默认开启,工具栏可切换;关闭时按单行渲染)
 - [ ] 行内 ANSI 颜色解析
-- [ ] 长行折行模式(当前横向滚动)
 - [ ] SSH 已连接实例复用(路径链接免重连)
 - [ ] 多文件合并视图 / 时间轴
+- [ ] 自动安装更新(需代码签名与 Apple 公证,当前不具备条件;暂以「检查更新 + 手动下载」代替)
 
 ## FAQ
 
@@ -241,7 +267,7 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 
 **`adb logcat` 没有输出?** 先确认设备连接(`adb devices`)。预设的「设备序列号」留空时由 adb 自行选择;多设备并存请填序列号。`adb` 不在 `PATH` 时,把预设第一项改成可执行文件的绝对路径。
 
-**命令源为什么没有「加载全部」?** 命令的输出是流,没有可回溯的文件;需要历史时用 `journalctl -n`、`docker logs --tail` 之类参数在命令里取。
+**命令源的历史保存在哪里?** 每个命令标签会把输出写到系统缓存目录的 `logview/spool/` 下,关闭标签/退出应用时删除,清屏时立即清空,异常退出留下的文件在下次启动时清理。缓存上限 128MB,超出后丢弃最早的一半;缓存写入失败时只能实时预览(会有提示),历史与跳转不可用。日志正文会短暂明文落盘,若输出含密钥请及时清屏或关闭标签。
 
 **SSH 打开后报认证失败?** 检查用户名/凭据;私钥文件路径指**服务器本地**路径;agent 方式依赖运行环境的 `SSH_AUTH_SOCK`。
 
@@ -259,6 +285,7 @@ Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.gith
 
 ## 贡献
 
+- 仓库:[github.com/zher52/logview](https://github.com/zher52/logview)(Issue / PR 模板已就位)
 - 开发环境、提交规范与 PR 清单:[CONTRIBUTING.md](CONTRIBUTING.md)
 - 安全问题请走私密渠道:[SECURITY.md](SECURITY.md)
 - 变更记录:[CHANGELOG.md](CHANGELOG.md)

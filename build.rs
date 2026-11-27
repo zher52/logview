@@ -15,6 +15,7 @@ const LANGS: [&str; 3] = ["zh", "en", "ru"];
 fn main() {
     let root = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     println!("cargo:rerun-if-changed=locales");
+    emit_git_hash(&root);
 
     let mut tables: Vec<BTreeMap<String, String>> = Vec::new();
     for lang in LANGS {
@@ -119,4 +120,23 @@ fn main() {
 
     let dest = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("locales.rs");
     std::fs::write(&dest, out).unwrap();
+}
+
+/// 把提交短哈希写进 `GIT_HASH` 环境变量，供「关于」页展示与报障时核对版本。
+///
+/// 源码 tarball、无 git 的构建环境一律回退 `unknown`：宁可显示未知，也不要编造。
+fn emit_git_hash(root: &std::path::Path) {
+    // HEAD 变化（切分支、提交）时重新取值；packed-refs 同理监听
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!("cargo:rerun-if-changed=.git/packed-refs");
+    let hash = std::process::Command::new("git")
+        .args(["rev-parse", "--short=8", "HEAD"])
+        .current_dir(root)
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "unknown".to_string());
+    println!("cargo:rustc-env=GIT_HASH={hash}");
 }

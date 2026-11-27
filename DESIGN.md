@@ -129,7 +129,7 @@ Msg(worker→UI):
   Exited  { code, retry_in }        // 命令退出:显示退出码;retry_in = 若可重试,下次重开倒计时
 ```
 
-命令源复用同一 worker,但走「流式」分支:常驻读取线程把 stdout/stderr 合并后送入 channel,worker 循环只负责节流转发;`Pause` 期间读并丢弃(不反压子进程),`SeekEnd` 清空缓冲后继续,`SeekStart`(加载全部)禁用。
+命令源复用同一 worker,但走「流式」分支:常驻读取线程把 stdout/stderr 合并后送入 channel,worker 先追加到本机 spool(临时文件),再按 4MB/轮的预算补发给 UI。`Pause` 只停止补发、继续落盘;`SeekStart` 从 spool 开头回放,`SeekEnd` 取 spool 尾部,`Clear` 截断 spool。spool 上限 128MB,超出丢最早一半;关闭标签/退出删除,崩溃残留在下次启动清理。
 
 ## 8. SSRF 安全策略(按安全约束实现)
 
@@ -178,5 +178,5 @@ Msg(worker→UI):
 - **预设是数据**:`Settings.command_presets` 持久化整套预设(argv 模板、字段、`resolve` 预解析步骤、`level_config_id`);`builtin_presets()` 只是首次启动与按 id 补齐的默认值,用户修改不被覆盖。
 - **展开规则**:`${field}` 替换;值为空的可选参数连同紧邻 `-` 开头的开关一起丢弃(`["-s","${serial}"]` → 无);`resolve` 在执行前跑一条短命令取结果(如 `adb shell pidof -s pkg` → `${pid}`),失败即报错。
 - **执行边界**:本地按 argv `exec`,不经 shell(可执行文件由 `PATH` 解析);远端拼成一条命令行交给登录 shell(`sh -c`),每个参数单引号转义 —— 因此支持管道与重定向,但不承诺 argv 级安全,这一点在 README 里明说。
-- **生命周期**:进程退出后标签保留输出并标注退出码;预设开启「退出后重试」时按 1s→2s→…(上限 30s)退避重开,适合 `adb logcat` 设备重连、容器重启;用户手动关闭标签即停止并回收子进程。
+- **生命周期**:进程退出后标签保留输出并标注退出码;预设开启「退出后重试」时按 1s→2s→…(上限 30s)退避重开,适合 `adb logcat` 设备重连、容器重启;用户手动关闭标签即停止并回收子进程。输出缓存(spool)让重连前后的内容连续保留,暂停/回看也不会丢日志。
 - **不做的事**:不提供通用 SSH 终端;不做 PTY;不解析 ANSI(与文件源一致)。

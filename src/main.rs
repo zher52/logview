@@ -43,6 +43,8 @@ fn main() {
             cx.activate(true);
 
             let settings = store::load();
+            // 清理上次异常退出残留的命令输出缓存(正常退出由 worker 删除)
+            tail::cleanup_stale_spools();
             // 界面语言:组件库文案与自绘文案共用同一设置
             i18n::set(i18n::Lang::from_code(&settings.language));
             gpui_kit::component::set_locale(i18n::lang().locale());

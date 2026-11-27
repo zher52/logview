@@ -18,8 +18,9 @@ use serde::{Deserialize, Serialize};
 use crate::i18n;
 use crate::source::{SourceParams, SshAuth};
 
-/// 钥匙串服务名:条目形如 (服务=logview, 账号=ssh|user@host:port)
-const SERVICE: &str = "logview";
+/// 钥匙串服务名:与 macOS 应用包标识(`CFBundleIdentifier`)保持一致,
+/// 条目形如 (服务=io.github.zher52.logview, 账号=ssh|user@host:port)
+const SERVICE: &str = "io.github.zher52.logview";
 
 /// 一条日志源需要保存的秘密(全部可选,非空字段才写入)
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]

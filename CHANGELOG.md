@@ -2,22 +2,31 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
-## [Unreleased]
+## [0.4.0] - 2026-11-27
 
 ### Added
 
+- 命令源输出缓存(spool):命令标签把 stdout/stderr 落到系统缓存目录的临时文件,暂停/取消跟随不再丢日志,「加载全部」「跳到末尾」与文件源语义一致;清屏同时清空缓存,关闭标签/退出删除,异常退出残留下次启动清理,上限 128MB。
+- Android logcat 级别规则支持 `threadtime` / `time` / `brief` / `process` 四种格式与 `A`(assert)。
+
 - 开源配套：AGPL-3.0 许可证、第三方素材声明、贡献与安全策略、Issue/PR 模板。
 - GitHub Actions：格式 / lint / 测试，依赖安全审计，依赖许可检查（cargo-deny）与 tag 发布工作流。
+- 设置「关于」页：版本号与构建提交（`build.rs` 注入 `GIT_HASH`，无 `.git` 时显示 `unknown`）、许可证、项目链接与所用开源组件清单（含完整第三方声明入口），可一键复制「版本 + 构建 + 平台」用于报障，三种界面语言均已覆盖；「项目链接」分组带 GitHub 图标入口。
+- 「检查更新」：手动向 GitHub Releases 查询最新版本并按语义化版本比较；只发送版本号，不上报任何本地数据，有新版本时打开下载页，不自行下载或替换程序。
+- 仓库上线：`io.github.zher52.logview` 包标识、钥匙串服务名与 README/Cargo 元数据统一指向 [github.com/zher52/logview](https://github.com/zher52/logview)。
 - SSH 连接比对已有主机密钥，不一致时拒绝连接。
 - SSH 未知主机 TOFU 确认：弹窗展示算法与 SHA256 指纹，支持仅本次信任或写入 `known_hosts`。
 - 中英文界面：设置 → 界面语言即时切换，覆盖工具栏、对话框、设置页、状态栏、命令预设与常见错误提示；未收录词条回退中文。
 - 俄语界面：新增 `ru` 语言与完整俄文语言包，设置中的语言改为「中文 / English / Русский」三态选择。
 - i18n 重构为「语义 ID + 语言包」：文案键改为 `common.cancel`、`error.sftp.read` 这类 ID，译文移出 Rust 到 `locales/{zh,en,ru}.toml`，由 `build.rs` 编译期生成查表并校验三语键集合一致；新增 `i18n::tn` 按语言处理复数（俄语 one/few/other），修正 `1 строк`/`1 lines` 一类错误；`cargo test` 会扫描源码，确保引用的 ID 全部存在。
 - README 增加真实界面截图与自动追加 GIF。
-- 补齐 ssrf / search / links / i18n 单元测试（当前共 78 项）。
+- 补齐 ssrf / search / links / i18n 单元测试（当前共 88 项）。
 
 ### Fixed
 
+- 命令标签「跳到末尾」不再清空全部历史;「加载全部」不再点了没反应;暂停期间的新日志会保留在缓存,恢复后补发。
+- 命令退出自动重连时保留暂停状态,不再把“暂停”悄悄变回“继续”。
+- logcat 规则不再全局默认启用:只在命令预设声明或 argv 含 `logcat` 时按标签自动启用,并优先于「通用单词」,避免正文里的 error/warn 覆盖行首真实级别。
 - 切换界面语言后，检索框、设置搜索框及 SSH / URL / 命令对话框的输入框占位符仍显示旧语言。
 - 设置页与空白标签页的标签名改为随界面语言动态更新。
 - 日志级别「无级别」改为使用语言包，英文界面显示为 `Others`。
@@ -25,8 +34,11 @@
 ### Changed
 
 - 许可证采用 GNU AGPL-3.0（SPDX：`AGPL-3.0-only`）。
+- macOS 应用包标识改为 `io.github.zher52.logview`（原 `local.fandd.logview`）；配置与设置仍按目录名 `logview` 存放。
+- 钥匙串服务名同步改为 `io.github.zher52.logview`。
 - 产品名统一为「日志查看器」（英文 `Log Viewer`、俄文 `Просмотр журналов`）；内部标识（crate、二进制、配置目录）仍为 `logview`，不影响已有设置与脚本。
 - 统一 rustfmt 格式。
+- 工具栏自动换行开关改回文字按钮（开启时主题色高亮，悬停提示保留开关状态与操作），图标与含义不符的问题不再出现；工具栏宽度估算随之按文字宽度计算。
 
 ## [0.3.0] - 2026-11-26
 

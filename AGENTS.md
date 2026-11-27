@@ -4,13 +4,13 @@
 
 ## 项目概述
 
-**日志查看器（Log Viewer / Просмотр журналов）0.3.0**：Rust + GPUI 自绘 UI 的原生桌面日志查看器（**无 WebView**），交互参考 Chrome DevTools 控制台。
+**日志查看器（Log Viewer / Просмотр журналов）0.4.0**：Rust + GPUI 自绘 UI 的原生桌面日志查看器（**无 WebView**），交互参考 Chrome DevTools 控制台。
 
 - **四种日志源**
   - 本地文件：stat 轮询 + `seek` 增量读
   - SSH 文件：SFTP 分块 `read_at`
   - HTTP(S)：`Range` 增量拉取，内置 SSRF 防护
-  - 命令：本机 `spawn` / SSH `exec`，stdout+stderr 合并为流
+  - 命令：本机 `spawn` / SSH `exec`，stdout+stderr 合并后先写入本机 spool，再由 worker 补发
 - 正则级别分析（内置 + 自定义多配置）、级别着色与筛选、高亮/过滤检索、自动追加（轮换/截断检测）、行内 URL/路径/JSON 识别、代码高亮与 Markdown 预览。
 - 许可：**AGPL-3.0-only**（源码头部均有 SPDX 标识）；MSRV **1.92**（`Cargo.toml` 的 `rust-version`）。
 
@@ -31,7 +31,7 @@
 ```bash
 cargo build                      # 调试构建(依赖按 opt-level=2 编译)
 cargo run -- sample/app.log      # 打开示例日志
-cargo test --locked              # 78 项单元测试
+cargo test --locked              # 88 项单元测试
 cargo fmt --all                  # CI 会检查
 cargo clippy --all-targets --locked
 
@@ -72,12 +72,12 @@ src/
 
 UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**不要共享锁**：
 
-- UI→worker：`Cmd { Stop, Pause(bool), SeekStart, SeekEnd }`
+- UI→worker：`Cmd { Stop, Pause(bool), SeekStart, SeekEnd, Clear }`
 - worker→UI：`Msg { Append{data,offset,size,at}, Replace{…}, Partial{loaded,total}, Complete, Truncated{size}, NoFollow, Error{msg,fatal}, Exited{code,retry_in} }`
 
 文件源走 `worker_file`（轮询 + 增量读，1MB/块、每周期 ≤8MB）；命令源走 `worker_stream`（阻塞读 stdout+stderr 合并流，退出后按 `restart` 退避重连，最多 6 次，`backoff()` 在 `tail.rs`）。
 
-`Cmd` 必须在 ~100ms 内响应（`recv_timeout` + 200ms 读超时），不要把控制循环改成长阻塞。
+`Cmd` 必须在 ~100ms 内响应（`recv_timeout` + 200ms 读超时），不要把控制循环改成长阻塞。命令源把读线程的字节先追加到 spool，再由控制循环按 4MB/轮的预算补发给 UI；暂停只是停止补发，不丢数据。
 
 ### 2. 行模型与视图
 
@@ -93,7 +93,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 - 持久化只存 `preset id + values + restart + raw`（`SourceParams::Command`），不存当次 PID。
 - `source::open_command`：本地直接 `Command::new(argv[0]).args(…)`（**不经过 shell**）；SSH 走登录 shell，非 `raw` 时逐项单引号转义，`raw` 允许管道/重定向。
 - 本地 stdout/stderr 由独立读线程汇入同一 channel；Windows 使用 `CREATE_NO_WINDOW` 避免黑框。
-- 命令源没有文件语义：“加载全部”禁用；“跳到末尾”= 清空缓冲后继续。
+- 命令源有本机 spool（`dirs::cache_dir()/logview/spool/`，单文件上限 128MB，0600）：`SeekStart` 从缓存开头回放，`SeekEnd` 取缓存尾部，`Clear` 截断缓存；暂停期间继续落盘、恢复后补发。缓存关闭标签/退出时删除，异常退出残留在启动时清理（超过 24h）。缓存不可写时退化为直通模式并在 UI 提示。
 
 ### 4. 配置与持久化
 
@@ -108,7 +108,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 
 ### 6. 凭据与 SSH
 
-- 密码/口令/token/私钥正文默认仅在内存；勾选「记住连接」后写入系统钥匙串（服务名 `logview`），设置文件永远不含凭据，`SourceParams::sanitized()` 用于最近打开。
+- 密码/口令/token/私钥正文默认仅在内存；勾选「记住连接」后写入系统钥匙串（服务名 `io.github.zher52.logview`，与包标识一致），设置文件永远不含凭据，`SourceParams::sanitized()` 用于最近打开。
 - 旧版明文凭据在加载时迁移，迁移失败也要清除明文。
 - SSH 连接握手后比对 `~/.ssh/known_hosts`：**密钥不一致直接拒绝**；未知主机弹出指纹确认（TOFU），可选仅本次信任或写入 `known_hosts`。
 
@@ -150,7 +150,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 - 行内 ANSI 颜色码未解析（原样显示）。
 - HTTP 服务不支持 `Range` 时只能整页查看，无法自动追加（发送 `NoFollow`）。
 - 内网/环回 HTTP 地址被 SSRF 策略拒绝，属有意行为。
-- 命令源没有历史可回溯；需要历史请在命令参数里取（`journalctl -n`、`docker logs --tail`）。
+- 命令源历史受 spool 上限（128MB）约束；超出后只保留最近一半，更早的内容请用命令参数获取（`journalctl -n`、`docker logs --tail`）。
 - SSH 未知主机采用 TOFU 确认（仅在无法读取 `known_hosts` 时静默放行，见 `SECURITY.md`）。
 - Windows / Linux 仅做 CI 构建检查，交互未充分验证。
 - 界面支持中文 / English / Русский 切换（设置 → 界面语言）；工具栏、对话框、设置页、状态栏、命令预设与常见错误提示均已覆盖，未收录词条依次回退英文、中文。
@@ -159,4 +159,4 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 
 - 提交信息中文：`<类型>: <一句话摘要>` + 空行 + 要点；类型 `feat/fix/refactor/docs/chore/perf/test`。
 - `Cargo.lock` 入库；`target/`、`.DS_Store`、`.mimosa/`、`dev.sh`、`package.sh` 已忽略。
-- 版本号唯一来源是 `Cargo.toml`；`README` 与 `CHANGELOG` 需随功能同步。
+- 版本号唯一来源是 `Cargo.toml`；构建提交由 `build.rs` 用 `git rev-parse --short=8 HEAD` 注入 `GIT_HASH`（无 `.git` 时为 `unknown`），「关于」页展示并提供复制；`README` 与 `CHANGELOG` 需随功能同步。
