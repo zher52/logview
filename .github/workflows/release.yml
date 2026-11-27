@@ -24,7 +24,7 @@ jobs:
         run: ./scripts/make_app.sh
       - name: 压缩
         run: ditto -c -k --keepParent "target/日志查看器.app" logview-macos.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: logview-macos
           path: logview-macos.zip
@@ -67,7 +67,7 @@ jobs:
           else
             tar -czf "${{ matrix.name }}.tar.gz" -C target/release "${{ matrix.file }}"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: ${{ matrix.name }}.*
