@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-**LogView 0.3.0**：Rust + GPUI 自绘 UI 的原生桌面日志查看器（**无 WebView**），交互参考 Chrome DevTools 控制台。
+**日志查看器（Log Viewer / Просмотр журналов）0.3.0**：Rust + GPUI 自绘 UI 的原生桌面日志查看器（**无 WebView**），交互参考 Chrome DevTools 控制台。
 
 - **四种日志源**
   - 本地文件：stat 轮询 + `seek` 增量读

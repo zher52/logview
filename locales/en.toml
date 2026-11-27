@@ -1,4 +1,4 @@
-# LogView locales: English
+# Log Viewer locales: English
 # Keys are semantic IDs; keep zh.toml / ru.toml in sync (the build fails on missing keys).
 
 
@@ -436,7 +436,7 @@
 "error.command.retry_count" = "{e} (retry {err_count}/5)"
 
 # ---- app ----
-"app.name" = "LogView"
+"app.name" = "Log Viewer"
 
 # ---- ssh ----
 "ssh.creds.missing" = "Saved credentials not found; enter them again when connecting"

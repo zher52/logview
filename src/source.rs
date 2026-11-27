@@ -795,7 +795,7 @@ pub fn http_client(v: &Validated) -> Result<reqwest::blocking::Client, String> {
         .redirect(reqwest::redirect::Policy::none())
         .timeout(std::time::Duration::from_secs(30))
         .connect_timeout(std::time::Duration::from_secs(15))
-        .user_agent(concat!("LogView/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("logview/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| i18n::tf("error.http.client_build", &[("e", e.to_string())]))
 }

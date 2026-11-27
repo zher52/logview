@@ -1,4 +1,4 @@
-# LogView 设计文档
+# 日志查看器 设计文档
 
 > 日志查看器 · Rust + egui 原生桌面应用(无 WebView)· 参考 Chrome DevTools 控制台样式
 > 状态:**待审核**(审核通过 → figcraft 原型 → 确认 → 开发)

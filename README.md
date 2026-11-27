@@ -1,4 +1,6 @@
-# LogView — 原生日志查看器
+# 日志查看器
+
+Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome DevTools 控制台。
 
 **Rust + GPUI 自绘 UI · 无 WebView · 参考 Chrome DevTools 控制台风格 · 目标全平台(macOS / Windows / Linux)**
 

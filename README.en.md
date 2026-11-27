@@ -1,4 +1,4 @@
-# LogView
+# Log Viewer
 
 A native desktop log viewer built with **Rust + GPUI** (self-drawn UI, no WebView), inspired by the
 Chrome DevTools console. The interface supports **Chinese, English and Russian**; the primary documentation is
