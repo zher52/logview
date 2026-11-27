@@ -35,6 +35,7 @@ use gpui_kit::{
 };
 use gpui_kit::{AnyElement, ClipboardItem, PathPromptOptions};
 
+use crate::ansi::{AnsiColor, AnsiSpan};
 use crate::command::{self, CommandPlan, CommandPreset, PresetField};
 use crate::i18n;
 use crate::level::{level_names, Engine, LevelConfig, LEVEL_COUNT, SEP};
@@ -1183,14 +1184,85 @@ fn code_row_highlights(
         .collect()
 }
 
+/// 将行内 ANSI 样式解析成当前主题下的文本高亮区间。
+fn ansi_row_highlights(
+    spans: &[AnsiSpan],
+    pal: &'static Palette,
+) -> Vec<(std::ops::Range<usize>, HighlightStyle)> {
+    spans
+        .iter()
+        .filter_map(|span| {
+            let mut fg = span.style.fg.map(|c| ansi_color(c, pal));
+            let mut bg = span.style.bg.map(|c| ansi_color(c, pal));
+            if span.style.inverse {
+                std::mem::swap(&mut fg, &mut bg);
+            }
+            let mut style = HighlightStyle {
+                color: fg,
+                background_color: bg,
+                ..Default::default()
+            };
+            if span.style.bold {
+                style.font_weight = Some(gpui_kit::FontWeight::BOLD);
+            }
+            if span.style.italic {
+                style.font_style = Some(gpui_kit::FontStyle::Italic);
+            }
+            if span.style.dim {
+                style.fade_out = Some(0.6);
+            }
+            if span.style.underline {
+                style.underline = Some(UnderlineStyle {
+                    thickness: px(1.0),
+                    color: fg,
+                    wavy: false,
+                });
+            }
+            if span.style.strikethrough {
+                style.strikethrough = Some(gpui_kit::StrikethroughStyle {
+                    thickness: px(1.0),
+                    color: fg,
+                });
+            }
+            (style != HighlightStyle::default()).then_some((span.start..span.end, style))
+        })
+        .collect()
+}
+
+/// ANSI 索引色 → 当前主题色;16–231 为 6×6×6 色立方,232–255 为灰阶。
+fn ansi_color(color: AnsiColor, pal: &Palette) -> Hsla {
+    match color {
+        AnsiColor::Indexed(n) if n < 16 => theme::hex(pal.ansi[n as usize]),
+        AnsiColor::Indexed(n) if n >= 232 => {
+            let v = 8 + 10 * (n - 232);
+            theme::rgb(v, v, v)
+        }
+        AnsiColor::Indexed(n) => {
+            const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
+            let n = n - 16;
+            let r = n / 36;
+            let g = (n % 36) / 6;
+            let b = n % 6;
+            theme::rgb(LEVELS[r as usize], LEVELS[g as usize], LEVELS[b as usize])
+        }
+        AnsiColor::Rgb(r, g, b) => theme::rgb(r, g, b),
+    }
+}
+
 fn merge_row_highlights(
+    ansi: &[(std::ops::Range<usize>, HighlightStyle)],
     searched: &[(usize, usize)],
     links: &[links::Link],
     link_color: Hsla,
     hl_bg: Hsla,
     hl_fg: Hsla,
 ) -> Vec<(std::ops::Range<usize>, HighlightStyle)> {
-    let mut cuts: Vec<usize> = Vec::with_capacity(searched.len() * 2 + links.len() * 2);
+    let mut cuts: Vec<usize> =
+        Vec::with_capacity(ansi.len() * 2 + searched.len() * 2 + links.len() * 2);
+    for (range, _) in ansi {
+        cuts.push(range.start);
+        cuts.push(range.end);
+    }
     for &(s, e) in searched {
         cuts.push(s);
         cuts.push(e);
@@ -1218,23 +1290,28 @@ fn merge_row_highlights(
         }
         let in_link = links.iter().any(|l| l.start <= s && e <= l.end);
         let in_search = searched.iter().any(|&(a, b)| a <= s && e <= b);
-        if !in_link && !in_search {
+        let ansi_style = ansi
+            .iter()
+            .find(|(range, _)| range.start <= s && e <= range.end)
+            .map(|(_, style)| *style);
+        if ansi_style.is_none() && !in_link && !in_search {
             continue;
         }
-        let style = HighlightStyle {
-            // 链接优先保留主题色;检索命中用高对比文字色 + 加粗,保证在多种底色上都能看清
-            color: if in_link {
-                Some(link_color)
-            } else if in_search {
-                Some(hl_fg)
-            } else {
-                None
-            },
-            underline: in_link.then_some(underline),
-            background_color: in_search.then_some(hl_bg),
-            font_weight: (in_search && !in_link).then_some(gpui_kit::FontWeight::BOLD),
-            ..Default::default()
-        };
+        let mut style = ansi_style.unwrap_or_default();
+        if in_link {
+            // 链接优先保留主题色;ANSI 背景/字重仍保留
+            style.color = Some(link_color);
+            style.underline = Some(underline);
+        }
+        if in_search {
+            // 检索命中用高对比文字色 + 加粗,保证在多种底色上都能看清
+            if !in_link {
+                style.color = Some(hl_fg);
+            }
+            style.background_color = Some(hl_bg);
+            style.font_weight = Some(gpui_kit::FontWeight::BOLD);
+            style.fade_out = None;
+        }
         // 与上一段样式相同且首尾相接时合并
         if let Some((range, prev)) = out.last_mut() {
             if *prev == style && range.end == s {
@@ -7483,10 +7560,11 @@ impl AppView {
                 if searched.is_empty() {
                     code_row_highlights(lang, &line.text, pal)
                 } else {
-                    merge_row_highlights(&searched, &[], link_color, hl_bg, hl_fg)
+                    merge_row_highlights(&[], &searched, &[], link_color, hl_bg, hl_fg)
                 }
             } else {
-                merge_row_highlights(&searched, &line_links, link_color, hl_bg, hl_fg)
+                let ansi = ansi_row_highlights(&line.ansi, pal);
+                merge_row_highlights(&ansi, &searched, &line_links, link_color, hl_bg, hl_fg)
             };
 
             // JSON 行:{ } 徐标 → 格式化后在新标签页打开
@@ -10289,10 +10367,13 @@ fn toolbar_icon_btn(
 #[cfg(test)]
 mod tests {
     use super::{
-        bottom_distance, build_rows, elide_path, http_auth_label, is_auth_error, pick_chip_style,
-        validate_ssh, validate_url_addr, version_newer, ChipStyle, FoldMark, Row,
+        ansi_row_highlights, bottom_distance, build_rows, elide_path, http_auth_label,
+        is_auth_error, merge_row_highlights, pick_chip_style, validate_ssh, validate_url_addr,
+        version_newer, ChipStyle, FoldMark, Row,
     };
+    use crate::ansi::{AnsiColor, AnsiSpan, AnsiStyle};
     use crate::i18n;
+    use crate::links::{Link, LinkKind};
     use gpui_kit::px;
     use std::collections::HashMap;
 
@@ -10499,6 +10580,38 @@ mod tests {
         assert!(validate_ssh("h", "u", "/a.log", "abc")
             .unwrap()
             .contains(i18n::t("ssh.port")));
+    }
+
+    #[test]
+    fn ansi_highlights_layer_below_search_and_links() {
+        let pal = crate::theme::palette(false);
+        let link_color = crate::theme::hex(pal.primary);
+        let hl_bg = crate::theme::hex(pal.fill);
+        let hl_fg = crate::theme::hex(pal.text1);
+        let spans = [AnsiSpan {
+            start: 0,
+            end: 4,
+            style: AnsiStyle {
+                fg: Some(AnsiColor::Indexed(1)),
+                ..Default::default()
+            },
+        }];
+        let ansi = ansi_row_highlights(&spans, pal);
+        let links = [Link {
+            start: 1,
+            end: 3,
+            kind: LinkKind::Url,
+        }];
+        let merged = merge_row_highlights(&ansi, &[(0, 2)], &links, link_color, hl_bg, hl_fg);
+
+        assert_eq!(merged.len(), 4);
+        assert_eq!(merged[0].0, 0..1);
+        assert_eq!(merged[0].1.color, Some(hl_fg));
+        assert_eq!(merged[0].1.background_color, Some(hl_bg));
+        assert_eq!(merged[1].1.color, Some(link_color));
+        assert!(merged[1].1.underline.is_some());
+        assert_eq!(merged[2].1.color, Some(link_color));
+        assert_eq!(merged[3].1.color, Some(crate::theme::hex(pal.ansi[1])));
     }
 
     #[test]

@@ -33,6 +33,11 @@ pub fn hexa(s: &str, a: f32) -> Hsla {
     rgba_to_hsla(r, g, b, a.clamp(0.0, 1.0))
 }
 
+/// RGB(0–255) → Hsla,供 ANSI 256 色/真彩色使用
+pub fn rgb(r: u8, g: u8, b: u8) -> Hsla {
+    rgba_to_hsla(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0)
+}
+
 fn rgba_to_hsla(r: f32, g: f32, b: f32, a: f32) -> Hsla {
     let max = r.max(g).max(b);
     let min = r.min(g).min(b);
@@ -100,6 +105,8 @@ pub struct Palette {
     pub code_num: &'static str,
     pub code_key: &'static str,
     pub code_comment: &'static str,
+    /// ANSI 基础 16 色(0–7 普通,8–15 亮色),按暗/亮主题保证可读性
+    pub ansi: [&'static str; 16],
 }
 
 /// antd v5 暗色算法令牌
@@ -129,6 +136,10 @@ pub const DARK: Palette = Palette {
     code_num: "#b5cea8",
     code_key: "#9cdcfe",
     code_comment: "#6a9955",
+    ansi: [
+        "#5c6370", "#e06c75", "#98c379", "#e5c07b", "#61afef", "#c678dd", "#56b6c2", "#d9d9d9",
+        "#7f848e", "#ff7b86", "#b5e890", "#ffd68a", "#8cc4ff", "#e2a6ff", "#7fd6e6", "#ffffff",
+    ],
 };
 
 /// antd v5 亮色算法令牌
@@ -158,6 +169,10 @@ pub const LIGHT: Palette = Palette {
     code_num: "#098658",
     code_key: "#0451a5",
     code_comment: "#008000",
+    ansi: [
+        "#383a42", "#e45649", "#50a14f", "#986801", "#4078f2", "#a626a4", "#0184bc", "#696c77",
+        "#4f525e", "#d13b30", "#3d8b3c", "#7a5200", "#2f63c9", "#8a1f88", "#006f9e", "#000000",
+    ],
 };
 
 /// 按当前主题取整套令牌

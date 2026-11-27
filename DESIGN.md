@@ -61,8 +61,9 @@ src/
 ├── level.rs       Level 枚举(Trace/Debug/Info/Warn/Error/Fatal/None)、
 │                  级别名映射(err→Error, warning→Warn…)、LevelConfig 多套配置、
 │                  正则编译引擎(规则序 = 优先序,首中即停;capture 组自动映射级别)
-├── lines.rs       LineStore:字节流→行(UTF-8 断字 carry)、级别标注、
+├── lines.rs       LineStore:字节流→行(UTF-8 断字 carry)、ANSI 剥离、级别标注、
 │                  各级别计数、行数上限(环形丢弃+提示行)、过滤索引(增量维护)
+├── ansi.rs        行内 ANSI SGR 解析:剥离控制序列,产出纯文本 + 样式区间
 ├── search.rs      Matcher:文本 indexOf(大小写)/regex;高亮段计算;过滤判定
 ├── links.rs       URL / POSIX 路径 / Windows 路径 / 相对日志路径 识别;
 │                  与搜索高亮段合并(优先级:高亮 > 链接 > 正文);JSON 行探测
@@ -179,4 +180,4 @@ Msg(worker→UI):
 - **展开规则**:`${field}` 替换;值为空的可选参数连同紧邻 `-` 开头的开关一起丢弃(`["-s","${serial}"]` → 无);`resolve` 在执行前跑一条短命令取结果(如 `adb shell pidof -s pkg` → `${pid}`),失败即报错。
 - **执行边界**:本地按 argv `exec`,不经 shell(可执行文件由 `PATH` 解析);远端拼成一条命令行交给登录 shell(`sh -c`),每个参数单引号转义 —— 因此支持管道与重定向,但不承诺 argv 级安全,这一点在 README 里明说。
 - **生命周期**:进程退出后标签保留输出并标注退出码;预设开启「退出后重试」时按 1s→2s→…(上限 30s)退避重开,适合 `adb logcat` 设备重连、容器重启;用户手动关闭标签即停止并回收子进程。输出缓存(spool)让重连前后的内容连续保留,暂停/回看也不会丢日志。
-- **不做的事**:不提供通用 SSH 终端;不做 PTY;不解析 ANSI(与文件源一致)。
+- **不做的事**:不提供通用 SSH 终端;不做 PTY;不模拟终端重绘。ANSI 只剥离控制序列并渲染行内 SGR 颜色/字形,不实现光标移动与全屏终端语义。

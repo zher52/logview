@@ -11,7 +11,7 @@
   - SSH 文件：SFTP 分块 `read_at`
   - HTTP(S)：`Range` 增量拉取，内置 SSRF 防护
   - 命令：本机 `spawn` / SSH `exec`，stdout+stderr 合并后先写入本机 spool，再由 worker 补发
-- 正则级别分析（内置 + 自定义多配置）、级别着色与筛选、高亮/过滤检索、自动追加（轮换/截断检测）、行内 URL/路径/JSON 识别、代码高亮与 Markdown 预览。
+- 正则级别分析（内置 + 自定义多配置）、级别着色与筛选、行内 ANSI SGR 颜色、高亮/过滤检索、自动追加（轮换/截断检测）、行内 URL/路径/JSON 识别、代码高亮与 Markdown 预览。
 - 许可：**AGPL-3.0-only**（源码头部均有 SPDX 标识）；MSRV **1.92**（`Cargo.toml` 的 `rust-version`）。
 
 ### 技术栈
@@ -31,7 +31,7 @@
 ```bash
 cargo build                      # 调试构建(依赖按 opt-level=2 编译)
 cargo run -- sample/app.log      # 打开示例日志
-cargo test --locked              # 92 项单元测试
+cargo test --locked              # 100 项单元测试
 cargo fmt --all                  # CI 会检查
 cargo clippy --all-targets --locked
 
@@ -50,6 +50,7 @@ src/
 ├── app_view.rs    主视图:标签、工具栏、虚拟列表、检索、设置页、打开源对话框、命令对话框、消息轮询
 ├── theme.rs       antd v5 令牌(暗/亮)、主题色、字号/行高、系统字体回退
 ├── assets.rs      内置图标 SVG 表(ionicons 子集),其余回退 gpui-kit
+├── ansi.rs        行内 ANSI SGR 解析(剥离控制序列,产出纯文本 + 样式区间)
 ├── level.rs       Level 常量/别名、LevelConfig/Rule、Engine(正则编译 + 逐行判定)
 ├── lines.rs       LineStore:字节流→行(UTF-8 安全)、行数上限环形丢弃
 ├── search.rs      SearchState + Matcher(文本/正则、大小写、高亮区间)
@@ -81,7 +82,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 
 ### 2. 行模型与视图
 
-- `LineStore::push_bytes` 按 `\n` 切字节再解码，天然 UTF-8 断字安全；默认上限 20 万行，超出环形丢弃。
+- `LineStore::push_bytes` 按 `\n` 切字节再解码，天然 UTF-8 断字安全；默认上限 20 万行，超出环形丢弃。ANSI 控制序列在这里剥离，`Line.ansi` 保存纯文本上的样式区间，检索/链接/复制只处理纯文本。
 - 级别在 worker 追加时由 `Engine::eval` 判定；配置变更后由 UI 分帧 `relevel_step`（10 万行/帧）重判定。
 - `Tab.view: Vec<u32>`（过滤/隐藏级别的可见行）与 `Tab.matched`（检索命中）在追加时增量维护，条件变化时全量重建。
 - 虚拟滚动用 `v_virtual_list` + `VirtualListScrollHandle`；自动换行时 `heights` 缓存行高（宽度变化需失效）。
@@ -147,7 +148,6 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 
 ## 已知限制（勿当 bug 修）
 
-- 行内 ANSI 颜色码未解析（原样显示）。
 - HTTP 服务不支持 `Range` 时只能整页查看，无法自动追加（发送 `NoFollow`）。
 - 内网/环回 HTTP 地址被 SSRF 策略拒绝，属有意行为。
 - 命令源历史受 spool 上限（128MB）约束；超出后只保留最近一半，更早的内容请用命令参数获取（`journalctl -n`、`docker logs --tail`）。

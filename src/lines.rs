@@ -3,11 +3,15 @@
 
 //! 行存储:字节流 → 行(UTF-8 断字安全)、级别标注、级别计数、行数上限
 
+use crate::ansi::{self, AnsiSpan};
 use crate::level::{Engine, NONE, SEP};
 
 #[derive(Clone)]
 pub struct Line {
+    /// 已剥离 ANSI 控制序列的纯文本
     pub text: String,
+    /// 行内 ANSI 样式区间(相对 `text` 的字节偏移);无样式时为空
+    pub ansi: Box<[AnsiSpan]>,
     pub level: u8,
     /// 「无级别跟随上一条已知级别」的有效级别:无级别行取前一条已知级别,
     /// 分隔行(SEP)与文件开头的无级别行保持 NONE。展示/筛选/计数按此项取值。
@@ -80,6 +84,10 @@ impl LineStore {
                 if text.ends_with('\r') {
                     text.pop();
                 }
+                let (text, ansi) = match ansi::parse(&text) {
+                    Some(parsed) => (parsed.text, parsed.spans.into_boxed_slice()),
+                    None => (text, Box::default()),
+                };
                 let level = engine.eval(&text);
                 let inherit = if level == SEP {
                     prev = NONE;
@@ -92,6 +100,7 @@ impl LineStore {
                 };
                 self.lines.push(Line {
                     text,
+                    ansi,
                     level,
                     inherit,
                     at,
@@ -139,6 +148,7 @@ impl LineStore {
     pub fn insert_separator(&mut self, text: &str) {
         self.lines.push(Line {
             text: text.to_owned(),
+            ansi: Box::default(),
             level: SEP,
             inherit: SEP,
             at: None,
@@ -285,6 +295,21 @@ mod tests {
             crate::level::NONE,
             "开头没有已知级别可跟随"
         );
+    }
+
+    #[test]
+    fn ansi_sequences_are_stripped_before_level_detection() {
+        let cfg = crate::level::builtin_configs();
+        let eng = crate::level::Engine::compile_ids(&cfg, &["builtin-words".to_string()]);
+        let mut st = LineStore::new(10);
+        st.push_bytes(b"\x1b[31mERROR\x1b[0m boom\n", &eng, None);
+
+        assert_eq!(st.lines[0].text, "ERROR boom");
+        assert_eq!(st.lines[0].level, crate::level::ERROR);
+        assert_eq!(st.lines[0].ansi.len(), 1);
+        assert_eq!(st.lines[0].ansi[0].start, 0);
+        assert_eq!(st.lines[0].ansi[0].end, 5);
+        assert_eq!(st.counts[crate::level::ERROR as usize], 1);
     }
 
     #[test]

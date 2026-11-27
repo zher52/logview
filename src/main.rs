@@ -5,6 +5,7 @@
 
 //! 日志查看器入口:解析 CLI 参数,创建主窗口(融合标题栏),交给 AppView 渲染
 
+mod ansi;
 mod app_view;
 mod assets;
 mod code;

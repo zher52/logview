@@ -21,6 +21,9 @@ Chrome DevTools console. The interface supports **Chinese, English and Russian**
   level for colouring and filtering; runs between two levelled lines fold to the first N lines by default
   (default 3), with a “…” suffix and an inline chevron on the preceding row. Clicking the chevron toggles
   the group; clicking the log row keeps the normal selection behaviour.
+- **Inline ANSI colours** — SGR basic/bright, 256-colour and 24-bit truecolour, plus bold, dim,
+  italic, underline, strikethrough and inverse. Control sequences are stripped at ingest, so search,
+  copy, link detection and JSON detection all see plain text.
 - **Search** — highlight or filter mode, plain text or regex, case sensitivity, match counter and jump.
 - **Auto-follow** — per-tab worker polls for appended data, sticky-to-bottom with "N new lines" button,
   rotation/truncation detection.
@@ -227,8 +230,9 @@ Tail worker thread per tab (poll size → incremental reads, 1 MB chunks, ≤8 M
 ```bash
 cargo build                      # debug build (dependencies at opt-level=2)
 cargo clippy --all-targets       # lint (kept warning-free)
-cargo test --locked              # unit tests (92)
+cargo test --locked              # unit tests (100)
 cargo run -- sample/app.log      # run with the sample log
+cargo run -- sample/ansi.log     # inspect inline ANSI colours
 ```
 
 `dev.sh` / `package.sh` are maintainer-local scripts and are not tracked. See
