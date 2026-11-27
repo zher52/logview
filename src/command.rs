@@ -461,6 +461,54 @@ pub fn display(argv: &[String]) -> String {
     parts.join(" ")
 }
 
+/// 图形化编辑:参数列表 → 文本(一行一个参数)
+pub fn argv_to_text(argv: &[String]) -> String {
+    argv.join("\n")
+}
+
+/// 图形化编辑:文本 → 参数列表(逐行 trim,忽略空行)
+pub fn argv_from_text(text: &str) -> Vec<String> {
+    text.lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .map(|l| l.to_string())
+        .collect()
+}
+
+/// 预设校验错误:由 UI 映射为三语文案
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresetError {
+    Name,
+    Argv,
+    Scope,
+}
+
+/// 校验图形化编辑后的预设:名称、首个参数、至少一种执行方式
+pub fn validate(preset: &CommandPreset) -> Result<(), PresetError> {
+    if preset.name.trim().is_empty() {
+        return Err(PresetError::Name);
+    }
+    if preset.argv.first().is_none_or(|a| a.trim().is_empty()) {
+        return Err(PresetError::Argv);
+    }
+    if !preset.local && !preset.ssh {
+        return Err(PresetError::Scope);
+    }
+    Ok(())
+}
+
+/// 生成不与现有预设冲突的自定义 id
+pub fn next_custom_id(existing: &[CommandPreset]) -> String {
+    let mut n = 1usize;
+    loop {
+        let id = format!("custom-{n}");
+        if !existing.iter().any(|p| p.id == id) {
+            return id;
+        }
+        n += 1;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -533,6 +581,71 @@ mod tests {
         assert_eq!(shell_quote("nginx.service"), "nginx.service");
         assert_eq!(shell_quote("a b"), "'a b'");
         assert_eq!(shell_quote("it's"), r"'it'\''s'");
+    }
+
+    #[test]
+    fn argv_text_roundtrip_ignores_blank_lines() {
+        let argv = vec![
+            "tail".to_string(),
+            "-F".to_string(),
+            "my log.log".to_string(),
+        ];
+        assert_eq!(argv_to_text(&argv), "tail\n-F\nmy log.log");
+        assert_eq!(argv_from_text("tail\n\n  -F \nmy log.log\n"), argv);
+        assert!(argv_from_text("   \n\t\n").is_empty());
+    }
+
+    #[test]
+    fn custom_preset_validation() {
+        let mut p = CommandPreset {
+            id: "custom-1".into(),
+            name: "mine".into(),
+            local: true,
+            ssh: false,
+            argv: vec!["echo".into(), "hi".into()],
+            fields: Vec::new(),
+            resolve: Vec::new(),
+            level_config_id: None,
+            builtin: false,
+        };
+        assert_eq!(validate(&p), Ok(()));
+        p.name = "  ".into();
+        assert_eq!(validate(&p), Err(PresetError::Name));
+        p.name = "mine".into();
+        p.argv.clear();
+        assert_eq!(validate(&p), Err(PresetError::Argv));
+        p.argv = vec!["echo".into()];
+        p.local = false;
+        assert_eq!(validate(&p), Err(PresetError::Scope));
+    }
+
+    #[test]
+    fn custom_ids_skip_existing() {
+        let existing = vec![
+            CommandPreset {
+                id: "custom-1".into(),
+                name: "a".into(),
+                local: true,
+                ssh: false,
+                argv: vec!["a".into()],
+                fields: Vec::new(),
+                resolve: Vec::new(),
+                level_config_id: None,
+                builtin: false,
+            },
+            CommandPreset {
+                id: "custom-2".into(),
+                name: "b".into(),
+                local: true,
+                ssh: false,
+                argv: vec!["b".into()],
+                fields: Vec::new(),
+                resolve: Vec::new(),
+                level_config_id: None,
+                builtin: false,
+            },
+        ];
+        assert_eq!(next_custom_id(&existing), "custom-3");
     }
 
     #[test]
