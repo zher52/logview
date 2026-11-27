@@ -74,13 +74,15 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 
 # 代码签名(如果 Keychain 里有有效身份)
-IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep "Apple Development" | head -1 | awk '{print $2}')
+# 注意:无证书环境(CI)里 grep 找不到匹配会返回 1,配合 `set -o pipefail` 会让脚本静默退出,
+# 所以探测阶段的失败必须显式吞掉;真正签名失败则不吞,保留报错便于定位。
+IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | awk '/Apple Development/{print $2; exit}')" || true
 if [ -n "$IDENTITY" ]; then
-    codesign --force --sign "$IDENTITY" "$APP" 2>&1 | tail -1
+    codesign --force --sign "$IDENTITY" "$APP"
     echo "已签名: $IDENTITY"
 else
-    # 无有效身份则使用 ad-hoc 签名
-    codesign --force --sign - "$APP" 2>/dev/null
+    # 无有效身份则使用 ad-hoc 签名(发布产物即此状态:可运行,但未公证)
+    codesign --force --sign - "$APP"
     echo "使用 ad-hoc 签名(无 Apple 开发证书)"
 fi
 
