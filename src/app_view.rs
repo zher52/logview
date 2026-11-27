@@ -55,7 +55,10 @@ const SETTINGS_PAGE_COUNT: usize = 5;
 /// 单个日志标签:worker 通道 + 行存储 + 检索/过滤状态 + 视图管线
 pub struct Tab {
     id: u64,
+    /// 日志源/文件标签的显示名
     title: String,
+    /// 固定语义标题（新标签页、设置页）；None 表示使用 `title`
+    title_id: Option<&'static str>,
     /// 日志源参数;空白标签页(尚未选择来源)为 None
     params: Option<SourceParams>,
     cmd_tx: crossbeam_channel::Sender<Cmd>,
@@ -144,6 +147,13 @@ impl Tab {
         settings.configs.iter().map(|c| c.id.clone()).collect()
     }
 
+    /// 标签条显示名:固定语义标题每次取词,文件/日志源标题原样显示
+    fn display_title(&self) -> String {
+        self.title_id
+            .map(|id| i18n::t(id).to_string())
+            .unwrap_or_else(|| self.title.clone())
+    }
+
     fn open(settings: &Settings, params: SourceParams) -> Tab {
         let plan = command_plan(settings, &params);
         let (tx, rx) = tail::spawn(
@@ -172,6 +182,7 @@ impl Tab {
         Tab {
             id: 0,
             title,
+            title_id: None,
             params: Some(params),
             cmd_tx: tx,
             msg_rx: rx,
@@ -219,7 +230,8 @@ impl Tab {
         let enabled_ids = Self::default_enabled(settings);
         Tab {
             id: 0,
-            title: i18n::t("tab.new").into(),
+            title: String::new(),
+            title_id: Some("tab.new"),
             params: None,
             cmd_tx: tx,
             msg_rx: rx,
@@ -263,7 +275,7 @@ impl Tab {
     /// 设置标签页:与空白页相同的占位结构,内容由 AppView.settings_panel 渲染
     fn settings(settings: &Settings) -> Tab {
         let mut t = Tab::blank(settings);
-        t.title = i18n::t("settings.title").into();
+        t.title_id = Some("settings.title");
         t.welcome = false;
         t.settings = true;
         t
@@ -274,6 +286,7 @@ impl Tab {
         let mut t = Tab::blank(settings);
         t.welcome = false;
         t.title = title;
+        t.title_id = None;
         t.follow = false;
         t.no_follow = true;
         t.store.push_bytes(text.as_bytes(), &t.engine, None);
@@ -286,6 +299,7 @@ impl Tab {
     fn code_file(settings: &Settings, path: &str, lang: crate::code::Lang, text: &str) -> Tab {
         let mut t = Tab::blank(settings);
         t.welcome = false;
+        t.title_id = None;
         t.title = std::path::Path::new(path)
             .file_name()
             .map(|s| s.to_string_lossy().into_owned())
@@ -3318,16 +3332,56 @@ impl AppView {
         self.settings_apply(false, cx);
     }
 
-    /// 切换界面语言:同步 gpui-kit 组件文案并重绘
-    fn set_language(&mut self, lang: i18n::Lang, cx: &mut Context<Self>) {
+    /// 切换界面语言:同步 gpui-kit 组件文案、窗口标题与已存在输入框的占位符
+    fn set_language(&mut self, lang: i18n::Lang, window: &mut Window, cx: &mut Context<Self>) {
         if i18n::lang() == lang {
             return;
         }
         self.settings.language = lang.code().to_string();
         i18n::set(lang);
         gpui_kit::component::set_locale(lang.locale());
+        window.set_window_title(i18n::t("app.name"));
+        self.refresh_placeholders(window, cx);
         self.settings_apply(false, cx);
         cx.notify();
+    }
+
+    /// 刷新仍存活的输入框占位符:这些文本在创建 InputState 时写入,之后不会自动跟随语言
+    fn refresh_placeholders(&self, window: &mut Window, cx: &mut Context<Self>) {
+        set_input_placeholder(
+            &self.search_input,
+            i18n::t("search.placeholder"),
+            window,
+            cx,
+        );
+        if let Some(d) = self.settings_panel.as_ref() {
+            set_input_placeholder(
+                &d.search,
+                i18n::t("settings.search.placeholder"),
+                window,
+                cx,
+            );
+        }
+        match &self.dialog {
+            Dialog::Ssh(f) => {
+                set_input_placeholder(&f.host, i18n::t("ssh.host.placeholder"), window, cx);
+                set_input_placeholder(&f.user, i18n::t("ssh.username"), window, cx);
+                set_input_placeholder(
+                    &f.password,
+                    i18n::t("ssh.password.agent_placeholder"),
+                    window,
+                    cx,
+                );
+                refresh_cmd_placeholders(&f.cmd, window, cx);
+            }
+            Dialog::Cmd(f) => refresh_cmd_placeholders(&f.fields, window, cx),
+            Dialog::Url(f) => {
+                set_input_placeholder(&f.user, i18n::t("ssh.username"), window, cx);
+                set_input_placeholder(&f.password, i18n::t("ssh.password"), window, cx);
+                set_input_placeholder(&f.header_value, i18n::t("http.header.value"), window, cx);
+            }
+            Dialog::None | Dialog::HostKey(_) => {}
+        }
     }
 
     // ---- 弹层渲染 ----
@@ -4311,7 +4365,21 @@ impl AppView {
                             .text_size(px(theme::scaled(12.0)))
                             .text_color(theme::hex(pal.text3))
                             .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                            .child("×")
+                            .child(
+                                svg()
+                                    .path("icons/close.svg")
+                                    .w(px(12.0))
+                                    .h(px(12.0))
+                                    .text_color(theme::hex(pal.text3)),
+                            )
+                            .tooltip(|window, cx| {
+                                gpui_kit::component::tooltip::Tooltip::element(|_, _| {
+                                    div()
+                                        .text_size(px(theme::scaled(11.0)))
+                                        .child(i18n::t("welcome.recent_remove.tip"))
+                                })
+                                .build(window, cx)
+                            })
                             .on_click(cx.listener(move |v, _e, _w, cx| {
                                 // 阻止冒泡到整行,避免删记录的同时又把源重新打开
                                 cx.stop_propagation();
@@ -4512,7 +4580,7 @@ impl AppView {
         let (pick_hl_dark, pick_hl_light) = (d.pick_hl_dark.clone(), d.pick_hl_light.clone());
         let rule_inputs = d.rule_inputs.clone();
 
-        let names = level_names();
+        let names = level_labels();
         let lvl_colors = settings.level_colors_hex(light);
         let show_ln = settings.show_line_numbers;
         let show_ts = settings.show_timestamps;
@@ -4604,10 +4672,10 @@ impl AppView {
                         ),
                 )
                 .child(
-                    host_btn(
+                    panel_icon_btn(
                         SharedString::from(format!("set-host-edit-{i}")),
-                        i18n::t("common.edit"),
-                        false,
+                        "icons/edit-outline.svg",
+                        SharedString::from(i18n::t("ssh.hosts.edit.tip")),
                         pal,
                     )
                     .on_click(cx.listener(move |v, _e, w, cx| {
@@ -4616,10 +4684,10 @@ impl AppView {
                     })),
                 )
                 .child(
-                    host_btn(
+                    panel_icon_btn(
                         SharedString::from(format!("set-host-del-{i}")),
-                        i18n::t("common.delete"),
-                        false,
+                        "icons/delete.svg",
+                        SharedString::from(i18n::t("ssh.hosts.delete.tip")),
                         pal,
                     )
                     .on_click(cx.listener(move |v, _e, _w, cx| v.host_delete(i, cx))),
@@ -4638,41 +4706,50 @@ impl AppView {
                     .into_any_element(),
             );
         }
-        match host_edit {
-            None => host_rows.push(
+        // 三个主机动作放在区块标题栏右上角:图标 + 悬停提示;编辑中暂时收起,避免与表单操作冲突
+        let host_actions: Option<AnyElement> = if host_edit.is_none() {
+            Some(
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(8.0))
-                    .px(px(16.0))
-                    .py(px(10.0))
+                    .gap(px(2.0))
                     .child(
-                        host_btn("set-host-add".into(), i18n::t("ssh.hosts.add"), true, pal)
-                            .on_click(cx.listener(|v, _e, w, cx| {
-                                v.host_begin_new(w, cx);
-                                cx.notify();
-                            })),
+                        panel_icon_btn(
+                            "set-host-add",
+                            "icons/host-add.svg",
+                            SharedString::from(i18n::t("ssh.hosts.add.tip")),
+                            pal,
+                        )
+                        .on_click(cx.listener(|v, _e, w, cx| {
+                            v.host_begin_new(w, cx);
+                            cx.notify();
+                        })),
                     )
                     .child(
-                        host_btn(
-                            "set-host-import".into(),
-                            i18n::t("ssh.hosts.import_recent"),
-                            false,
+                        panel_icon_btn(
+                            "set-host-import",
+                            "icons/host-import-recent.svg",
+                            SharedString::from(i18n::t("ssh.hosts.import_recent.tip")),
                             pal,
                         )
                         .on_click(cx.listener(|v, _e, _w, cx| v.host_import_recents(cx))),
                     )
                     .child(
-                        host_btn(
-                            "set-host-import-ssh".into(),
-                            i18n::t("ssh.hosts.import_ssh_config"),
-                            false,
+                        panel_icon_btn(
+                            "set-host-import-ssh",
+                            "icons/host-import-ssh.svg",
+                            SharedString::from(i18n::t("ssh.hosts.import_ssh_config.tip")),
                             pal,
                         )
                         .on_click(cx.listener(|v, _e, _w, cx| v.host_import_ssh_config(cx))),
                     )
                     .into_any_element(),
-            ),
+            )
+        } else {
+            None
+        };
+        match host_edit {
+            None => {}
             Some(ed) => {
                 let mut ed_box = div()
                     .flex()
@@ -4984,7 +5061,9 @@ impl AppView {
                         gpui_kit::transparent_black()
                     })
                     .child(lang.label())
-                    .on_click(cx.listener(move |v, _e, _w, cx| v.set_language(lang, cx))),
+                    .on_click(
+                        cx.listener(move |v, _e, window, cx| v.set_language(lang, window, cx)),
+                    ),
             );
         }
         appearance.push((
@@ -5084,7 +5163,7 @@ impl AppView {
                     .justify_center()
                     .text_size(px(theme::scaled(10.0)))
                     .text_color(theme::hex(&lvl_colors[i]))
-                    .child(names[i].to_string()),
+                    .child(names[i].clone()),
             );
         }
         head2 = head2.child(
@@ -5355,26 +5434,6 @@ impl AppView {
                     .on_click(cx.listener(move |v, _e, window, cx| v.select_config(i, window, cx)));
                 list = list.child(item);
             }
-            let add = dlg_btn("cfg-add", i18n::t("configs.new"), false, pal)
-                .on_click(cx.listener(|v, _e, window, cx| v.add_config(window, cx)));
-            list = list.child(div().pt(px(6.0)).child(add));
-            // 导入 / 导出 / 恢复内置默认:放在左栏底部,避免被配置详情掩盖
-            let imp = dlg_btn("cfg-import", i18n::t("configs.import_json"), false, pal)
-                .on_click(cx.listener(|v, _e, _window, cx| v.import_configs(cx)));
-            let exp = dlg_btn("cfg-export", i18n::t("configs.export_json"), false, pal)
-                .on_click(cx.listener(|v, _e, _w, cx| v.export_configs(cx)));
-            let rst = dlg_btn("cfg-reset", i18n::t("configs.restore_builtin"), false, pal)
-                .on_click(cx.listener(|v, _e, window, cx| v.reset_all_builtins(window, cx)));
-            list = list.child(
-                div()
-                    .pt(px(6.0))
-                    .flex()
-                    .flex_wrap()
-                    .gap(px(6.0))
-                    .child(imp)
-                    .child(exp)
-                    .child(rst),
-            );
             if let Some(n) = d.cfg_notice.clone() {
                 list = list.child(
                     div()
@@ -5517,7 +5576,10 @@ impl AppView {
                             .child(i18n::t("configs.capture_group"))
                             .into_any_element()
                     } else {
-                        let lname = names.get(*level as usize).copied().unwrap_or("—");
+                        let lname = names
+                            .get(*level as usize)
+                            .cloned()
+                            .unwrap_or_else(|| "—".to_string());
                         let lc = lvl_colors
                             .get(*level as usize)
                             .map(|s| theme::hex(s))
@@ -5542,12 +5604,28 @@ impl AppView {
                             div()
                                 .id(SharedString::from(format!("rule-del-{i}")))
                                 .cursor(CursorStyle::PointingHand)
+                                .flex()
+                                .items_center()
+                                .justify_center()
                                 .w(px(18.0))
+                                .h(px(18.0))
                                 .rounded(px(4.0))
-                                .text_size(px(theme::scaled(12.0)))
-                                .text_color(theme::hex(pal.text3))
                                 .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                                .child("×")
+                                .child(
+                                    svg()
+                                        .path("icons/close.svg")
+                                        .w(px(12.0))
+                                        .h(px(12.0))
+                                        .text_color(theme::hex(pal.text3)),
+                                )
+                                .tooltip(|window, cx| {
+                                    gpui_kit::component::tooltip::Tooltip::element(|_, _| {
+                                        div()
+                                            .text_size(px(theme::scaled(11.0)))
+                                            .child(i18n::t("configs.delete_rule.tip"))
+                                    })
+                                    .build(window, cx)
+                                })
                                 .on_click(
                                     cx.listener(move |v, _e, window, cx| v.del_rule(i, window, cx)),
                                 ),
@@ -5565,7 +5643,12 @@ impl AppView {
                         )
                         .into_any_element(),
                 );
-                detail = detail.child(settings_group(i18n::t("configs.rules"), rule_rows, pal));
+                detail = detail.child(settings_group(
+                    i18n::t("configs.rules"),
+                    None,
+                    rule_rows,
+                    pal,
+                ));
                 detail = detail.child(
                     div()
                         .text_size(px(theme::scaled(11.0)))
@@ -5608,40 +5691,36 @@ impl AppView {
                 ctl = ctl.child(shortcut_caps(&spec, pal));
             }
             ctl = ctl.child(
-                div()
-                    .id(SharedString::from(format!("sc-edit-{action}")))
-                    .cursor(CursorStyle::PointingHand)
-                    .px(px(8.0))
-                    .py(px(2.0))
-                    .rounded(px(4.0))
-                    .text_size(px(theme::scaled(11.0)))
-                    .text_color(theme::hex(pal.primary))
-                    .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                    .child(if capturing {
-                        i18n::t("common.cancel")
+                panel_icon_btn(
+                    SharedString::from(format!("sc-edit-{action}")),
+                    if capturing {
+                        "icons/close.svg"
                     } else {
-                        i18n::t("shortcut.change")
-                    })
-                    .on_click(cx.listener(move |v, _e, w, cx| {
-                        if capturing {
-                            v.cancel_shortcut_capture(cx);
-                        } else {
-                            v.begin_shortcut_capture(action, w, cx);
-                        }
-                    })),
+                        "icons/edit-outline.svg"
+                    },
+                    SharedString::from(if capturing {
+                        i18n::t("shortcut.cancel.tip")
+                    } else {
+                        i18n::t("shortcut.change.tip")
+                    }),
+                    pal,
+                )
+                .on_click(cx.listener(move |v, _e, w, cx| {
+                    if capturing {
+                        v.cancel_shortcut_capture(cx);
+                    } else {
+                        v.begin_shortcut_capture(action, w, cx);
+                    }
+                })),
             );
             ctl = ctl.child(
-                div()
-                    .id(SharedString::from(format!("sc-reset-{action}")))
-                    .cursor(CursorStyle::PointingHand)
-                    .px(px(8.0))
-                    .py(px(2.0))
-                    .rounded(px(4.0))
-                    .text_size(px(theme::scaled(11.0)))
-                    .text_color(theme::hex(pal.text3))
-                    .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                    .child(i18n::t("configs.restore_default"))
-                    .on_click(cx.listener(move |v, _e, _w, cx| v.reset_shortcut(action, cx))),
+                panel_icon_btn(
+                    SharedString::from(format!("sc-reset-{action}")),
+                    "icons/reset.svg",
+                    SharedString::from(i18n::t("shortcut.reset.tip")),
+                    pal,
+                )
+                .on_click(cx.listener(move |v, _e, _w, cx| v.reset_shortcut(action, cx))),
             );
             shortcut_entries.push((
                 format!("{desc} {spec}"),
@@ -5677,18 +5756,38 @@ impl AppView {
         }
 
         // —— 分组数据:按分类/分组组织,搜索时跨分类过滤 ——
-        type SettingsGroup = (usize, &'static str, Vec<(String, AnyElement)>);
+        type SettingsGroup = (
+            usize,
+            &'static str,
+            Vec<(String, AnyElement)>,
+            Option<AnyElement>,
+        );
         let groups_all: Vec<SettingsGroup> = vec![
-            (0, i18n::t("settings.group.interface"), appearance),
-            (0, i18n::t("settings.group.typography"), typography),
-            (0, i18n::t("settings.group.colors"), color_rows),
-            (1, i18n::t("settings.group.loading"), load),
-            (1, i18n::t("settings.group.memory"), memory),
-            (2, i18n::t("settings.group.analysis"), cfg_entries),
-            (3, i18n::t("settings.group.ssh_hosts"), host_entries),
-            (3, i18n::t("settings.group.url_creds"), url_cred_entries),
-            (3, i18n::t("menu.recent"), recents_cfg),
-            (4, i18n::t("settings.group.keyboard"), shortcut_entries),
+            (0, i18n::t("settings.group.interface"), appearance, None),
+            (0, i18n::t("settings.group.typography"), typography, None),
+            (0, i18n::t("settings.group.colors"), color_rows, None),
+            (1, i18n::t("settings.group.loading"), load, None),
+            (1, i18n::t("settings.group.memory"), memory, None),
+            (2, i18n::t("settings.group.analysis"), cfg_entries, None),
+            (
+                3,
+                i18n::t("settings.group.ssh_hosts"),
+                host_entries,
+                host_actions,
+            ),
+            (
+                3,
+                i18n::t("settings.group.url_creds"),
+                url_cred_entries,
+                None,
+            ),
+            (3, i18n::t("menu.recent"), recents_cfg, None),
+            (
+                4,
+                i18n::t("settings.group.keyboard"),
+                shortcut_entries,
+                None,
+            ),
         ];
         let page_titles = [
             i18n::t("settings.group.appearance"),
@@ -5707,7 +5806,7 @@ impl AppView {
 
         let mut matched = 0usize;
         let mut groups: Vec<AnyElement> = Vec::new();
-        for (page, group_title, entries) in groups_all {
+        for (page, group_title, entries, action) in groups_all {
             if !searching && page != tab_sel {
                 continue;
             }
@@ -5726,7 +5825,7 @@ impl AppView {
             } else {
                 group_title.to_string()
             };
-            groups.push(settings_group(title, rows, pal));
+            groups.push(settings_group(title, action, rows, pal));
         }
 
         let body: AnyElement = if tab_sel == 2 && !searching {
@@ -5775,13 +5874,12 @@ impl AppView {
         } else {
             page_descs[tab_sel].to_string()
         };
-        let page_head = div()
+        let head_text = div()
+            .flex_1()
+            .min_w(px(0.0))
             .flex()
             .flex_col()
             .gap(px(4.0))
-            .px(px(24.0))
-            .pt(px(18.0))
-            .pb(px(10.0))
             .child(
                 div()
                     .text_size(px(theme::scaled(18.0)))
@@ -5795,6 +5893,67 @@ impl AppView {
                     .text_color(theme::hex(pal.text2))
                     .child(head_desc),
             );
+        // 分析配置页的 4 个动作收进页头右上角:图标 + 悬停提示,不复用旧版文字按钮
+        let cfg_actions: Option<AnyElement> = if tab_sel == 2 && !searching {
+            Some(
+                div()
+                    .flex_shrink_0()
+                    .flex()
+                    .items_center()
+                    .gap(px(2.0))
+                    .child(
+                        panel_icon_btn(
+                            "cfg-add",
+                            "icons/config-new.svg",
+                            SharedString::from(i18n::t("configs.new.tip")),
+                            pal,
+                        )
+                        .on_click(cx.listener(|v, _e, window, cx| v.add_config(window, cx))),
+                    )
+                    .child(
+                        panel_icon_btn(
+                            "cfg-import",
+                            "icons/config-import.svg",
+                            SharedString::from(i18n::t("configs.import_json.tip")),
+                            pal,
+                        )
+                        .on_click(cx.listener(|v, _e, _window, cx| v.import_configs(cx))),
+                    )
+                    .child(
+                        panel_icon_btn(
+                            "cfg-export",
+                            "icons/config-export.svg",
+                            SharedString::from(i18n::t("configs.export_json.tip")),
+                            pal,
+                        )
+                        .on_click(cx.listener(|v, _e, _w, cx| v.export_configs(cx))),
+                    )
+                    .child(
+                        panel_icon_btn(
+                            "cfg-reset",
+                            "icons/config-restore.svg",
+                            SharedString::from(i18n::t("configs.restore_builtin.tip")),
+                            pal,
+                        )
+                        .on_click(
+                            cx.listener(|v, _e, window, cx| v.reset_all_builtins(window, cx)),
+                        ),
+                    )
+                    .into_any_element(),
+            )
+        } else {
+            None
+        };
+        let page_head = div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .gap(px(16.0))
+            .px(px(24.0))
+            .pt(px(18.0))
+            .pb(px(10.0))
+            .child(head_text)
+            .children(cfg_actions);
 
         // —— 左侧分类导航 ——
         let mut nav = div()
@@ -6632,7 +6791,7 @@ impl AppView {
         };
         let mut tab = Tab::text(
             &self.settings,
-            format!("JSON · {}", self.tabs[self.active].title),
+            format!("JSON · {}", self.tabs[self.active].display_title()),
             &pretty,
         );
         tab.id = self.next_tab_id;
@@ -6995,14 +7154,14 @@ impl AppView {
             .iter()
             .map(|s| theme::hex(s))
             .collect();
-        let names = level_names();
+        let names = level_labels();
 
         // 标签条数据(先收集成小数据,避免与 listener 借用冲突)
         let tabs_meta: Vec<(u64, String, bool)> = self
             .tabs
             .iter()
             .enumerate()
-            .map(|(i, t)| (t.id, t.title.clone(), i == self.active))
+            .map(|(i, t)| (t.id, t.display_title(), i == self.active))
             .collect();
         let ti = self.active.min(self.tabs.len().saturating_sub(1));
         let cur = self.tabs.get(ti);
@@ -7258,12 +7417,29 @@ impl AppView {
                         div()
                             .id(SharedString::from(format!("tabx-{id}")))
                             .cursor(CursorStyle::PointingHand)
+                            .flex()
+                            .items_center()
+                            .justify_center()
                             .px(px(4.0))
                             .rounded(px(3.0))
                             .text_size(px(theme::scaled(11.0)))
                             .text_color(theme::hex(pal.text3))
                             .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                            .child("×")
+                            .child(
+                                svg()
+                                    .path("icons/close.svg")
+                                    .w(px(11.0))
+                                    .h(px(11.0))
+                                    .text_color(theme::hex(pal.text3)),
+                            )
+                            .tooltip(|window, cx| {
+                                gpui_kit::component::tooltip::Tooltip::element(|_, _| {
+                                    div()
+                                        .text_size(px(theme::scaled(11.0)))
+                                        .child(i18n::t("tab.close.tip"))
+                                })
+                                .build(window, cx)
+                            })
                             .on_click(cx.listener(move |v, _e, window, cx| {
                                 cx.stop_propagation();
                                 v.close_tab(idx, window, cx);
@@ -7284,6 +7460,14 @@ impl AppView {
                 .text_color(theme::hex(pal.text2))
                 .hover(|s| s.bg(theme::hex(pal.fill)))
                 .child("+")
+                .tooltip(|window, cx| {
+                    gpui_kit::component::tooltip::Tooltip::element(|_, _| {
+                        div()
+                            .text_size(px(theme::scaled(11.0)))
+                            .child(i18n::t("shortcut.new_tab"))
+                    })
+                    .build(window, cx)
+                })
                 .on_click(cx.listener(|v, _e, window, cx| v.add_blank_tab(window, cx)))
                 .into_any_element(),
         );
@@ -7307,6 +7491,14 @@ impl AppView {
                         .h(px(15.0))
                         .text_color(theme::hex(pal.text2)),
                 )
+                .tooltip(|window, cx| {
+                    gpui_kit::component::tooltip::Tooltip::element(|_, _| {
+                        div()
+                            .text_size(px(theme::scaled(11.0)))
+                            .child(i18n::t("shortcut.open_settings"))
+                    })
+                    .build(window, cx)
+                })
                 .on_click(cx.listener(|v, _e, window, cx| v.open_settings_tab(None, window, cx)))
                 .into_any_element(),
         );
@@ -7380,7 +7572,7 @@ impl AppView {
             let color = lv[idx];
             let on = !hidden[idx];
             // 级别 tag:文字用级别配置色、底色用主题背景色;选中时底部画级别色指示线
-            let lname = i18n::t(names[idx]);
+            let lname = names[idx].clone();
             let head: String = lname
                 .chars()
                 .next()
@@ -8319,13 +8511,35 @@ fn settings_row(
         .into_any_element()
 }
 
-/// 设置页分组卡片:标题栏 + 若干设置行
+/// 设置页分组卡片:标题栏(可带右上角动作)+ 若干设置行
 fn settings_group(
     title: impl Into<SharedString>,
+    action: Option<AnyElement>,
     rows: Vec<AnyElement>,
     pal: &'static Palette,
 ) -> AnyElement {
     let title: SharedString = title.into();
+    let mut head = div()
+        .flex()
+        .items_center()
+        .gap(px(12.0))
+        .px(px(16.0))
+        .py(px(8.0))
+        .border_b_1()
+        .border_color(theme::hex(pal.split))
+        .bg(theme::hex(pal.fill))
+        .child(
+            div()
+                .flex_1()
+                .min_w(px(0.0))
+                .text_size(px(theme::scaled(11.5)))
+                .font_weight(gpui_kit::FontWeight::SEMIBOLD)
+                .text_color(theme::hex(pal.text2))
+                .child(title),
+        );
+    if let Some(action) = action {
+        head = head.child(div().flex_shrink_0().child(action));
+    }
     div()
         .flex()
         .flex_col()
@@ -8336,18 +8550,7 @@ fn settings_group(
         .border_color(theme::hex(pal.border))
         .bg(theme::hex(pal.bg_bar))
         .overflow_hidden()
-        .child(
-            div()
-                .px(px(16.0))
-                .py(px(8.0))
-                .border_b_1()
-                .border_color(theme::hex(pal.split))
-                .bg(theme::hex(pal.fill))
-                .text_size(px(theme::scaled(11.5)))
-                .font_weight(gpui_kit::FontWeight::SEMIBOLD)
-                .text_color(theme::hex(pal.text2))
-                .child(title),
-        )
+        .child(head)
         .children(rows)
         .into_any_element()
 }
@@ -8845,7 +9048,21 @@ fn dlg_header(
                 .text_size(px(theme::scaled(14.0)))
                 .text_color(theme::hex(pal.text3))
                 .hover(|s| s.bg(theme::hex(pal.fill_hover)))
-                .child("×")
+                .child(
+                    svg()
+                        .path("icons/close.svg")
+                        .w(px(14.0))
+                        .h(px(14.0))
+                        .text_color(theme::hex(pal.text3)),
+                )
+                .tooltip(|window, cx| {
+                    gpui_kit::component::tooltip::Tooltip::element(|_, _| {
+                        div()
+                            .text_size(px(theme::scaled(11.0)))
+                            .child(i18n::t("common.close"))
+                    })
+                    .build(window, cx)
+                })
                 .on_click(on_close),
         )
         .into_any_element()
@@ -8961,6 +9178,37 @@ fn bottom_distance(off: Pixels, max: Pixels) -> Pixels {
     (off - bottom).abs()
 }
 
+/// 改写一个输入框的占位符(language 切换后调用)
+fn set_input_placeholder(
+    input: &Entity<InputState>,
+    placeholder: impl Into<SharedString>,
+    window: &mut Window,
+    cx: &mut Context<AppView>,
+) {
+    input.update(cx, {
+        let placeholder: SharedString = placeholder.into();
+        move |state, cx| state.set_placeholder(placeholder, window, cx)
+    });
+}
+
+/// 命令表单的占位符来自预设数据(中文源文案),切语言后按 `i18n::td` 重新翻译
+fn refresh_cmd_placeholders(fields: &CmdFields, window: &mut Window, cx: &mut Context<AppView>) {
+    set_input_placeholder(&fields.text, i18n::t("command.example"), window, cx);
+    for (field, input) in &fields.inputs {
+        if !field.placeholder.is_empty() {
+            set_input_placeholder(input, i18n::td(&field.placeholder), window, cx);
+        }
+    }
+}
+
+/// 级别显示文案:级别缩写直接用原文,「无级别」等标签走语言包
+fn level_labels() -> Vec<String> {
+    level_names()
+        .iter()
+        .map(|id| i18n::t(id).to_string())
+        .collect()
+}
+
 /// 按可用宽度挑选级别芯片的显示密度:先试完整名称,再退到首字母+计数,最后只留首字母
 fn pick_chip_style(avail: f32, others: f32, full_w: f32, short_w: f32) -> ChipStyle {
     if avail >= others + full_w {
@@ -8981,6 +9229,42 @@ enum ChipStyle {
     Short,
     /// `I`
     Letter,
+}
+
+/// 面板图标按钮(28×28,悬停底色,tooltip 说明)
+///
+/// 设置页等无文字标签的位置用图标按钮;图标本身不表意时,悬停提示就是唯一的说明。
+fn panel_icon_btn(
+    id: impl Into<ElementId>,
+    icon: &'static str,
+    tip: SharedString,
+    pal: &'static Palette,
+) -> Stateful<Div> {
+    div()
+        .id(id)
+        .cursor(CursorStyle::PointingHand)
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(28.0))
+        .h(px(28.0))
+        .rounded(px(6.0))
+        .bg(gpui_kit::transparent_black())
+        .hover(|s| s.bg(theme::hex(pal.fill_hover)))
+        .child(
+            svg()
+                .path(icon)
+                .w(px(16.0))
+                .h(px(16.0))
+                .text_color(theme::hex(pal.text2)),
+        )
+        .tooltip(move |window, cx| {
+            let tip = tip.clone();
+            gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
+                div().text_size(px(theme::scaled(11.0))).child(tip.clone())
+            })
+            .build(window, cx)
+        })
 }
 
 /// 工具栏图标按钮(26×26,悬停底色,tooltip 说明)
@@ -9037,6 +9321,22 @@ mod tests {
     };
     use crate::i18n;
     use gpui_kit::px;
+
+    #[test]
+    fn fixed_tab_titles_use_semantic_ids() {
+        let s = crate::store::Settings::default();
+        let blank = super::Tab::blank(&s);
+        assert_eq!(blank.title_id, Some("tab.new"));
+        assert_eq!(blank.display_title(), i18n::t("tab.new"));
+
+        let settings = super::Tab::settings(&s);
+        assert_eq!(settings.title_id, Some("settings.title"));
+        assert_eq!(settings.display_title(), i18n::t("settings.title"));
+
+        let text = super::Tab::text(&s, "note.log".into(), "line\n");
+        assert_eq!(text.title_id, None);
+        assert_eq!(text.display_title(), "note.log");
+    }
 
     #[test]
     fn chip_style_degrades_with_window_width() {

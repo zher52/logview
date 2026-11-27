@@ -225,6 +225,15 @@ mod tests {
     }
 
     #[test]
+    fn unnamed_level_uses_others_label() {
+        let _g = lang_lock();
+        set(Lang::En);
+        assert_eq!(t("level.none"), "Others");
+        set(Lang::Zh);
+        assert_eq!(t("level.none"), "无级别");
+    }
+
+    #[test]
     fn russian_translates_and_plurals() {
         let _g = lang_lock();
         set(Lang::Ru);

@@ -49,6 +49,52 @@ const ICONS: &[(&str, &[u8])] = &[
         "icons/chevron-down.svg",
         include_bytes!("../assets/icons/chevron-down.svg"),
     ),
+    (
+        "icons/close.svg",
+        include_bytes!("../assets/icons/close.svg"),
+    ),
+    // 设置页「分析配置」右上角动作:新建 / 导入 / 导出 / 恢复内置默认
+    (
+        "icons/config-new.svg",
+        include_bytes!("../assets/icons/config-new.svg"),
+    ),
+    (
+        "icons/config-import.svg",
+        include_bytes!("../assets/icons/config-import.svg"),
+    ),
+    (
+        "icons/config-export.svg",
+        include_bytes!("../assets/icons/config-export.svg"),
+    ),
+    (
+        "icons/config-restore.svg",
+        include_bytes!("../assets/icons/config-restore.svg"),
+    ),
+    // 连接页「已保存的 SSH 主机」动作 / 快捷键行的图标按钮
+    (
+        "icons/host-add.svg",
+        include_bytes!("../assets/icons/host-add.svg"),
+    ),
+    (
+        "icons/host-import-recent.svg",
+        include_bytes!("../assets/icons/host-import-recent.svg"),
+    ),
+    (
+        "icons/host-import-ssh.svg",
+        include_bytes!("../assets/icons/host-import-ssh.svg"),
+    ),
+    (
+        "icons/edit-outline.svg",
+        include_bytes!("../assets/icons/edit-outline.svg"),
+    ),
+    (
+        "icons/reset.svg",
+        include_bytes!("../assets/icons/reset.svg"),
+    ),
+    (
+        "icons/delete.svg",
+        include_bytes!("../assets/icons/delete.svg"),
+    ),
 ];
 
 pub struct AppAssets;

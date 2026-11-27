@@ -28,8 +28,17 @@ pub fn level_name(l: u8) -> &'static str {
     }
 }
 
+/// 级别显示文案的键：前六个是固定的级别缩写，末项使用语言包里的 `level.none`
 pub fn level_names() -> [&'static str; LEVEL_COUNT] {
-    ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "无级别"]
+    [
+        "TRACE",
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR",
+        "FATAL",
+        "level.none",
+    ]
 }
 
 /// 捕获组文本 → 级别(err → ERROR, warning → WARN, 单字母 d/i/w/e …)

@@ -33,6 +33,11 @@
 "configs.delete" = "Удалить конфигурацию"
 "configs.restore_default" = "Сбросить"
 "configs.add_rule" = "＋ Добавить правило"
+"configs.new.tip" = "Новая конфигурация анализа"
+"configs.import_json.tip" = "Импорт конфигураций из JSON (полная замена списка)"
+"configs.export_json.tip" = "Экспортировать все конфигурации в JSON"
+"configs.restore_builtin.tip" = "Сбросить правила всех встроенных конфигураций (пользовательские не меняются)"
+"configs.delete_rule.tip" = "Удалить это правило"
 
 # ---- settings ----
 "settings.group.appearance" = "Внешний вид"
@@ -53,6 +58,7 @@
 
 # ---- tab ----
 "tab.close_others" = "Закрыть остальные"
+"tab.close.tip" = "Закрыть вкладку"
 
 # ---- search ----
 "search.highlight" = "Подсветка"
@@ -118,11 +124,14 @@
 "configs.level" = "Уровень"
 "configs.capture_group" = "Группа захвата"
 "configs.rules" = "Правила сопоставления"
-"configs.empty" = "Конфигураций нет. Нажмите «Новая конфигурация» слева."
+"configs.empty" = "Конфигураций нет. Нажмите значок создания в правом верхнем углу."
 
 # ---- shortcut ----
 "shortcut.press" = "Нажмите сочетание клавиш…"
 "shortcut.change" = "Изменить"
+"shortcut.change.tip" = "Изменить сочетание клавиш"
+"shortcut.cancel.tip" = "Отменить изменение сочетания"
+"shortcut.reset.tip" = "Сбросить сочетание по умолчанию"
 
 # ---- settings ----
 "settings.section.appearance.desc" = "Номера строк, перенос, шрифты и цвета"
@@ -197,6 +206,7 @@
 
 # ---- welcome ----
 "welcome.drag_hint" = "Можно также перетащить файл журнала в окно"
+"welcome.recent_remove.tip" = "Убрать из недавних"
 
 # ---- dialog ----
 "dialog.clear.title" = "Подтвердить очистку"
@@ -204,9 +214,13 @@
 
 # ---- ssh ----
 "ssh.hosts.add" = "＋ Добавить хост"
+"ssh.hosts.add.tip" = "Добавить хост SSH"
 "ssh.hosts.import_recent" = "Импорт из недавних"
+"ssh.hosts.import_recent.tip" = "Импортировать хосты из недавних"
 "ssh.hosts.add_short" = "Добавить хост"
 "ssh.hosts.edit" = "Изменить хост"
+"ssh.hosts.edit.tip" = "Изменить этот хост"
+"ssh.hosts.delete.tip" = "Удалить этот хост"
 "ssh.hosts.note" = "Заметка"
 
 # ---- common ----
@@ -450,6 +464,7 @@
 "ssh.hosts.empty" = "Сохранённых хостов нет. Добавьте ниже или импортируйте из недавних."
 "ssh.hosts.delete_note" = "Удаление также уберёт сервер из «Недавних»; учётные данные в системном хранилище сохранятся."
 "ssh.hosts.import_ssh_config" = "Импорт из ~/.ssh/config"
+"ssh.hosts.import_ssh_config.tip" = "Импортировать хосты из ~/.ssh/config"
 "ssh.hosts.note_placeholder" = "Необязательная заметка о назначении хоста"
 
 # ---- http ----
