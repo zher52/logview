@@ -13,21 +13,36 @@ env:
 
 jobs:
   # macOS 是当前主要支持平台:.app 打包 + 文件类型关联
+  # 同时出 Apple Silicon 与 Intel 两个产物(不做 universal:避免 lipo 合并与单包翻倍体积)
   macos:
-    name: macOS .app
+    name: macOS ${{ matrix.arch }}
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: arm64
+          - target: x86_64-apple-darwin
+            arch: x86_64
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
       - name: 打包 .app
+        env:
+          TARGET: ${{ matrix.target }}
         run: ./scripts/make_app.sh
       - name: 压缩
-        run: ditto -c -k --keepParent "target/日志查看器.app" logview-macos.zip
+        run: ditto -c -k --keepParent "target/日志查看器.app" "logview-macos-${{ matrix.arch }}.zip"
       - uses: actions/upload-artifact@v7
         with:
-          name: logview-macos
-          path: logview-macos.zip
+          name: logview-macos-${{ matrix.arch }}
+          path: logview-macos-${{ matrix.arch }}.zip
           if-no-files-found: error
 
   # Windows / Linux 尚未充分验证,失败不阻塞 macOS 产物

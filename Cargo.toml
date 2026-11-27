@@ -1,6 +1,6 @@
 [package]
 name = "logview"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 rust-version = "1.92"
 description = "日志查看器(GPUI 版):本地/SSH/HTTP 日志源,正则级别分析、检索过滤、自动追加、链接识别"
@@ -27,6 +27,11 @@ ropey = "=2.0.0-beta.1"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 # 行时间戳按本地时区格式化(仅需要 clock/std,不引入 oldtime)
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+# Windows:libssh2 默认 WinCNG 后端不提供 userauth_pubkey_memory(私钥文本认证),
+# 改用 OpenSSL 后端并用 vendored 构建,不依赖 runner 预装的 OpenSSL。
+[target.'cfg(windows)'.dependencies]
+ssh2 = { version = "0.9", features = ["openssl-on-win32", "vendored-openssl"] }
 
 [build-dependencies]
 # 构建期解析 locales/*.toml 并生成查表

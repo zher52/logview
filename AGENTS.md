@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-**日志查看器（Log Viewer / Просмотр журналов）0.4.0**：Rust + GPUI 自绘 UI 的原生桌面日志查看器（**无 WebView**），交互参考 Chrome DevTools 控制台。
+**日志查看器（Log Viewer / Просмотр журналов）0.4.1**：Rust + GPUI 自绘 UI 的原生桌面日志查看器（**无 WebView**），交互参考 Chrome DevTools 控制台。
 
 - **四种日志源**
   - 本地文件：stat 轮询 + `seek` 增量读
@@ -38,7 +38,7 @@ cargo clippy --all-targets --locked
 ./sample/gen_log.sh sample/app.log 1   # 演示自动追加(会写入受控的示例文件)
 ```
 
-- `dev.sh` / `package.sh` 是维护者本机脚本，**不入库**（已在 `.gitignore`）；发布构建用 `scripts/make_app.sh`。
+- `dev.sh` / `package.sh` 是维护者本机脚本，**不入库**（已在 `.gitignore`）；发布构建用 `scripts/make_app.sh`，支持 `TARGET=aarch64-apple-darwin|x86_64-apple-darwin` 交叉构建（产物固定在 `target/日志查看器.app`）。
 - 运行 `gen_log.sh` 后提交前请还原：`git checkout -- sample/app.log`。
 - CI：`.github/workflows/ci.yml`（macOS 阻塞；Windows/Linux 实验性；clippy 暂不阻塞），`audit.yml` 每周依赖审计，`release.yml` 由 `v*` tag 触发。新增逻辑必须配单测。
 

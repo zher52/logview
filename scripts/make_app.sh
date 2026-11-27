@@ -14,11 +14,20 @@ APP="target/$APP_NAME.app"
 VERSION="${VERSION:-$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)}"
 VERSION="${VERSION:-0.0.0}"
 
-cargo build --release
+# 可选交叉编译目标(如 aarch64-apple-darwin / x86_64-apple-darwin);
+# 不传时按本机架构构建。应用包路径固定为 target/<应用名>.app，两种用法一致。
+TARGET="${TARGET:-}"
+if [ -n "$TARGET" ]; then
+    cargo build --release --target "$TARGET"
+    BIN_DIR="target/$TARGET/release"
+else
+    cargo build --release
+    BIN_DIR="target/release"
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "target/release/$BIN_NAME" "$APP/Contents/MacOS/$BIN_NAME"
+cp "$BIN_DIR/$BIN_NAME" "$APP/Contents/MacOS/$BIN_NAME"
 
 # 应用图标:icon.png → AppIcon.icns(缺失或转换失败不阻断打包)
 if [ -f icon.png ]; then
@@ -91,6 +100,7 @@ LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchS
 "$LSREGISTER" -f "$APP" 2>/dev/null || true
 
 echo "已生成 $APP"
+echo "架构: $(lipo -archs "$APP/Contents/MacOS/$BIN_NAME" 2>/dev/null || echo unknown)"
 echo "试一下:"
 echo "  open -a \"$PWD/$APP\" \"$PWD/sample/app.log\""
 echo "或在 Finder 中右键任意 .log 文件 → 打开方式 → 日志查看器"

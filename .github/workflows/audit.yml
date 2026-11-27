@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
   issues: write
+  # rustsec/audit-check 会创建 check run,缺这条会在 push 事件下报
+  # "Resource not accessible by integration"
+  checks: write
 
 jobs:
   audit:

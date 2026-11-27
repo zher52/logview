@@ -52,7 +52,16 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 
 ## 下载
 
-预编译产物在 [Releases](https://github.com/zher52/logview/releases)：macOS 为 `logview-macos.zip`，解压即得「日志查看器.app」。
+预编译产物在 [Releases](https://github.com/zher52/logview/releases)：
+
+| 平台 | 产物 | 说明 |
+|---|---|---|
+| macOS Apple Silicon（M 系列） | `logview-macos-arm64.zip` | 解压得「日志查看器.app」 |
+| macOS Intel | `logview-macos-x86_64.zip` | 同上，适用于 2020 年及更早的 Intel Mac |
+| Windows | `logview-windows.zip`（实验性） | `logview.exe`，未做安装器，交互尚未充分验证 |
+| Linux | `logview-linux.tar.gz`（实验性） | 裸二进制，`.desktop` / AppImage 待补 |
+
+> 架构不对会直接打不开（Apple Silicon 上跑 x86_64 包需要 Rosetta）：用 `uname -m` 确认，M 系列通常为 `arm64`。
 
 > 产物是 **ad-hoc 签名、未经公证** 的（没有付费 Apple 开发者账号，拿不到 Developer ID 与公证资格）。
 > 从浏览器下载的 `.app` 首次打开会被 Gatekeeper 拦下，属预期行为：右键 →「打开」→ 再点「打开」，
@@ -60,7 +69,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 > `xattr -dr com.apple.quarantine /Applications/日志查看器.app`。
 > 不放心可核对 Release 附带的 SHA256，或按下面的步骤从源码构建。
 
-Windows / Linux 目前只有 CI 构建检查，安装包与 `.desktop` 尚未提供（见[平台支持](#平台支持)）。也可以直接按下方源码构建。
+Windows / Linux 产物同样未做安装器与 `.desktop` 集成，功能与 macOS 版本一致（见[平台支持](#平台支持)）。也可以直接按下方源码构建。
 
 ## 快速开始
 
@@ -235,6 +244,10 @@ cargo run -- sample/app.log      # 运行并打开示例日志
 ```bash
 cargo build --release            # 裸二进制 target/release/logview
 ./scripts/make_app.sh            # (macOS)生成 日志查看器.app 并注册文件类型(版本号读 Cargo.toml)
+
+# 交叉构建另一种架构(产物同样在 target/日志查看器.app)
+TARGET=aarch64-apple-darwin ./scripts/make_app.sh   # Apple Silicon
+TARGET=x86_64-apple-darwin  ./scripts/make_app.sh   # Intel
 ```
 
 > 维护者本机的 `package.sh` 额外负责签名与体积校验,不入库;发布构建以 `scripts/make_app.sh` 为准。
@@ -277,8 +290,8 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 
 | 平台 | 状态 |
 |---|---|
-| macOS | 主要开发与验证平台;`.app` 打包与文件类型关联可用 |
-| Windows | 已纳入 CI 构建检查;交互与安装包未充分验证 |
+| macOS | 主要开发与验证平台;`.app` 打包与文件类型关联可用;Release 同时提供 arm64 与 x86_64 两个包 |
+| Windows | CI 构建与 Release 产物可用;交互与安装器未充分验证 |
 | Linux (X11 / Wayland) | 已纳入 CI 构建检查;`.desktop` / AppImage 打包待补 |
 
 Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.github/workflows/ci.yml`)。
