@@ -832,10 +832,15 @@ mod tests {
         let dir = std::env::temp_dir();
         let md = "![图](./no-such-file-xyz.png)\n![](https://example.com/a.png)\n```\n![x](./no-such.png)\n```\n";
         let out = stub_missing_images(md, &dir);
-        assert!(
-            out.contains("⚠ 图片缺失:./no-such-file-xyz.png(图)"),
-            "{out}"
+        // 提示文案跟随界面语言，用同一个 i18n 入口生成期望值，避免测试并行切换 locale 时误判
+        let expected = crate::i18n::tf(
+            "error.markdown.image_missing_alt",
+            &[
+                ("decoded", "./no-such-file-xyz.png".to_string()),
+                ("alt", "图".to_string()),
+            ],
         );
+        assert!(out.contains(&expected), "{out}");
         assert!(out.contains("https://example.com/a.png"), "{out}");
         assert_eq!(out.matches('⚠').count(), 1, "围栏内不应改写:{out}");
     }

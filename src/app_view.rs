@@ -51,7 +51,7 @@ use crate::theme::{self, Palette};
 
 /// 设置页分类数(外观 / 日志 / 分析配置 / 连接 / 快捷键 / 关于)
 /// 新增分类时:同步更新 page_titles、page_descs、侧栏导航与 groups_all 的页码
-const SETTINGS_PAGE_COUNT: usize = 6;
+const SETTINGS_PAGE_COUNT: usize = 7;
 
 /// 项目坐标:发布仓库、「关于」页链接与检查更新的唯一来源
 const REPO_URL: &str = "https://github.com/zher52/logview";
@@ -957,6 +957,15 @@ struct SettingsDialog {
     capture: Option<String>,
     /// 快捷键相关提示
     sc_notice: Option<String>,
+    // —— 命令预设管理 ——
+    /// 正在编辑的预设(None = 只浏览)
+    preset_edit: Option<PresetEdit>,
+    p_name: Entity<InputState>,
+    p_argv: Entity<TextareaState>,
+    p_local: bool,
+    p_ssh: bool,
+    p_err: Option<String>,
+    p_notice: Option<String>,
 }
 
 /// 已保存主机的编辑目标
@@ -965,6 +974,13 @@ enum HostEdit {
     /// 新增(未落盘)
     New,
     /// 编辑第 i 条
+    Existing(usize),
+}
+
+/// 命令预设的编辑目标
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PresetEdit {
+    New,
     Existing(usize),
 }
 
@@ -1990,6 +2006,13 @@ impl AppView {
             cfg_unlock: false,
             capture: None,
             sc_notice: None,
+            preset_edit: None,
+            p_name: mk(String::new(), window, cx),
+            p_argv: cx.new(|cx| TextareaState::new(window, cx).rows(6).soft_wrap(false)),
+            p_local: true,
+            p_ssh: true,
+            p_err: None,
+            p_notice: None,
         };
         for (i, p) in dlg.pick_dark.clone().iter().enumerate() {
             self.watch_picker(p, PickTarget::LevelDark(i), window, cx);
@@ -3227,6 +3250,150 @@ impl AppView {
                 Some(HostEdit::Existing(j)) if j > i => Some(HostEdit::Existing(j - 1)),
                 other => other,
             };
+        }
+        cx.notify();
+    }
+
+    // ---- 设置页:命令预设管理 ----
+
+    fn preset_begin_new(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(d) = self.settings_panel.as_mut() {
+            d.preset_edit = Some(PresetEdit::New);
+            d.p_err = None;
+            d.p_notice = None;
+            d.p_name
+                .update(cx, |s, cx| s.set_value(String::new(), window, cx));
+            d.p_argv
+                .update(cx, |s, cx| s.set_value(String::new(), window, cx));
+            d.p_local = true;
+            d.p_ssh = false;
+        }
+        cx.notify();
+    }
+
+    fn preset_begin_edit(&mut self, i: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(p) = self.settings.command_presets.get(i).cloned() else {
+            return;
+        };
+        // 内置预设只读,先「复制为自定义」再编辑
+        if p.builtin {
+            return;
+        }
+        if let Some(d) = self.settings_panel.as_mut() {
+            d.preset_edit = Some(PresetEdit::Existing(i));
+            d.p_err = None;
+            d.p_notice = None;
+            d.p_name.update(cx, |s, cx| s.set_value(p.name, window, cx));
+            d.p_argv.update(cx, |s, cx| {
+                s.set_value(crate::command::argv_to_text(&p.argv), window, cx)
+            });
+            d.p_local = p.local;
+            d.p_ssh = p.ssh;
+        }
+        cx.notify();
+    }
+
+    fn preset_edit_cancel(&mut self, cx: &mut Context<Self>) {
+        if let Some(d) = self.settings_panel.as_mut() {
+            d.preset_edit = None;
+            d.p_err = None;
+        }
+        cx.notify();
+    }
+
+    /// 保存当前编辑项:只改名称/argv/执行方式,字段与取值命令等高级项保持不变
+    fn preset_save(&mut self, cx: &mut Context<Self>) {
+        let Some((name, argv, local, ssh, edit)) = self.settings_panel.as_ref().map(|d| {
+            (
+                d.p_name.read(cx).value().trim().to_string(),
+                crate::command::argv_from_text(&d.p_argv.read(cx).value()),
+                d.p_local,
+                d.p_ssh,
+                d.preset_edit,
+            )
+        }) else {
+            return;
+        };
+        let existing = match edit {
+            Some(PresetEdit::Existing(i)) if i < self.settings.command_presets.len() => {
+                Some(self.settings.command_presets[i].clone())
+            }
+            _ => None,
+        };
+        let mut preset = existing.unwrap_or_else(|| crate::command::CommandPreset {
+            id: crate::command::next_custom_id(&self.settings.command_presets),
+            name: String::new(),
+            local: true,
+            ssh: false,
+            argv: Vec::new(),
+            fields: Vec::new(),
+            resolve: Vec::new(),
+            level_config_id: None,
+            builtin: false,
+        });
+        preset.name = name;
+        preset.argv = argv;
+        preset.local = local;
+        preset.ssh = ssh;
+        if let Err(e) = crate::command::validate(&preset) {
+            let msg = match e {
+                crate::command::PresetError::Name => i18n::t("presets.err.name"),
+                crate::command::PresetError::Argv => i18n::t("presets.err.argv"),
+                crate::command::PresetError::Scope => i18n::t("presets.err.scope"),
+            };
+            if let Some(d) = self.settings_panel.as_mut() {
+                d.p_err = Some(msg.to_string());
+            }
+            return;
+        }
+        match edit {
+            Some(PresetEdit::Existing(i)) if i < self.settings.command_presets.len() => {
+                self.settings.command_presets[i] = preset;
+            }
+            _ => self.settings.command_presets.push(preset),
+        }
+        crate::store::save(&self.settings);
+        if let Some(d) = self.settings_panel.as_mut() {
+            d.preset_edit = None;
+            d.p_err = None;
+            d.p_notice = Some(i18n::t("presets.notice.saved").to_string());
+        }
+        cx.notify();
+    }
+
+    fn preset_delete(&mut self, i: usize, cx: &mut Context<Self>) {
+        let Some(p) = self.settings.command_presets.get(i) else {
+            return;
+        };
+        if p.builtin {
+            return;
+        }
+        self.settings.command_presets.remove(i);
+        crate::store::save(&self.settings);
+        if let Some(d) = self.settings_panel.as_mut() {
+            d.preset_edit = match d.preset_edit {
+                Some(PresetEdit::Existing(j)) if j == i => None,
+                Some(PresetEdit::Existing(j)) if j > i => Some(PresetEdit::Existing(j - 1)),
+                other => other,
+            };
+            d.p_notice = Some(i18n::t("presets.notice.deleted").to_string());
+        }
+        cx.notify();
+    }
+
+    /// 内置预设不能直接改:复制成自定义项(id 重新生成)
+    fn preset_duplicate(&mut self, i: usize, cx: &mut Context<Self>) {
+        let Some(src) = self.settings.command_presets.get(i).cloned() else {
+            return;
+        };
+        let mut copy = src;
+        copy.id = crate::command::next_custom_id(&self.settings.command_presets);
+        copy.name = format!("{}{}", i18n::td(&copy.name), i18n::t("presets.copy_suffix"));
+        copy.builtin = false;
+        self.settings.command_presets.push(copy);
+        crate::store::save(&self.settings);
+        if let Some(d) = self.settings_panel.as_mut() {
+            d.p_notice = Some(i18n::t("presets.notice.copied").to_string());
         }
         cx.notify();
     }
@@ -6564,6 +6731,7 @@ impl AppView {
             i18n::t("common.connect"),
             i18n::t("settings.group.shortcuts"),
             i18n::t("settings.group.about"),
+            i18n::t("settings.group.presets"),
         ];
         let page_descs = [
             i18n::t("settings.section.appearance.desc"),
@@ -6572,6 +6740,7 @@ impl AppView {
             i18n::t("settings.section.connections.desc"),
             i18n::t("settings.section.shortcuts.desc"),
             i18n::t("settings.section.about.desc"),
+            i18n::t("settings.section.presets.desc"),
         ];
 
         let mut matched = 0usize;
@@ -6598,8 +6767,242 @@ impl AppView {
             groups.push(settings_group(title, action, rows, pal));
         }
 
+        // —— 命令预设:图形化编辑(名称 / argv / 执行方式;字段与取值命令等高级项仍在 settings.json) ——
+        let presets = settings.command_presets.clone();
+        let preset_edit_sel = d.preset_edit;
+        let (p_err, p_notice) = (d.p_err.clone(), d.p_notice.clone());
+        let (pn_e, pa_e) = (d.p_name.clone(), d.p_argv.clone());
+        let (p_local, p_ssh) = (d.p_local, d.p_ssh);
+        let mut preset_rows: Vec<AnyElement> = Vec::new();
+        if presets.is_empty() {
+            preset_rows.push(
+                div()
+                    .px(px(16.0))
+                    .py(px(12.0))
+                    .text_size(px(theme::scaled(12.0)))
+                    .text_color(theme::hex(pal.text3))
+                    .child(i18n::t("presets.empty"))
+                    .into_any_element(),
+            );
+        }
+        for (i, p) in presets.iter().enumerate() {
+            let scope = match (p.local, p.ssh) {
+                (true, true) => i18n::t("presets.scope.both"),
+                (true, false) => i18n::t("presets.scope.local"),
+                (false, true) => i18n::t("presets.scope.ssh"),
+                (false, false) => i18n::t("presets.scope.none"),
+            };
+            let title = if p.builtin {
+                format!("{}  ·  {}", i18n::td(&p.name), i18n::t("presets.builtin"))
+            } else {
+                i18n::td(&p.name).to_string()
+            };
+            let mut row = div()
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .px(px(16.0))
+                .py(px(9.0))
+                .border_b_1()
+                .border_color(theme::hex(pal.split))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w(px(0.0))
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.0))
+                        .child(
+                            div()
+                                .text_size(px(theme::scaled(12.5)))
+                                .text_color(theme::hex(pal.text1))
+                                .child(title),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(theme::scaled(11.0)))
+                                .text_color(theme::hex(pal.text3))
+                                .child(format!("{} · {}", scope, crate::command::display(&p.argv))),
+                        ),
+                );
+            if p.builtin {
+                row = row.child(
+                    host_btn(
+                        SharedString::from(format!("preset-copy-{i}")),
+                        i18n::t("presets.duplicate"),
+                        false,
+                        pal,
+                    )
+                    .on_click(cx.listener(move |v, _e, _w, cx| v.preset_duplicate(i, cx))),
+                );
+            } else {
+                row = row
+                    .child(
+                        host_btn(
+                            SharedString::from(format!("preset-edit-{i}")),
+                            i18n::t("presets.edit"),
+                            false,
+                            pal,
+                        )
+                        .on_click(cx.listener(move |v, _e, w, cx| v.preset_begin_edit(i, w, cx))),
+                    )
+                    .child(
+                        host_btn(
+                            SharedString::from(format!("preset-del-{i}")),
+                            i18n::t("presets.delete"),
+                            false,
+                            pal,
+                        )
+                        .on_click(cx.listener(move |v, _e, _w, cx| v.preset_delete(i, cx))),
+                    );
+            }
+            preset_rows.push(row.into_any_element());
+        }
+        if let Some(ed) = preset_edit_sel {
+            let mut ed_box = div()
+                .flex()
+                .flex_col()
+                .gap(px(8.0))
+                .px(px(16.0))
+                .py(px(12.0))
+                .bg(theme::hex(pal.fill))
+                .child(
+                    div()
+                        .text_size(px(theme::scaled(12.0)))
+                        .font_weight(gpui_kit::FontWeight::SEMIBOLD)
+                        .text_color(theme::hex(pal.text2))
+                        .child(if ed == PresetEdit::New {
+                            i18n::t("presets.editing_new")
+                        } else {
+                            i18n::t("presets.editing")
+                        }),
+                )
+                .child(settings_row(
+                    pal,
+                    i18n::t("presets.name"),
+                    None,
+                    text_input(&pn_e, 220.0),
+                ))
+                .child(settings_row(
+                    pal,
+                    i18n::t("presets.argv"),
+                    Some(i18n::t("presets.argv.desc").into()),
+                    div()
+                        .w(px(360.0))
+                        .child(Textarea::new(&pa_e).small().w_full())
+                        .into_any_element(),
+                ))
+                .child(settings_row(
+                    pal,
+                    i18n::t("presets.local"),
+                    None,
+                    switch_el("preset-local", p_local, pal)
+                        .on_click(cx.listener(|v, _e, _w, cx| {
+                            if let Some(d) = v.settings_panel.as_mut() {
+                                d.p_local = !d.p_local;
+                            }
+                            cx.notify();
+                        }))
+                        .into_any_element(),
+                ))
+                .child(settings_row(
+                    pal,
+                    i18n::t("presets.ssh"),
+                    None,
+                    switch_el("preset-ssh", p_ssh, pal)
+                        .on_click(cx.listener(|v, _e, _w, cx| {
+                            if let Some(d) = v.settings_panel.as_mut() {
+                                d.p_ssh = !d.p_ssh;
+                            }
+                            cx.notify();
+                        }))
+                        .into_any_element(),
+                ));
+            if let Some(e) = p_err {
+                ed_box = ed_box.child(
+                    div()
+                        .text_size(px(theme::scaled(11.5)))
+                        .text_color(theme::hex(pal.error))
+                        .child(e),
+                );
+            }
+            preset_rows.push(
+                ed_box
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(8.0))
+                            .child(
+                                host_btn("preset-save".into(), i18n::t("common.save"), true, pal)
+                                    .on_click(cx.listener(|v, _e, _w, cx| v.preset_save(cx))),
+                            )
+                            .child(
+                                host_btn(
+                                    "preset-cancel".into(),
+                                    i18n::t("common.cancel"),
+                                    false,
+                                    pal,
+                                )
+                                .on_click(cx.listener(|v, _e, _w, cx| v.preset_edit_cancel(cx))),
+                            ),
+                    )
+                    .into_any_element(),
+            );
+        }
+        if let Some(n) = p_notice {
+            preset_rows.push(
+                div()
+                    .px(px(16.0))
+                    .py(px(8.0))
+                    .text_size(px(theme::scaled(11.5)))
+                    .text_color(theme::hex(pal.text2))
+                    .child(n)
+                    .into_any_element(),
+            );
+        }
+        let preset_page: AnyElement = div()
+            .id("settings-presets")
+            .flex_1()
+            .min_h(px(0.0))
+            .flex()
+            .flex_col()
+            .gap(px(12.0))
+            .px(px(24.0))
+            .py(px(16.0))
+            .overflow_y_scroll()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .child(
+                        div()
+                            .text_size(px(theme::scaled(12.0)))
+                            .text_color(theme::hex(pal.text2))
+                            .child(i18n::t("presets.hint")),
+                    )
+                    .child(
+                        host_btn("preset-add".into(), i18n::t("presets.add"), true, pal)
+                            .on_click(cx.listener(|v, _e, w, cx| v.preset_begin_new(w, cx))),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .rounded(px(8.0))
+                    .border_1()
+                    .border_color(theme::hex(pal.border))
+                    .bg(theme::hex(pal.bg_bar))
+                    .overflow_hidden()
+                    .children(preset_rows),
+            )
+            .into_any_element();
+
         let body: AnyElement = if tab_sel == 2 && !searching {
             config_page
+        } else if tab_sel == 6 && !searching {
+            preset_page
         } else {
             let mut scroll = div()
                 .id("settings-scroll")
@@ -6749,6 +7152,7 @@ impl AppView {
             i18n::t("common.connect"),
             i18n::t("settings.group.shortcuts"),
             i18n::t("settings.group.about"),
+            i18n::t("settings.group.presets"),
         ]
         .iter()
         .enumerate()
