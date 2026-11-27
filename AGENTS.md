@@ -31,7 +31,7 @@
 ```bash
 cargo build                      # 调试构建(依赖按 opt-level=2 编译)
 cargo run -- sample/app.log      # 打开示例日志
-cargo test --locked              # 88 项单元测试
+cargo test --locked              # 92 项单元测试
 cargo fmt --all                  # CI 会检查
 cargo clippy --all-targets --locked
 

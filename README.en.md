@@ -17,6 +17,10 @@ Chrome DevTools console. The interface supports **Chinese, English and Russian**
   remote SSH `exec`, with stdout/stderr merged into the tab).
 - **Level detection** — regex-based profiles (5 built-ins + unlimited custom profiles, import/export as JSON),
   per-level coloring and filter chips with live counts.
+- **Multi-line records** — unlevelled continuation lines (stack traces etc.) can inherit the previous
+  level for colouring and filtering; runs between two levelled lines fold to the first N lines by default
+  (default 3), with a “…” suffix and an inline chevron on the preceding row. Clicking the chevron toggles
+  the group; clicking the log row keeps the normal selection behaviour.
 - **Search** — highlight or filter mode, plain text or regex, case sensitivity, match counter and jump.
 - **Auto-follow** — per-tab worker polls for appended data, sticky-to-bottom with "N new lines" button,
   rotation/truncation detection.
@@ -223,7 +227,7 @@ Tail worker thread per tab (poll size → incremental reads, 1 MB chunks, ≤8 M
 ```bash
 cargo build                      # debug build (dependencies at opt-level=2)
 cargo clippy --all-targets       # lint (kept warning-free)
-cargo test --locked              # unit tests (71)
+cargo test --locked              # unit tests (92)
 cargo run -- sample/app.log      # run with the sample log
 ```
 
