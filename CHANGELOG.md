@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-28
+
 ### Added
 
 - Linux 打包与桌面集成:新增 `scripts/make_linux.sh`,产出便携包(可执行文件 + `.desktop` + 256×256 图标 + `install.sh`)与可选 AppImage;`.desktop` 声明 `Exec=logview %f` 与常见日志 MIME 类型,安装后文件管理器「打开方式」直接可用;Release 新增 Linux 打包任务,同时上传 tar.gz 与 AppImage。

@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-**日志查看器（Log Viewer / Просмотр журналов）0.4.1**：Rust + GPUI 自绘 UI 的原生桌面日志查看器（**无 WebView**），交互参考 Chrome DevTools 控制台。
+**日志查看器（Log Viewer / Просмотр журналов）0.5.0**：Rust + GPUI 自绘 UI 的原生桌面日志查看器（**无 WebView**），交互参考 Chrome DevTools 控制台。
 
 - **四种日志源**
   - 本地文件：stat 轮询 + `seek` 增量读
@@ -31,7 +31,7 @@
 ```bash
 cargo build                      # 调试构建(依赖按 opt-level=2 编译)
 cargo run -- sample/app.log      # 打开示例日志
-cargo test --locked              # 100 项单元测试
+cargo test --locked              # 100 项单元测试 + 2 项 Linux 打包校验
 cargo fmt --all                  # CI 会检查
 cargo clippy --all-targets --locked
 
