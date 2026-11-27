@@ -18,7 +18,7 @@
     <MajorUpgrade DowngradeErrorMessage="已安装更高版本的日志查看器,请先卸载后再安装。" />
     <MediaTemplate EmbedCab="yes" />
 
-    <Icon Id="AppIcon" SourceFile="assets\windows\logview.ico" />
+    <Icon Id="AppIcon" SourceFile="$(var.SourceDir)\assets\windows\logview.ico" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
     <Property Id="ARPHELPLINK" Value="https://github.com/zher52/logview" />
     <Property Id="ARPNOMODIFY" Value="1" />
@@ -34,7 +34,7 @@
 
     <DirectoryRef Id="INSTALLFOLDER">
       <Component Id="MainExecutable" Guid="3C2A6E5B-9D14-4F7A-8B21-6E5D4C3A2F10" Win64="yes">
-        <File Id="LogviewExe" Source="target\release\logview.exe" KeyPath="yes" />
+        <File Id="LogviewExe" Source="$(var.SourceDir)\target\release\logview.exe" KeyPath="yes" />
         <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
       </Component>
 
