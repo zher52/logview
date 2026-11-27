@@ -679,3 +679,13 @@
 "about.oss.full" = "完整声明"
 "about.oss.full.desc" = "含传递依赖、图标素材与许可兼容性说明"
 "about.repo.tip" = "在 GitHub 打开仓库"
+
+# ---- fold (多行记录折叠) ----
+"fold.expand" = "展开 {n} 行"
+"fold.collapse" = "收起 {n} 行"
+"settings.follow_prev_level" = "无级别跟随上一条已知级别"
+"settings.follow_prev_level.desc" = "无级别行(异常堆栈等多行输出的续行)沿用上一条有级别行的级别,参与着色与筛选"
+"settings.fold_multiline" = "多行记录默认折叠展示"
+"settings.fold_multiline.desc" = "控制两条有级别行之间无级别续行的初始状态;开启时默认收起,关闭时默认展开,行首图标可随时切换"
+"settings.fold_lines" = "多行记录折叠行数"
+"settings.fold_lines.desc" = "折叠前保留的行数(1–99,默认 3);超过时显示前 N 行与 …"

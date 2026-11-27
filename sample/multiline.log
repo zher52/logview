@@ -1,0 +1,48 @@
+local test log for logview multi-line / folding checks
+  (lines before the first levelled line stay unlevelled)
+
+2026-11-27 09:00:00.001 INFO  app starting pid=4821
+  config loaded from /etc/app/config.yaml
+  listening on 0.0.0.0:8080
+
+2026-11-27 09:00:01.120 WARN  cache miss user=42
+  key=user:42:profile ttl=0
+  fallback=db
+  attempt=2
+
+2026-11-27 09:00:02.300 ERROR request failed id=7f3a
+java.lang.IllegalStateException: database is locked
+    at com.example.repo.UserRepository.find(UserRepository.java:88)
+    at com.example.service.UserService.load(UserService.java:41)
+    at com.example.web.UserController.get(UserController.java:27)
+    at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.sql.SQLException: timeout after 3000ms
+    ... 12 more
+
+2026-11-27 09:00:03.010 DEBUG retry scheduled attempt=1 delay=500ms
+2026-11-27 09:00:03.520 INFO  retry succeeded id=7f3a
+
+2026-11-27 09:00:04.000 ERROR bulk import failed
+  batch=2026-11-27.csv
+  rows=1200
+  first failure at row 37: invalid utf8 sequence
+  action: skipped batch, continuing
+
+2026-11-27 09:00:04.500 WARN  slow query elapsed=1520ms
+  sql=select id, name, status from orders where created_at > now() - interval '1 day' order by created_at desc
+  plan=seq scan on orders (cost=0.00..18234.55 rows=1200 width=64)
+
+2026-11-27 09:00:05.000 TRACE entering handler /healthz
+2026-11-27 09:00:05.001 TRACE leaving handler /healthz status=200
+{"ts":"2026-11-27T09:00:05.500Z","level":"ERROR","msg":"structured failure","code":500}
+
+2026-11-27 09:00:06.000 FATAL worker pool exhausted
+  workers=8 busy=8 queue=214
+  last task=import:2026-11-27
+  pid=4821
+  signal=TERM
+  recovered=false
+
+2026-11-27 09:00:07.000 INFO  shutdown requested
+  flushing queue depth=0
+  closing db pool

@@ -679,3 +679,13 @@
 "about.oss.full" = "Full notices"
 "about.oss.full.desc" = "Transitive dependencies, icon assets and license compatibility"
 "about.repo.tip" = "Open the repository on GitHub"
+
+# ---- fold ----
+"fold.expand" = "Expand {n} lines"
+"fold.collapse" = "Collapse {n} lines"
+"settings.follow_prev_level" = "Unlevelled lines follow the previous level"
+"settings.follow_prev_level.desc" = "Lines without a level (continuations of stack traces and other multi-line output) inherit the previous levelled line's level for colouring and filtering"
+"settings.fold_multiline" = "Fold multi-line records by default"
+"settings.fold_multiline.desc" = "Initial state for unlevelled continuations between two levelled lines: collapsed when on, expanded when off; the inline icon toggles either way"
+"settings.fold_lines" = "Multi-line fold line count"
+"settings.fold_lines.desc" = "Lines kept before folding (1–99, default 3); longer runs show the first N lines and …"

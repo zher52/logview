@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use gpui_kit::base::input::{Editor, EditorState, InputHighlighter, InputHighlighterFactory};
 use gpui_kit::base::ElementExt as _;
@@ -78,6 +78,25 @@ enum UpdateState {
     Failed(String),
 }
 
+/// 虚拟列表中的一行:日志行 + 可选的折叠图标
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct Row {
+    /// 日志行在 `LineStore.lines` 中的下标
+    line: u32,
+    /// 折叠标记只挂在「折叠内容前一行」,图标点按切换,行本身保持原有点击行为
+    fold: Option<FoldMark>,
+}
+
+/// 一条多行记录的折叠状态(图标显示在折叠内容前一行)
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct FoldMark {
+    /// 折叠组首行(用于记忆展开状态)
+    start: u32,
+    /// 折叠时隐藏的续行数
+    hidden: u32,
+    expanded: bool,
+}
+
 /// 单个日志标签:worker 通道 + 行存储 + 检索/过滤状态 + 视图管线
 pub struct Tab {
     id: u64,
@@ -110,6 +129,17 @@ pub struct Tab {
     known_ids: Vec<String>,
     /// 自动换行(标签页独立,初始值来自设置)
     wrap: bool,
+    /// 无级别行跟随上一条已知级别(显示/筛选/计数改用 `Line.inherit`)
+    follow_level: bool,
+    /// 多行记录默认折叠(仅决定折叠组初始状态;跟随开启时始终显示折叠图标)
+    fold_default: bool,
+    /// 折叠前保留的行数
+    fold_lines: usize,
+    /// 虚拟列表行;`rows_dirty` 时在消息处理末尾重建
+    rows: Vec<Row>,
+    rows_dirty: bool,
+    /// 用户手动切换过的折叠组:组首行 → 是否展开(缺省取 `fold_default` 的反值)
+    fold_state: HashMap<u32, bool>,
     /// 自动换行时的行高缓存(与 store.lines 一一对应)
     heights: Vec<f32>,
     /// heights 对应的可用文本宽度
@@ -260,6 +290,12 @@ impl Tab {
             enabled_ids,
             known_ids: Self::all_config_ids(settings),
             wrap: settings.wrap,
+            follow_level: settings.follow_prev_level,
+            fold_default: settings.fold_multiline,
+            fold_lines: settings.fold_lines,
+            rows: Vec::new(),
+            rows_dirty: false,
+            fold_state: HashMap::new(),
             heights: Vec::new(),
             heights_w: 0.0,
             hidden: [false; LEVEL_COUNT],
@@ -310,6 +346,12 @@ impl Tab {
             enabled_ids,
             known_ids: Self::all_config_ids(settings),
             wrap: settings.wrap,
+            follow_level: settings.follow_prev_level,
+            fold_default: settings.fold_multiline,
+            fold_lines: settings.fold_lines,
+            rows: Vec::new(),
+            rows_dirty: false,
+            fold_state: HashMap::new(),
             heights: Vec::new(),
             heights_w: 0.0,
             hidden: [false; LEVEL_COUNT],
@@ -429,11 +471,110 @@ impl Tab {
         self.view.clear();
         self.view.reserve(self.store.lines.len());
         for (i, line) in self.store.lines.iter().enumerate() {
-            if self.passes(line.level, &line.text) {
+            if self.passes(self.display_level(line), &line.text) {
                 self.view.push(i as u32);
             }
         }
+        self.rebuild_rows();
         self.view_gen = self.view_gen.wrapping_add(1);
+    }
+
+    /// 行在界面上的级别:开启跟随时无级别行沿用上一条已知级别
+    fn display_level(&self, line: &crate::lines::Line) -> u8 {
+        if self.follow_level {
+            line.inherit
+        } else {
+            line.level
+        }
+    }
+
+    /// 级别 chips 的计数口径与显示一致
+    fn counts(&self) -> [u64; 7] {
+        if self.follow_level {
+            self.store.follow_counts
+        } else {
+            self.store.counts
+        }
+    }
+
+    /// 多行记录折叠只依赖「跟随上一条已知级别」;默认状态由设置决定
+    fn folding(&self) -> bool {
+        self.follow_level
+    }
+
+    fn group_expanded(&self, start: u32) -> bool {
+        self.fold_state
+            .get(&start)
+            .copied()
+            .unwrap_or(!self.fold_default)
+    }
+
+    /// 由可见行构造虚拟列表行;多行记录(两条有级别行之间的连续无级别行)
+    /// 超过保留行数时,把折叠图标挂在其前一行的行首
+    fn rebuild_rows(&mut self) {
+        let levels = &self.store.lines;
+        let rows = build_rows(
+            &self.view,
+            |i| levels[i as usize].level,
+            |i| levels[i as usize].inherit,
+            self.folding(),
+            self.fold_default,
+            self.fold_lines,
+            &self.fold_state,
+        );
+        self.rows = rows;
+        self.rows_dirty = false;
+    }
+
+    /// 设置变更后同步展示参数;跟随时会改变级别口径,需要重建可见行
+    fn apply_display_settings(&mut self, follow: bool, fold_default: bool, fold_lines: usize) {
+        if self.follow_level == follow
+            && self.fold_default == fold_default
+            && self.fold_lines == fold_lines
+        {
+            return;
+        }
+        let level_changed = self.follow_level != follow;
+        self.follow_level = follow;
+        self.fold_default = fold_default;
+        self.fold_lines = fold_lines;
+        // 默认状态/保留行数变化后,让所有折叠组回到新的默认值
+        self.fold_state.clear();
+        self.heights.clear();
+        self.heights_w = 0.0;
+        if level_changed {
+            self.rebuild_view();
+        } else {
+            self.rebuild_rows();
+            self.view_gen = self.view_gen.wrapping_add(1);
+        }
+    }
+
+    /// 某日志行在虚拟列表中的位置;被折叠隐藏时先展开所在组再定位
+    fn row_index(&mut self, real: u32) -> Option<usize> {
+        if let Some(p) = self.rows.iter().position(|r| r.line == real) {
+            return Some(p);
+        }
+        if !self.folding() || self.store.lines.get(real as usize)?.level != crate::level::NONE {
+            return None;
+        }
+        let vi = self.view.iter().position(|&l| l == real)?;
+        let mut first = vi;
+        while first > 0
+            && self.store.lines[self.view[first - 1] as usize].level == crate::level::NONE
+        {
+            first -= 1;
+        }
+        if first == vi {
+            return None;
+        }
+        let start = self.view[first];
+        if self.group_expanded(start) {
+            return None;
+        }
+        self.fold_state.insert(start, true);
+        self.rebuild_rows();
+        self.rows.iter().position(|r| r.line == real)
     }
 
     /// 行是否可见:分隔行恒显;隐藏级别与过滤模式叠加
@@ -496,6 +637,69 @@ impl Tab {
             self.view_gen = self.view_gen.wrapping_add(1);
         }
     }
+}
+
+/// 由可见行构造虚拟列表行。
+///
+/// 连续的无级别行视为一条多行记录(异常堆栈等),其范围天然被有级别的行或分隔行截断;
+/// 超过 `limit` 行时,只保留前 `limit` 行,并把折叠图标挂到第 `limit` 行的行首。
+/// 展开态继续输出剩余行,图标仍停在同一行(改为展开箭头),点击可再次收起。
+/// 没有前序级别的无级别行不折叠。
+fn build_rows(
+    view: &[u32],
+    raw_level: impl Fn(u32) -> u8,
+    inherit_level: impl Fn(u32) -> u8,
+    fold: bool,
+    fold_default: bool,
+    limit: usize,
+    state: &HashMap<u32, bool>,
+) -> Vec<Row> {
+    let mut out = Vec::with_capacity(view.len());
+    let mut push = |line: u32, fold: Option<FoldMark>| out.push(Row { line, fold });
+    if !fold {
+        for &line in view {
+            push(line, None);
+        }
+        return out;
+    }
+    let limit = limit.max(1);
+    let mut i = 0usize;
+    while i < view.len() {
+        let li = view[i];
+        if raw_level(li) != crate::level::NONE {
+            push(li, None);
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < view.len() && raw_level(view[i]) == crate::level::NONE {
+            i += 1;
+        }
+        let count = i - start;
+        // 没有上一条已知级别可跟随(文件开头)时不折叠
+        if count <= limit || inherit_level(view[start]) == crate::level::NONE {
+            for &line in &view[start..i] {
+                push(line, None);
+            }
+            continue;
+        }
+        let expanded = state.get(&view[start]).copied().unwrap_or(!fold_default);
+        let mark = FoldMark {
+            start: view[start],
+            hidden: (count - limit) as u32,
+            expanded,
+        };
+        for (n, &line) in view[start..start + limit].iter().enumerate() {
+            // 图标显示在折叠内容前一行(保留前缀的最后一行)
+            push(line, if n + 1 == limit { Some(mark) } else { None });
+        }
+        if expanded {
+            for &line in &view[start + limit..i] {
+                push(line, None);
+            }
+        }
+    }
+    out
 }
 
 // ---- 对话框状态 ----
@@ -713,6 +917,8 @@ struct SettingsDialog {
     tail_mb: Entity<InputState>,
     /// 最近打开保存条数
     recents_limit: Entity<InputState>,
+    /// 多行记录折叠行数
+    fold_lines: Entity<InputState>,
     // 字形:界面/日志字号 + 字体族(空 = 系统默认)
     ui_font_size: Entity<InputState>,
     log_font_size: Entity<InputState>,
@@ -783,6 +989,8 @@ enum SetField {
     RuleText,
     /// 最近打开保存条数
     RecentsLimit,
+    /// 多行记录折叠行数
+    FoldLines,
 }
 
 /// 虚拟列表行尺寸缓存
@@ -813,6 +1021,9 @@ const MEASURE_CHUNK: usize = 800;
 
 /// 「显示时间戳」列宽(px):13pt 等宽下 "HH:MM:SS.mmm" 留足余量
 const TS_W: f32 = 100.0;
+
+/// 折叠图标列宽(px):开启「跟随上一条级别」时所有行统一预留,避免文本左右跳
+const FOLD_W: f32 = 16.0;
 
 fn is_hex_color(s: &str) -> bool {
     let t = s.trim().trim_start_matches('#');
@@ -1676,6 +1887,7 @@ impl AppView {
             initial_mb: mk(s.initial_mb.to_string(), window, cx),
             tail_mb: mk(s.tail_mb.to_string(), window, cx),
             recents_limit: mk(s.recents_limit.to_string(), window, cx),
+            fold_lines: mk(s.fold_lines.to_string(), window, cx),
             ui_font_size: mk(format_size(s.ui_font_size), window, cx),
             log_font_size: mk(format_size(s.log_font_size), window, cx),
             ui_font_family: mk(s.ui_font_family.clone(), window, cx),
@@ -1726,6 +1938,7 @@ impl AppView {
         self.watch_set_field(&dlg.initial_mb, SetField::InitialMb, cx);
         self.watch_set_field(&dlg.tail_mb, SetField::TailMb, cx);
         self.watch_set_field(&dlg.recents_limit, SetField::RecentsLimit, cx);
+        self.watch_set_field(&dlg.fold_lines, SetField::FoldLines, cx);
         self.watch_set_field(&dlg.ui_font_size, SetField::UiFontSize, cx);
         self.watch_set_field(&dlg.log_font_size, SetField::LogFontSize, cx);
         self.watch_set_field(&dlg.ui_font_family, SetField::FontFamily, cx);
@@ -1838,6 +2051,7 @@ impl AppView {
         self.settings.initial_mb = self.settings.initial_mb.clamp(1, 512);
         self.settings.tail_mb = self.settings.tail_mb.clamp(1, 512);
         self.settings.recents_limit = self.settings.recents_limit.clamp(1, 500);
+        self.settings.fold_lines = self.settings.fold_lines.clamp(1, 99);
         self.settings.ui_font_size = self
             .settings
             .ui_font_size
@@ -1857,8 +2071,14 @@ impl AppView {
             }
         }
         self.schedule_save(cx);
+        let (follow, fold_default, fold_lines) = (
+            self.settings.follow_prev_level,
+            self.settings.fold_multiline,
+            self.settings.fold_lines,
+        );
         for tab in &mut self.tabs {
             tab.store.max_lines = self.settings.max_lines;
+            tab.apply_display_settings(follow, fold_default, fold_lines);
             if configs_changed {
                 tab.reconcile_configs(&self.settings.configs);
             }
@@ -1946,9 +2166,11 @@ impl AppView {
                 read(&d.ui_font_family),
                 read(&d.log_font_family),
                 read(&d.recents_limit),
+                read(&d.fold_lines),
             )
         };
-        let (poll, max, initial, tail, ui_size, log_size, ui_fam, log_fam, recents_n) = vals;
+        let (poll, max, initial, tail, ui_size, log_size, ui_fam, log_fam, recents_n, fold_n) =
+            vals;
         match field {
             SetField::PollMs => {
                 if let Ok(v) = poll.parse::<u64>() {
@@ -2002,6 +2224,11 @@ impl AppView {
                     // 调小时立即生效:丢掉超出条数的旧记录(不清凭据)
                     let limit = self.settings.recents_limit;
                     self.settings.recents.truncate(limit);
+                }
+            }
+            SetField::FoldLines => {
+                if let Ok(v) = fold_n.parse::<usize>() {
+                    self.settings.fold_lines = v.clamp(1, 99);
                 }
             }
         }
@@ -4701,6 +4928,9 @@ impl AppView {
         let show_ln = settings.show_line_numbers;
         let show_ts = settings.show_timestamps;
         let wrap_default = settings.wrap;
+        let follow_level = settings.follow_prev_level;
+        let fold_multi = settings.fold_multiline;
+        let fold_n_e = d.fold_lines.clone();
         let configs: Vec<(String, bool, bool, usize)> = settings
             .configs
             .iter()
@@ -5149,6 +5379,55 @@ impl AppView {
                 Some(i18n::t("settings.wrap_default.desc").into()),
                 switch_el("set-wrap", wrap_default, pal)
                     .on_click(cx.listener(|v, _e, _w, cx| v.toggle_wrap_default(cx)))
+                    .into_any_element(),
+            ),
+        ));
+        appearance.push((
+            "无级别跟随上一条已知级别 多行 异常 堆栈 inherit level".into(),
+            settings_row(
+                pal,
+                i18n::t("settings.follow_prev_level"),
+                Some(i18n::t("settings.follow_prev_level.desc").into()),
+                switch_el("set-follow-level", follow_level, pal)
+                    .on_click(cx.listener(|v, _e, _w, cx| v.toggle_follow_prev_level(cx)))
+                    .into_any_element(),
+            ),
+        ));
+        // 折叠两项依赖「跟随上一条已知级别」;关闭时置灰并禁用输入
+        let fold_ctl = if follow_level {
+            switch_el("set-fold-multiline", fold_multi, pal)
+                .on_click(cx.listener(|v, _e, _w, cx| v.toggle_fold_multiline(cx)))
+                .into_any_element()
+        } else {
+            div()
+                .opacity(0.45)
+                .child(switch_el("set-fold-multiline", fold_multi, pal))
+                .into_any_element()
+        };
+        appearance.push((
+            "多行记录折叠 默认折叠 多行 collapse".into(),
+            settings_row(
+                pal,
+                i18n::t("settings.fold_multiline"),
+                Some(i18n::t("settings.fold_multiline.desc").into()),
+                fold_ctl,
+            ),
+        ));
+        appearance.push((
+            "多行记录折叠行数 折叠行数 保留行数 lines".into(),
+            settings_row(
+                pal,
+                i18n::t("settings.fold_lines"),
+                Some(i18n::t("settings.fold_lines.desc").into()),
+                div()
+                    .opacity(if follow_level { 1.0 } else { 0.45 })
+                    .child(num_input_ex(
+                        &fold_n_e,
+                        96.0,
+                        i18n::t("unit.lines"),
+                        pal,
+                        !follow_level,
+                    ))
                     .into_any_element(),
             ),
         ));
@@ -6542,6 +6821,31 @@ impl AppView {
         self.settings_apply(false, cx);
     }
 
+    /// 无级别行跟随上一条已知级别:立即重算可见行与计数口径
+    fn toggle_follow_prev_level(&mut self, cx: &mut Context<Self>) {
+        self.settings.follow_prev_level = !self.settings.follow_prev_level;
+        self.settings_apply(false, cx);
+    }
+
+    /// 多行记录默认折叠(依赖跟随设置):只切换折叠组的初始状态,单组手动状态随之重置
+    fn toggle_fold_multiline(&mut self, cx: &mut Context<Self>) {
+        self.settings.fold_multiline = !self.settings.fold_multiline;
+        self.settings_apply(false, cx);
+    }
+
+    /// 展开/收起一条多行记录(只由行首图标触发,行点击不受影响)
+    fn toggle_fold(&mut self, start: u32, cx: &mut Context<Self>) {
+        let Some(t) = self.active_tab_mut() else {
+            return;
+        };
+        let expanded = !t.group_expanded(start);
+        t.fold_state.insert(start, expanded);
+        t.rebuild_rows();
+        t.view_gen = t.view_gen.wrapping_add(1);
+        self.rows_cache.invalidate();
+        cx.notify();
+    }
+
     fn set_filter_mode(&mut self, on: bool) {
         if let Some(t) = self.active_tab_mut() {
             if t.filter_mode != on {
@@ -6678,7 +6982,8 @@ impl AppView {
                         let new_total = tab.store.len();
                         grew += new_total.saturating_sub(len_before);
                         if tab.store.dropped != dropped_before {
-                            // 环形丢弃后索引整体前移,全量重建
+                            // 环形丢弃后索引整体前移,全量重建(折叠组按旧下标失效)
+                            tab.fold_state.clear();
                             tab.rebuild_matched();
                             tab.rebuild_view();
                         } else {
@@ -6686,13 +6991,22 @@ impl AppView {
                             let matcher = tab.matcher.clone();
                             for i in len_before..new_total {
                                 let line = &tab.store.lines[i];
-                                if let Some(m) = &matcher {
-                                    if m.matches(&line.text) {
-                                        tab.matched.push(i as u32);
-                                    }
+                                let hit = matcher.as_ref().is_some_and(|m| m.matches(&line.text));
+                                let visible = tab.passes(tab.display_level(line), &line.text);
+                                if hit {
+                                    tab.matched.push(i as u32);
                                 }
-                                if tab.passes(line.level, &line.text) {
+                                if visible {
                                     tab.view.push(i as u32);
+                                    if tab.folding() {
+                                        // 末组可能被延长,消息处理完后统一重建
+                                        tab.rows_dirty = true;
+                                    } else {
+                                        tab.rows.push(Row {
+                                            line: i as u32,
+                                            fold: None,
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -6702,6 +7016,8 @@ impl AppView {
                         tab.store.set_total(size);
                         tab.err = None;
                         tab.pending_new = 0;
+                        // 行下标整体更换,折叠组不再有对应位置
+                        tab.fold_state.clear();
                         // 跳尾请求的响应:显示「已跳至末尾」banner;其他 Replace 清除旧 banner
                         if tab.pending_tail_banner {
                             tab.tail_banner = Some((offset, size));
@@ -6763,6 +7079,10 @@ impl AppView {
                 }
             }
             let tab = &mut self.tabs[ti];
+            // 折叠组可能因新行加入而延长:本帧消息处理完后统一重建一次
+            if tab.rows_dirty {
+                tab.rebuild_rows();
+            }
             if grew > 0 {
                 if tab.follow {
                     if ti == self.active {
@@ -6829,7 +7149,7 @@ impl AppView {
     /// 于是视图与滚动条永远比真实末尾少一批行(表现为「日志在滚、滚动条停住不动」
     /// 以及跟随被 `at_bottom` 判定连续失败后自行解除)。
     fn scroll_to_end(&self) {
-        let n = self.tabs.get(self.active).map_or(0, |t| t.view.len());
+        let n = self.tabs.get(self.active).map_or(0, |t| t.rows.len());
         if n == 0 {
             return;
         }
@@ -6850,12 +7170,14 @@ impl AppView {
             return Rc::new(Vec::new());
         };
         let key_tab = t0.id;
-        let n = t0.view.len();
+        let n = t0.rows.len();
         let gen = t0.view_gen;
         let wrap = t0.wrap;
         let show_ln = self.settings.show_line_numbers;
         // 时间戳列只对真实日志源开放(代码/JSON/欢迎页没有「输出时间」概念)
         let show_ts = self.settings.show_timestamps && t0.params.is_some();
+        // 折叠图标列只对真实日志源显示(代码/JSON/欢迎页没有多行记录概念)
+        let show_fold = t0.follow_level && t0.params.is_some() && t0.code.is_none();
         // 可用文本宽度:优先用滚动区实际宽度(首帧回退到窗口宽度)
         let viewport_w = {
             let w = self.list.bounds().size.width;
@@ -6866,6 +7188,7 @@ impl AppView {
             }
         };
         let gutter = px(24.0)
+            + if show_fold { px(FOLD_W) } else { px(0.0) }
             + if show_ln { px(52.0) } else { px(0.0) }
             + if show_ts { px(TS_W) } else { px(0.0) };
         let wrap_w = f32::from((viewport_w - gutter).max(px(120.0)));
@@ -6904,15 +7227,11 @@ impl AppView {
         if self.rows_cache.key != key {
             let char_w = font_size * 0.6;
             let mut v = Vec::with_capacity(n);
-            for &li in &tab.view {
+            for row in &tab.rows {
+                let li = row.line as usize;
                 let height = if wrap {
-                    tab.heights.get(li as usize).copied().unwrap_or_else(|| {
-                        estimate_row_height(
-                            &tab.store.lines[li as usize].text,
-                            wrap_w,
-                            char_w,
-                            row_h,
-                        )
+                    tab.heights.get(li).copied().unwrap_or_else(|| {
+                        estimate_row_height(&tab.store.lines[li].text, wrap_w, char_w, row_h)
                     })
                 } else {
                     row_h
@@ -6954,6 +7273,8 @@ impl AppView {
         let show_ln = self.settings.show_line_numbers;
         // 时间戳列:只对真实日志源显示(与 row_sizes 的列宽计算保持一致)
         let show_ts = self.settings.show_timestamps && t.params.is_some();
+        // 折叠图标列与 row_sizes 的列宽计算保持一致
+        let show_fold = t.follow_level && t.params.is_some() && t.code.is_none();
         // 时区偏移每帧取一次,避免逐行查时区
         let ts_offset = if show_ts {
             crate::lines::local_offset_secs()
@@ -6972,14 +7293,18 @@ impl AppView {
 
         let mut out = Vec::with_capacity(range.end - range.start);
         for pos in range {
-            let Some(&li) = t.view.get(pos) else { continue };
-            let Some(line) = t.store.lines.get(li as usize) else {
+            let Some(kind) = t.rows.get(pos).copied() else {
                 continue;
             };
             let h = sizes.get(pos).map(|s| s.height).unwrap_or(px(row_h));
+            let li = kind.line;
+            let fold_mark = kind.fold;
+            let Some(line) = t.store.lines.get(li as usize) else {
+                continue;
+            };
 
             // 级别着色:全部级别使用设置中的级别色;WARN/ERROR/FATAL 另加整行底色
-            let (bg, fg) = match line.level {
+            let (bg, fg) = match t.display_level(line) {
                 crate::level::WARN => (theme::hex(pal.row_warn), lv[3]),
                 crate::level::ERROR => (theme::hex(pal.row_error), lv[4]),
                 crate::level::FATAL => (theme::hex(pal.row_fatal), lv[5]),
@@ -7000,7 +7325,7 @@ impl AppView {
             } else {
                 bg
             };
-            let bold = line.level == crate::level::FATAL;
+            let bold = t.display_level(line) == crate::level::FATAL;
 
             let mut row = div()
                 .id(SharedString::from(format!("row-{}-{}", tab_id, pos)))
@@ -7023,6 +7348,63 @@ impl AppView {
             };
             if bold {
                 row = row.font_weight(gpui_kit::FontWeight::BOLD);
+            }
+
+            // 折叠图标:固定在「折叠内容前一行」的行首;只有图标可点,整行仍是原来的选中行为
+            if show_fold {
+                let mut cell = div()
+                    .w(px(FOLD_W))
+                    .flex_shrink_0()
+                    .flex()
+                    .items_center()
+                    .justify_center();
+                if let Some(mark) = fold_mark {
+                    let (start, hidden, expanded) = (mark.start, mark.hidden, mark.expanded);
+                    let tip = if expanded {
+                        i18n::tf("fold.collapse", &[("n", hidden.to_string())])
+                    } else {
+                        i18n::tf("fold.expand", &[("n", hidden.to_string())])
+                    };
+                    cell = cell.child(
+                        div()
+                            .id(SharedString::from(format!("fold-{}-{}", tab_id, start)))
+                            .cursor(CursorStyle::PointingHand)
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w(px(FOLD_W))
+                            .h(px(row_h))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|_v, _e, _w, cx| cx.stop_propagation()),
+                            )
+                            .on_click(cx.listener(move |v, _e, _w, cx| {
+                                cx.stop_propagation();
+                                v.toggle_fold(start, cx);
+                            }))
+                            .tooltip(move |window, cx| {
+                                let tip = tip.clone();
+                                gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
+                                    div()
+                                        .text_size(px(theme::scaled(11.0)))
+                                        .child(SharedString::from(tip.clone()))
+                                })
+                                .build(window, cx)
+                            })
+                            .child(
+                                svg()
+                                    .path(if expanded {
+                                        "icons/chevron-down.svg"
+                                    } else {
+                                        "icons/chevron-right.svg"
+                                    })
+                                    .w(px(10.0))
+                                    .h(px(10.0))
+                                    .text_color(theme::hex(pal.text3)),
+                            ),
+                    );
+                }
+                row = row.child(cell);
             }
             // 行选中:单击选中一行,Shift/⌘ 点击扩选(选区供 ⌘C 与右键菜单使用)
             row = row.on_mouse_down(
@@ -7130,7 +7512,12 @@ impl AppView {
             // 可选中的日志文本(拖选 + Cmd/Ctrl+C 由窗口级选区层处理)
             // 文本容器自身记录窗口边界(prepaint 回填),供右键时定位鼠标下的链接
             let text_bounds = Rc::new(RefCell::new(None::<Bounds<Pixels>>));
-            let text = SharedString::from(line.text.clone());
+            // 收起态在保留前缀末行追加省略号;仅影响展示,链接/检索区间仍按原文计算
+            let text = if fold_mark.is_some_and(|m| !m.expanded) {
+                SharedString::from(format!("{} …", line.text))
+            } else {
+                SharedString::from(line.text.clone())
+            };
             let text_id = SharedString::from(format!("rowtext-{}-{}", tab_id, pos));
             let text_cell = div().flex_1().min_w(px(0.0)).overflow_hidden().child(
                 SelectableText::new(text_id, text)
@@ -7338,6 +7725,9 @@ impl AppView {
         };
         t.store.clear();
         t.view.clear();
+        t.rows.clear();
+        t.rows_dirty = false;
+        t.fold_state.clear();
         t.matched.clear();
         t.match_cursor = 0;
         t.pending_new = 0;
@@ -7425,7 +7815,8 @@ impl AppView {
 
     /// 检索结果跳转:在 matched 中循环,把命中行滚到视口中间,并解除跟随(egui 版同)
     fn jump_match(&mut self, next: bool, cx: &mut Context<Self>) {
-        let Some(t) = self.tabs.get(self.active) else {
+        let ti = self.active.min(self.tabs.len().saturating_sub(1));
+        let Some(t) = self.tabs.get_mut(ti) else {
             return;
         };
         if t.matched.is_empty() {
@@ -7437,15 +7828,14 @@ impl AppView {
         } else {
             (t.match_cursor + len - 1) % len
         };
-        let real = t.matched[idx] as usize;
-        // 过滤模式下命中行可能不可见,退化为不改位置
-        let Some(row) = t.view.iter().position(|&r| r as usize == real) else {
+        let real = t.matched[idx];
+        // 过滤模式下命中行可能不可见,退化为不改位置;被折叠时先展开所在组
+        let Some(row) = t.row_index(real) else {
             return;
         };
-        if let Some(t) = self.active_tab_mut() {
-            t.match_cursor = idx;
-            t.follow = false;
-        }
+        t.match_cursor = idx;
+        t.follow = false;
+        self.rows_cache.invalidate();
         self.suppress_follow_until = Some(Instant::now() + Duration::from_millis(300));
         self.list.scroll_to_item(row, ScrollStrategy::Center);
         cx.notify();
@@ -7642,7 +8032,7 @@ impl AppView {
             .collect();
         let ti = self.active.min(self.tabs.len().saturating_sub(1));
         let cur = self.tabs.get(ti);
-        let counts = cur.map(|t| t.store.counts).unwrap_or([0u64; LEVEL_COUNT]);
+        let counts = cur.map(|t| t.counts()).unwrap_or([0u64; LEVEL_COUNT]);
         let hidden = cur.map(|t| t.hidden).unwrap_or([false; LEVEL_COUNT]);
         let follow = cur.map(|t| t.follow).unwrap_or(false);
         let paused = cur.map(|t| t.paused).unwrap_or(false);
@@ -9418,14 +9808,28 @@ fn num_input(
     unit: &'static str,
     pal: &'static Palette,
 ) -> AnyElement {
+    num_input_ex(e, w, unit, pal, false)
+}
+
+/// 数字输入(可禁用):折叠行数在未开启「跟随上一条级别」时不可编辑
+fn num_input_ex(
+    e: &Entity<InputState>,
+    w: f32,
+    unit: &'static str,
+    pal: &'static Palette,
+    disabled: bool,
+) -> AnyElement {
     div()
         .flex()
         .items_center()
         .gap(px(6.0))
         .child(
-            div()
-                .w(px(w))
-                .child(Input::new(e).small().text_align(TextAlign::Right)),
+            div().w(px(w)).child(
+                Input::new(e)
+                    .small()
+                    .text_align(TextAlign::Right)
+                    .disabled(disabled),
+            ),
         )
         .child(
             div()
@@ -9885,11 +10289,12 @@ fn toolbar_icon_btn(
 #[cfg(test)]
 mod tests {
     use super::{
-        bottom_distance, elide_path, http_auth_label, is_auth_error, pick_chip_style, validate_ssh,
-        validate_url_addr, version_newer, ChipStyle,
+        bottom_distance, build_rows, elide_path, http_auth_label, is_auth_error, pick_chip_style,
+        validate_ssh, validate_url_addr, version_newer, ChipStyle, FoldMark, Row,
     };
     use crate::i18n;
     use gpui_kit::px;
+    use std::collections::HashMap;
 
     #[test]
     fn version_compare_orders_semver() {
@@ -9942,6 +10347,88 @@ mod tests {
             pick_chip_style(840.0, 700.0, 400.0, 250.0),
             ChipStyle::Letter
         );
+    }
+
+    #[test]
+    fn multiline_rows_fold_between_levelled_lines() {
+        // 0=INFO, 1..4 无级别(NONE=6,继承 INFO), 5=ERROR
+        let raw = [2u8, 6, 6, 6, 6, 4];
+        let inh = [2u8, 2, 2, 2, 2, 4];
+        let view: Vec<u32> = (0..6).collect();
+        let raw_of = |i: u32| raw[i as usize];
+        let inh_of = |i: u32| inh[i as usize];
+        let row = |line: u32| Row { line, fold: None };
+        let mark = |expanded: bool| FoldMark {
+            start: 1,
+            hidden: 1,
+            expanded,
+        };
+
+        // 默认折叠:保留前 3 行,图标挂第 3 行(折叠内容前一行),第 4 行起隐藏
+        let collapsed = build_rows(&view, raw_of, inh_of, true, true, 3, &HashMap::new());
+        assert_eq!(
+            collapsed,
+            vec![
+                row(0),
+                row(1),
+                row(2),
+                Row {
+                    line: 3,
+                    fold: Some(mark(false))
+                },
+                row(5),
+            ]
+        );
+
+        // 单组展开:同一行图标变为展开态,后续行照常输出
+        let mut state = HashMap::new();
+        state.insert(1, true);
+        let expanded = build_rows(&view, raw_of, inh_of, true, true, 3, &state);
+        assert_eq!(
+            expanded,
+            vec![
+                row(0),
+                row(1),
+                row(2),
+                Row {
+                    line: 3,
+                    fold: Some(mark(true))
+                },
+                row(4),
+                row(5),
+            ]
+        );
+
+        // 默认不折叠:图标仍在同一行,点击可收起
+        let default_open = build_rows(&view, raw_of, inh_of, true, false, 3, &HashMap::new());
+        assert_eq!(
+            default_open,
+            vec![
+                row(0),
+                row(1),
+                row(2),
+                Row {
+                    line: 3,
+                    fold: Some(mark(true))
+                },
+                row(4),
+                row(5),
+            ]
+        );
+
+        // 恰好等于折叠行数 → 完整显示;未开启跟随(继承级别为 NONE)不折叠
+        let exact = build_rows(&view[..4], raw_of, inh_of, true, true, 3, &HashMap::new());
+        assert_eq!(exact, vec![row(0), row(1), row(2), row(3)]);
+        let no_inherit = build_rows(&view[..5], raw_of, |_| 6, true, true, 3, &HashMap::new());
+        assert_eq!(
+            no_inherit,
+            (0..5).map(row).collect::<Vec<_>>(),
+            "没有可跟随的级别时不折叠"
+        );
+
+        // 关闭跟随:不显示折叠标记
+        let off = build_rows(&view, raw_of, inh_of, false, true, 3, &HashMap::new());
+        assert_eq!(off, (0..6).map(row).collect::<Vec<_>>());
     }
 
     #[test]

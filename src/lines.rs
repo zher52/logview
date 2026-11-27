@@ -3,19 +3,25 @@
 
 //! 行存储:字节流 → 行(UTF-8 断字安全)、级别标注、级别计数、行数上限
 
-use crate::level::{Engine, SEP};
+use crate::level::{Engine, NONE, SEP};
 
 #[derive(Clone)]
 pub struct Line {
     pub text: String,
     pub level: u8,
+    /// 「无级别跟随上一条已知级别」的有效级别:无级别行取前一条已知级别,
+    /// 分隔行(SEP)与文件开头的无级别行保持 NONE。展示/筛选/计数按此项取值。
+    pub inherit: u8,
     /// 该行的本地接收时间(Unix 毫秒);历史加载的行无法得知输出时间,为 None
     pub at: Option<i64>,
 }
 
 pub struct LineStore {
     pub lines: Vec<Line>,
+    /// 按原始级别计数(关闭「跟随上一条已知级别」时使用)
     pub counts: [u64; 7],
+    /// 按有效级别计数(开启跟随时使用,无级别行计入前一条已知级别)
+    pub follow_counts: [u64; 7],
     pub max_lines: usize,
     pub bytes_loaded: u64,
     pub total_size: u64,
@@ -28,6 +34,7 @@ impl LineStore {
         Self {
             lines: Vec::new(),
             counts: [0; 7],
+            follow_counts: [0; 7],
             max_lines,
             bytes_loaded: 0,
             total_size: 0,
@@ -39,6 +46,7 @@ impl LineStore {
     pub fn clear(&mut self) {
         self.lines.clear();
         self.counts = [0; 7];
+        self.follow_counts = [0; 7];
         self.buf.clear();
         self.bytes_loaded = 0;
         self.dropped = 0;
@@ -54,6 +62,16 @@ impl LineStore {
             return 0;
         }
         self.buf.extend_from_slice(data);
+        // 上一条已知级别:取末行的有效级别(无级别行已带着继承结果,分隔行为 NONE)
+        let mut prev = self
+            .lines
+            .last()
+            .map(|l| match l.level {
+                SEP => NONE,
+                NONE => l.inherit,
+                l => l,
+            })
+            .unwrap_or(NONE);
         let mut start = 0usize;
         let mut added = 0usize;
         for (i, &b) in self.buf.iter().enumerate() {
@@ -63,8 +81,23 @@ impl LineStore {
                     text.pop();
                 }
                 let level = engine.eval(&text);
-                self.lines.push(Line { text, level, at });
+                let inherit = if level == SEP {
+                    prev = NONE;
+                    SEP
+                } else if level == NONE {
+                    prev
+                } else {
+                    prev = level;
+                    level
+                };
+                self.lines.push(Line {
+                    text,
+                    level,
+                    inherit,
+                    at,
+                });
                 self.counts[level as usize] += 1;
+                self.follow_counts[inherit as usize] += 1;
                 added += 1;
                 start = i + 1;
             }
@@ -89,6 +122,10 @@ impl LineStore {
                 if (l.level as usize) < 7 {
                     self.counts[l.level as usize] = self.counts[l.level as usize].saturating_sub(1);
                 }
+                if (l.inherit as usize) < 7 {
+                    self.follow_counts[l.inherit as usize] =
+                        self.follow_counts[l.inherit as usize].saturating_sub(1);
+                }
                 self.dropped += 1;
             }
         }
@@ -103,6 +140,7 @@ impl LineStore {
         self.lines.push(Line {
             text: text.to_owned(),
             level: SEP,
+            inherit: SEP,
             at: None,
         });
         self.enforce_cap();
@@ -111,8 +149,20 @@ impl LineStore {
     /// 全量重新判定级别(配置变更时,分帧调用由 App 驱动)
     pub fn relevel_range(&mut self, engine: &Engine, start: usize, end: usize) -> usize {
         let end = end.min(self.lines.len());
+        // 从区间前一行取已知级别(分隔行之后重新开始,与 push_bytes 一致)
+        let mut prev = start
+            .checked_sub(1)
+            .and_then(|i| self.lines.get(i))
+            .map(|l| match l.level {
+                SEP => NONE,
+                NONE => l.inherit,
+                l => l,
+            })
+            .unwrap_or(NONE);
         for l in &mut self.lines[start..end] {
             if l.level == SEP {
+                l.inherit = SEP;
+                prev = NONE;
                 continue;
             }
             let nl = engine.eval(&l.text);
@@ -120,6 +170,22 @@ impl LineStore {
                 self.counts[l.level as usize] = self.counts[l.level as usize].saturating_sub(1);
                 self.counts[nl as usize] += 1;
                 l.level = nl;
+            }
+            let inherit = if nl == NONE {
+                prev
+            } else {
+                prev = nl;
+                nl
+            };
+            if inherit != l.inherit {
+                if (l.inherit as usize) < 7 {
+                    self.follow_counts[l.inherit as usize] =
+                        self.follow_counts[l.inherit as usize].saturating_sub(1);
+                }
+                if (inherit as usize) < 7 {
+                    self.follow_counts[inherit as usize] += 1;
+                }
+                l.inherit = inherit;
             }
         }
         end
@@ -163,6 +229,62 @@ mod tests {
         st.insert_separator(crate::i18n::t("banner.rotation_short"));
         assert_eq!(st.lines[0].at, None);
         assert_eq!(st.lines[1].at, None);
+    }
+
+    #[test]
+    fn unlevelled_lines_inherit_previous_level() {
+        // 无级别续行沿用上一条已知级别;分隔行之后重新开始;文件开头没有可跟随的级别
+        let cfg = crate::level::builtin_configs();
+        let eng = crate::level::Engine::compile_ids(&cfg, &["builtin-words".to_string()]);
+        let mut st = LineStore::new(100);
+        st.push_bytes(
+            b"ERROR boom\n  at a\n  at b\nINFO ok\n  detail\n",
+            &eng,
+            None,
+        );
+        st.insert_separator("rotated");
+        st.push_bytes(b"  orphan\n", &eng, None);
+
+        let inh: Vec<u8> = st.lines.iter().map(|l| l.inherit).collect();
+        assert_eq!(
+            inh,
+            vec![
+                crate::level::ERROR,
+                crate::level::ERROR,
+                crate::level::ERROR,
+                crate::level::INFO,
+                crate::level::INFO,
+                crate::level::SEP,
+                crate::level::NONE,
+            ]
+        );
+        assert_eq!(st.counts[crate::level::NONE as usize], 4);
+        assert_eq!(st.follow_counts[crate::level::ERROR as usize], 3);
+        assert_eq!(st.follow_counts[crate::level::INFO as usize], 2);
+
+        // 重判定后继承链同步重算:只保留 INFO 规则,原 ERROR 行变为无级别
+        let only_info = crate::level::LevelConfig {
+            id: "test-info".into(),
+            name: "test-info".into(),
+            enabled: true,
+            built_in: false,
+            rules: vec![crate::level::Rule {
+                auto: true,
+                level: crate::level::INFO,
+                regex: r"\b(INFO)\b".into(),
+                flags: "".into(),
+            }],
+        };
+        let eng2 = crate::level::Engine::compile_ids(&[only_info], &["test-info".to_string()]);
+        let n = st.lines.len();
+        st.relevel_range(&eng2, 0, n);
+        assert_eq!(st.follow_counts[crate::level::ERROR as usize], 0);
+        assert_eq!(st.follow_counts[crate::level::INFO as usize], 2);
+        assert_eq!(
+            st.lines[0].inherit,
+            crate::level::NONE,
+            "开头没有已知级别可跟随"
+        );
     }
 
     #[test]

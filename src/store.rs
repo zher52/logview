@@ -41,6 +41,15 @@ pub struct Settings {
     /// 日志行默认自动换行(新标签页的初始值;标签页内可单独切换)
     #[serde(default = "default_wrap")]
     pub wrap: bool,
+    /// 无级别行跟随上一条已知级别(多行异常堆栈等);默认开启
+    #[serde(default = "default_true")]
+    pub follow_prev_level: bool,
+    /// 多行记录初始折叠状态(仅在 `follow_prev_level` 开启时展示折叠图标);默认收起
+    #[serde(default = "default_true")]
+    pub fold_multiline: bool,
+    /// 多行记录折叠前保留的行数(默认 3:>3 行时收起后续内容)
+    #[serde(default = "default_fold_lines")]
+    pub fold_lines: usize,
     #[serde(default)]
     pub colors: Vec<String>,
     #[serde(default)]
@@ -85,6 +94,10 @@ fn default_true() -> bool {
 
 fn default_wrap() -> bool {
     true
+}
+
+fn default_fold_lines() -> usize {
+    3
 }
 
 fn default_ui_font_size() -> f32 {
@@ -226,6 +239,9 @@ impl Default for Settings {
             language: default_language(),
             schema_version: SCHEMA_VERSION,
             wrap: true,
+            follow_prev_level: true,
+            fold_multiline: true,
+            fold_lines: default_fold_lines(),
             colors: [
                 "#75757e", "#8c8c8c", "#95de64", "#ffc53d", "#ff7875", "#ff7875", "#d9d9d9",
             ]
@@ -401,6 +417,20 @@ mod tests {
         let s: Settings = serde_json::from_value(v).unwrap();
         assert!(!s.show_timestamps);
         assert!(!Settings::default().show_timestamps);
+    }
+
+    #[test]
+    fn multiline_settings_fall_back_to_defaults() {
+        // 旧设置文件没有这三个字段:跟随上一条级别与折叠默认开启,折叠行数默认 3
+        let mut v = serde_json::to_value(Settings::default()).unwrap();
+        let obj = v.as_object_mut().unwrap();
+        obj.remove("follow_prev_level");
+        obj.remove("fold_multiline");
+        obj.remove("fold_lines");
+        let s: Settings = serde_json::from_value(v).unwrap();
+        assert!(s.follow_prev_level);
+        assert!(s.fold_multiline);
+        assert_eq!(s.fold_lines, 3);
     }
 
     #[test]
