@@ -1,0 +1,21 @@
+[Desktop Entry]
+Type=Application
+Name=Log Viewer
+Name[zh_CN]=日志查看器
+Name[ru]=Просмотр журналов
+GenericName=Log viewer
+GenericName[zh_CN]=日志查看器
+GenericName[ru]=Средство просмотра журналов
+Comment=View local, SSH and HTTP logs with level parsing, search and live follow
+Comment[zh_CN]=查看本地 / SSH / HTTP 日志,支持级别解析、检索与自动追加
+Comment[ru]=Просмотр локальных, SSH и HTTP журналов с разбором уровней, поиском и автообновлением
+Exec=logview %f
+TryExec=logview
+Icon=logview
+Terminal=false
+Categories=Utility;Development;
+Keywords=log;tail;viewer;ssh;http;
+Keywords[zh_CN]=日志;查看;追加;检索;SSH;
+MimeType=text/plain;text/x-log;text/csv;application/json;
+StartupNotify=true
+StartupWMClass=logview

@@ -38,7 +38,7 @@ cargo clippy --all-targets --locked
 ./sample/gen_log.sh sample/app.log 1   # 演示自动追加(会写入受控的示例文件)
 ```
 
-- `dev.sh` / `package.sh` 是维护者本机脚本，**不入库**（已在 `.gitignore`）；发布构建用 `scripts/make_app.sh`，支持 `TARGET=aarch64-apple-darwin|x86_64-apple-darwin` 交叉构建（产物固定在 `target/日志查看器.app`）。
+- `dev.sh` / `package.sh` 是维护者本机脚本，**不入库**（已在 `.gitignore`）；发布构建用 `scripts/make_app.sh`，支持 `TARGET=aarch64-apple-darwin|x86_64-apple-darwin` 交叉构建（产物固定在 `target/日志查看器.app`）。Linux 用 `scripts/make_linux.sh`（需在 Linux 上执行，产出 `target/logview-linux-<arch>.tar.gz` 与可选 AppImage；`SKIP_BUILD=1` 可只做打包自检），桌面资源在 `assets/linux/`。
 - 运行 `gen_log.sh` 后提交前请还原：`git checkout -- sample/app.log`。
 - CI：`.github/workflows/ci.yml`（macOS 阻塞；Windows/Linux 实验性；clippy 暂不阻塞），`audit.yml` 每周依赖审计，`release.yml` 由 `v*` tag 触发。新增逻辑必须配单测。
 
@@ -152,7 +152,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 - 内网/环回 HTTP 地址被 SSRF 策略拒绝，属有意行为。
 - 命令源历史受 spool 上限（128MB）约束；超出后只保留最近一半，更早的内容请用命令参数获取（`journalctl -n`、`docker logs --tail`）。
 - SSH 未知主机采用 TOFU 确认（仅在无法读取 `known_hosts` 时静默放行，见 `SECURITY.md`）。
-- Windows / Linux 仅做 CI 构建检查，交互未充分验证。
+- Windows / Linux 仅做 CI 构建与打包检查，交互未充分验证；Linux 的文件关联依赖 `assets/linux/logview.desktop` 与 `install.sh`（装到 `$PREFIX`），AppImage 由 `AppRun` 启动。
 - 界面支持中文 / English / Русский 切换（设置 → 界面语言）；工具栏、对话框、设置页、状态栏、命令预设与常见错误提示均已覆盖，未收录词条依次回退英文、中文。
 
 ## Git 约定

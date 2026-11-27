@@ -61,7 +61,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 | macOS Apple Silicon（M 系列） | `logview-macos-arm64.zip` | 解压得「日志查看器.app」 |
 | macOS Intel | `logview-macos-x86_64.zip` | 同上，适用于 2020 年及更早的 Intel Mac |
 | Windows | `logview-windows.zip`（实验性） | `logview.exe`，未做安装器，交互尚未充分验证 |
-| Linux | `logview-linux.tar.gz`（实验性） | 裸二进制，`.desktop` / AppImage 待补 |
+| Linux x86_64 | `logview-linux-x86_64.tar.gz` / `logview-x86_64.AppImage`（实验性） | 便携包含 `.desktop`、图标与 `install.sh`；AppImage 双击即用 |
 
 > 架构不对会直接打不开（Apple Silicon 上跑 x86_64 包需要 Rosetta）：用 `uname -m` 确认，M 系列通常为 `arm64`。
 
@@ -71,7 +71,26 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 > `xattr -dr com.apple.quarantine /Applications/日志查看器.app`。
 > 不放心可核对 Release 页面每个资产下显示的 sha256 摘要，或按下面的步骤从源码构建。
 
-Windows / Linux 产物同样未做安装器与 `.desktop` 集成，功能与 macOS 版本一致（见[平台支持](#平台支持)）。也可以直接按下方源码构建。
+Windows 仍为便携 zip；Linux 便携包与 AppImage 已带 `.desktop`（文件管理器右键「打开方式」）与图标。
+功能与 macOS 版本一致（见[平台支持](#平台支持)），也可以直接按下方源码构建。
+
+### Linux 桌面集成
+
+```bash
+tar -xzf logview-linux-x86_64.tar.gz
+cd logview-linux-x86_64
+./install.sh                 # 安装到 ~/.local（可 PREFIX=/usr/local 覆盖）
+./install.sh --uninstall     # 卸载
+```
+
+`install.sh` 把可执行文件、`logview.desktop` 与 256×256 图标装进 `$PREFIX`，并刷新桌面数据库；
+之后即可在文件管理器右键 `.log` / `.txt` →「打开方式」中选择「日志查看器」，或命令行 `logview 文件`。
+AppImage 无需安装：
+
+```bash
+chmod +x logview-x86_64.AppImage
+./logview-x86_64.AppImage sample/app.log
+```
 
 ## 快速开始
 
@@ -263,7 +282,8 @@ TARGET=x86_64-apple-darwin  ./scripts/make_app.sh   # Intel
 > Apple Development 证书，找不到就用 ad-hoc 签名；首次打开需右键「打开」或到系统设置放行，详见[下载](#下载)。
 
 Windows:文件右键「打开方式 → 选择其他应用 → logview.exe(始终)」,经 argv 传入,程序已支持。
-Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
+Linux:打包产物内含 `.desktop`(`Exec=logview %f`),`./install.sh` 安装后即可在「打开方式」看到「日志查看器」;
+AppImage 由内置 `AppRun` 直接启动,无需安装。
 
 ### Roadmap
 
@@ -271,6 +291,7 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 
 - [x] macOS .app 打包与文件关联(`./scripts/make_app.sh`,Finder 右键打开;Release 提供 arm64 / x86_64 双架构包)
 - [x] Windows 便携版产物(`logview-windows.zip`,解压即用,经 argv 关联日志文件)
+- [x] Linux 打包与桌面集成(`scripts/make_linux.sh`:便携包 + `.desktop` + 图标 + `install.sh`,可选 AppImage;Release 同时产出 tar.gz 与 AppImage)
 - [x] 命令源(本地 / SSH 执行命令,内置 adb / journalctl / docker / kubectl / tail 预设;输出落本机 spool,暂停与「跳到末尾」不丢日志)
 - [x] 「关于」页与检查更新(版本 + 构建提交 + 许可证 + 开源组件清单;检查更新只跳下载页,不上传本地数据)
 - [x] 代码 / 配置逐行高亮与 Markdown 预览(工具栏「编辑」+ `⌘S` 保存;本地图片按文档目录解析)
@@ -281,7 +302,6 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 
 计划中:
 
-- [ ] Linux 打包与桌面集成(`.desktop` `Exec=logview %f`,AppImage)
 - [ ] Windows 安装包(msi/MSIX,含文件关联与卸载;当前仅提供便携 zip)
 - [ ] SSH 已连接实例复用(同一主机的多标签共享会话,路径链接免重连)
 - [ ] 多文件合并视图 / 时间轴(跨标签按时间排序、统一检索)
@@ -306,9 +326,9 @@ Linux:`.desktop` 文件 `Exec=logview %f`(脚本待补)。
 |---|---|
 | macOS | 主要开发与验证平台;`.app` 打包与文件类型关联可用;Release 同时提供 arm64 与 x86_64 两个包 |
 | Windows | CI 构建与 Release 产物可用;交互与安装器未充分验证 |
-| Linux (X11 / Wayland) | 已纳入 CI 构建检查;`.desktop` / AppImage 打包待补 |
+| Linux (X11 / Wayland) | CI 构建与打包;Release 提供带 `.desktop` 的便携包与 AppImage;桌面环境交互待验证 |
 
-Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.github/workflows/ci.yml`)。
+Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.github/workflows/ci.yml` 与 `release.yml` 的 Linux 打包任务)。
 
 ## 贡献
 
