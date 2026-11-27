@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- macOS 产物此前动态链接 Homebrew 的 `openssl@4`（`/usr/local/opt/openssl@4/lib/*.dylib`），没有装该库的用户机器上无法启动；改为 vendored OpenSSL 静态链接，同时解决 x86_64 交叉构建找不到对应架构 OpenSSL 的失败。
 - Windows 构建失败：libssh2 默认 WinCNG 后端没有 `userauth_pubkey_memory`（私钥文本认证），Windows 目标改用 OpenSSL 后端（`openssl-on-win32` + vendored）后恢复编译，Release 重新提供 `logview-windows.zip`。
 - 依赖审计工作流在 push 事件下报 `Resource not accessible by integration`：`audit.yml` 补 `checks: write`（`cargo audit` 本身一直是 0 漏洞）。
 

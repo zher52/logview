@@ -28,8 +28,13 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 # 行时间戳按本地时区格式化(仅需要 clock/std,不引入 oldtime)
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
-# Windows:libssh2 默认 WinCNG 后端不提供 userauth_pubkey_memory(私钥文本认证),
-# 改用 OpenSSL 后端并用 vendored 构建,不依赖 runner 预装的 OpenSSL。
+# ssh2 → libssh2 在 macOS 上默认链接系统/Homebrew 的 OpenSSL,产物会依赖
+# /usr/local/opt/openssl@X 这类绝对路径(用户机器上没有就打不开);跨架构构建也找不到对应
+# 架构的库。因此 macOS 与 Windows 都改用 vendored OpenSSL,静态链进二进制。
+# Windows 另外需要 openssl-on-win32:WinCNG 后端没有 userauth_pubkey_memory(私钥文本认证)。
+[target.'cfg(target_os = "macos")'.dependencies]
+ssh2 = { version = "0.9", features = ["vendored-openssl"] }
+
 [target.'cfg(windows)'.dependencies]
 ssh2 = { version = "0.9", features = ["openssl-on-win32", "vendored-openssl"] }
 
