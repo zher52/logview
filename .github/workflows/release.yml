@@ -89,10 +89,48 @@ jobs:
           path: ${{ matrix.name }}.*
           if-no-files-found: ignore
 
+  # Linux:便携包(tar.gz)+ AppImage,内含 .desktop 与图标,可注册文件关联
+  linux:
+    name: Linux 便携包与 AppImage
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 安装构建与打包依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config \
+            libxkbcommon-dev libwayland-dev libx11-dev libxcb1-dev libxkbcommon-x11-dev \
+            libfontconfig1-dev libfreetype6-dev libvulkan-dev libdbus-1-dev \
+            desktop-file-utils
+      - name: 校验桌面条目
+        run: desktop-file-validate assets/linux/logview.desktop
+      - name: 下载 appimagetool
+        run: |
+          curl -fsSL -o /tmp/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+      - name: 打包
+        env:
+          APPIMAGETOOL: /tmp/appimagetool
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: ./scripts/make_linux.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: logview-linux
+          path: |
+            target/logview-linux-*.tar.gz
+            target/logview-*.AppImage
+          if-no-files-found: error
+
   publish:
     name: 发布 Release
-    needs: [macos]
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [macos, binary, linux]
+    # macOS 是阻塞产物;Windows/Linux 为实验性(continue-on-error),等待它们完成但失败不阻塞发布
+    if: startsWith(github.ref, 'refs/tags/') && needs.macos.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8

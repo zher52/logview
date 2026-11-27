@@ -75,3 +75,10 @@ jobs:
 
       - name: 构建
         run: cargo build --locked
+
+      - name: 校验桌面条目与 Linux 打包
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y desktop-file-utils
+          desktop-file-validate assets/linux/logview.desktop
+          SKIP_BUILD=1 BIN=target/debug/logview ./scripts/make_linux.sh --no-appimage

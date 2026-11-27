@@ -178,7 +178,7 @@ sizes, line-number and timestamp toggles, recents and their limit/purge policy, 
 |---|---|
 | macOS | Primary development platform; `.app` bundling and file association work |
 | Windows | Build check in CI; interaction and installer are not fully verified |
-| Linux (X11 / Wayland) | Build check in CI; `.desktop` / AppImage packaging is still missing |
+| Linux (X11 / Wayland) | CI build and packaging; releases ship a `.desktop` tarball and an AppImage; desktop interaction is not fully verified |
 
 ## Security
 
@@ -251,7 +251,21 @@ cargo build --release            # target/release/logview
 ```
 
 The bundle declares log/txt/out/err/json/csv document types, so Finder’s **Open With** works. Windows
-uses “Open with → logview.exe” via argv; Linux packaging (`.desktop` / AppImage) is still missing.
+uses “Open with → logview.exe” via argv. Linux artifacts are built by `scripts/make_linux.sh`: a portable
+tarball with `logview.desktop` (`Exec=logview %f`), a 256×256 icon and `install.sh`, plus an optional
+AppImage.
+
+```bash
+tar -xzf logview-linux-x86_64.tar.gz && cd logview-linux-x86_64
+./install.sh                  # installs into ~/.local (set PREFIX=... to override)
+./install.sh --uninstall
+```
+
+The AppImage needs no installation:
+
+```bash
+chmod +x logview-x86_64.AppImage && ./logview-x86_64.AppImage file.log
+```
 
 ## FAQ
 
