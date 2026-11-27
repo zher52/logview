@@ -67,7 +67,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 > 从浏览器下载的 `.app` 首次打开会被 Gatekeeper 拦下，属预期行为：右键 →「打开」→ 再点「打开」，
 > 或到「系统设置 → 隐私与安全性」底部点「仍要打开」；命令行等效：
 > `xattr -dr com.apple.quarantine /Applications/日志查看器.app`。
-> 不放心可核对 Release 附带的 SHA256，或按下面的步骤从源码构建。
+> 不放心可核对 Release 页面每个资产下显示的 sha256 摘要，或按下面的步骤从源码构建。
 
 Windows / Linux 产物同样未做安装器与 `.desktop` 集成，功能与 macOS 版本一致（见[平台支持](#平台支持)）。也可以直接按下方源码构建。
 

@@ -2,6 +2,13 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [Unreleased]
+
+### Fixed
+
+- 发布任务此前只等 macOS 打包结束就开始收集产物，Windows 包常因上传较晚被漏掉：改为同时等待 `binary` 矩阵结束（实验性任务失败仍不阻塞发布）。
+- Windows 包的 zip 内曾带 `target/release/` 多层目录，改为把 `logview.exe` 放在压缩包根目录。
+
 ## [0.4.1] - 2026-11-27
 
 ### Added

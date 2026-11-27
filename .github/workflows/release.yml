@@ -78,7 +78,8 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            7z a "${{ matrix.name }}.zip" "target/release/${{ matrix.file }}"
+            # zip 里只放 exe 本身,避免解压出 target/release/ 多层目录
+            cd target/release && 7z a "../../${{ matrix.name }}.zip" "${{ matrix.file }}"
           else
             tar -czf "${{ matrix.name }}.tar.gz" -C target/release "${{ matrix.file }}"
           fi
