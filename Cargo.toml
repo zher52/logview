@@ -10,8 +10,17 @@ readme = "README.md"
 keywords = ["log", "viewer", "gpui", "tail", "ssh"]
 categories = ["gui", "command-line-utilities"]
 
+[features]
+# 可选调试集成:仅在 `cargo run --features devtools` 时编入 gpui-devtools 检查器。
+# 不加入 default,release 构建不含检查器。
+# `gpui/inspector` 依赖下面的 gpui → gpui-pre 别名,使 feature 路径可被 Cargo 解析。
+devtools = ["dep:gpui-devtools", "gpui/inspector"]
+
 [dependencies]
 gpui-kit = "0.11"
+# 仅为 `gpui/inspector` feature 路径提供 crate 名;与 gpui-kit 传递依赖的 gpui-pre 是同一个 crate。
+gpui = { package = "gpui-pre", version = "0.3", optional = true }
+gpui-devtools = { version = "0.6", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 regex = "1"
@@ -48,6 +57,9 @@ opt-level = 1
 # 依赖用优化级别编译,保证调试运行时 UI 流畅
 [profile.dev.package."*"]
 opt-level = 2
+# GPUI 运行时是调试构建里最热的依赖,单独拉高优化级别降低 UI 卡顿
+[profile.dev.package.gpui-pre]
+opt-level = 3
 
 [profile.release]
 lto = "thin"

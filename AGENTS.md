@@ -160,3 +160,28 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 - 提交信息中文：`<类型>: <一句话摘要>` + 空行 + 要点；类型 `feat/fix/refactor/docs/chore/perf/test`。
 - `Cargo.lock` 入库；`target/`、`.DS_Store`、`.mimosa/`、`dev.sh`、`package.sh` 已忽略。
 - 版本号唯一来源是 `Cargo.toml`；构建提交由 `build.rs` 用 `git rev-parse --short=8 HEAD` 注入 `GIT_HASH`（无 `.git` 时为 `unknown`），「关于」页展示并提供复制；`README` 与 `CHANGELOG` 需随功能同步。
+---
+
+## 调试约定（gpui-devtools）
+
+本项目可选集成 gpui-devtools 0.6，仅在带 `devtools` feature 的开发构建中可用。
+
+### 启用方式
+
+- 构建：`cargo run --features devtools`
+- 快捷键：macOS `cmd-alt-i`，其他平台 `ctrl-alt-i`
+- release 构建不包含检查器，这是预期行为，不要在 release 构建中尝试打开检查器。
+
+### 使用原则
+
+1. **先定位，后修改。** 遇到 UI 布局或样式问题时，先用元素选择器选中目标元素，查看其源码位置、元素 ID、bounds、margin/border/padding，再决定改哪段代码。
+2. **以源码位置为准。** 检查器给出的源码位置比肉眼推断更可靠；如果检查器显示的位置与预期不符，以检查器为准。
+3. **键盘问题看 Keyboard 标签。** 如果涉及快捷键或 focus 行为，使用检查器的 Keyboard 标签查看 key context 栈、可用 action 及其绑定、最近击键触发的 action。GPUI 不暴露“哪个元素持有 focus”，面板只告诉你“有东西被 focus”，不要依赖它做精确断言。
+4. **检查器不替代测试。** 检查器用于人工诊断和定位问题；自动化验证仍然通过 `cargo test` 或应用内的测试基础设施完成，不要试图让 AI 通过检查器“驱动” UI 来做回归测试。
+5. **不要为使用检查器而引入额外依赖。** 如果某个问题在没有检查器的情况下也能通过日志和测试定位，优先用现有手段。
+
+### 失败处理
+
+- 如果 `cargo run --features devtools` 编译失败，先检查 `cargo tree -i gpui-pre` 是否唯一，以及 Rust 版本是否 >= 1.98。
+- 如果检查器面板不出现，确认是否传入了 `--features devtools`，并确认初始化代码确实位于 `app.run` 闭包内且未被条件编译排除。
+- 不要在 release 构建中调试检查器；release 不包含它是设计目标，不是 bug。

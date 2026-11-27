@@ -64,5 +64,9 @@ fn main() {
 
             // 亮/暗跟随系统
             gpui_kit::component::Theme::sync_system_appearance(None, cx);
+
+            // 可选调试检查器:必须放在其余初始化与渲染器注册之后
+            #[cfg(feature = "devtools")]
+            gpui_devtools::init(cx);
         });
 }

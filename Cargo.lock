@@ -2120,6 +2120,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpui-devtools"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76c4e35940dc8024032b0e723b1fea5b3e2f409f5ba4cad368ff94cd4e15c3e3"
+dependencies = [
+ "gpui-pre",
+]
+
+[[package]]
 name = "gpui-fast"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3942,7 +3951,9 @@ dependencies = [
  "chrono",
  "crossbeam-channel",
  "dirs 7.0.0",
+ "gpui-devtools",
  "gpui-kit",
+ "gpui-pre",
  "keyring",
  "open",
  "regex",
