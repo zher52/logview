@@ -70,11 +70,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
       <key>CFBundleTypeExtensions</key>
       <array>
         <string>log</string><string>txt</string><string>out</string>
-        <string>err</string><string>json</string><string>csv</string>
+        <string>err</string>
       </array>
       <key>LSItemContentTypes</key>
       <array>
-        <string>public.plain-text</string><string>public.data</string>
+        <string>public.plain-text</string>
       </array>
     </dict>
   </array>

@@ -30,8 +30,12 @@ fn desktop_entry_matches_packaging_contract() {
         .find(|l| l.starts_with("MimeType="))
         .expect("桌面条目缺少 MimeType");
     assert!(mime.ends_with(';'), "MimeType 必须以 ; 结尾");
-    for ty in ["text/plain;", "text/x-log;", "application/json;"] {
+    for ty in ["text/plain;", "text/x-log;"] {
         assert!(mime.contains(ty), "MimeType 缺少 {ty}");
+    }
+    // csv / json 不是日志格式,不再登记关联
+    for ty in ["text/csv", "application/json"] {
+        assert!(!mime.contains(ty), "MimeType 不应包含 {ty}");
     }
 
     for key in ["Name[zh_CN]=", "Name[ru]=", "Comment[zh_CN]="] {

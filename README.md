@@ -58,10 +58,10 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 
 | 平台 | 产物 | 说明 |
 |---|---|---|
-| macOS Apple Silicon（M 系列） | `logview-macos-arm64.zip` | 解压得「日志查看器.app」 |
-| macOS Intel | `logview-macos-x86_64.zip` | 同上，适用于 2020 年及更早的 Intel Mac |
-| Windows | `logview-windows-x64.msi` / `logview-windows.zip`（实验性） | msi 每用户安装（开始菜单 + 「打开方式」）；zip 为便携版 |
-| Linux x86_64 | `logview-linux-x86_64.tar.gz` / `logview-x86_64.AppImage`（实验性） | 便携包含 `.desktop`、图标与 `install.sh`；AppImage 双击即用 |
+| macOS Apple Silicon（M 系列） | `logview-macos-arm64.dmg` | 打开 dmg，把「日志查看器」拖进「应用程序」；同名 `.zip` 为免挂载的备用包 |
+| macOS Intel | `logview-macos-x86_64.dmg` | 同上，适用于 2020 年及更早的 Intel Mac |
+| Windows | `logview-windows-x64.msi` / `logview.exe`（实验性） | msi 每用户安装（开始菜单 + 「打开方式」）；exe 为单文件便携版，另附 `logview-windows.zip` |
+| Linux x86_64 | `logview-linux-x86_64.tar.gz` / `logview-x86_64.AppImage` / `logview-linux-x86_64`（实验性） | 便携包含 `.desktop`、图标与 `install.sh`；AppImage 双击即用；裸二进制适合脚本或容器 |
 
 > 架构不对会直接打不开（Apple Silicon 上跑 x86_64 包需要 Rosetta）：用 `uname -m` 确认，M 系列通常为 `arm64`。
 
@@ -71,7 +71,8 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 > `xattr -dr com.apple.quarantine /Applications/日志查看器.app`。
 > 不放心可核对 Release 页面每个资产下显示的 sha256 摘要，或按下面的步骤从源码构建。
 
-Windows 提供 msi 安装包（每用户安装，含开始菜单快捷方式与「打开方式」注册）与便携 zip；Linux 便携包与 AppImage 已带 `.desktop`（文件管理器右键「打开方式」）与图标。
+macOS 推荐用 dmg 安装（拖入「应用程序」即可，不会残留挂载点）；Windows 提供 msi 安装包（每用户安装，含开始菜单、卸载与「打开方式」注册）和单文件 `logview.exe`（另附 zip）；
+Linux 便携包、AppImage 与裸二进制均可直接取用。
 功能与 macOS 版本一致（见[平台支持](#平台支持)），也可以直接按下方源码构建。
 
 ### Linux 桌面集成
@@ -266,6 +267,7 @@ cargo run -- sample/ansi.log     # 查看行内 ANSI 颜色示例
 ```bash
 cargo build --release            # 裸二进制 target/release/logview
 ./scripts/make_app.sh            # (macOS)生成 日志查看器.app 并注册文件类型(版本号读 Cargo.toml)
+./scripts/make_dmg.sh            # (macOS)把 .app 打成 dmg(内含拖入「应用程序」的快捷方式)
 
 # 交叉构建另一种架构(产物同样在 target/日志查看器.app)
 TARGET=aarch64-apple-darwin ./scripts/make_app.sh   # Apple Silicon
@@ -274,7 +276,7 @@ TARGET=x86_64-apple-darwin  ./scripts/make_app.sh   # Intel
 
 > 维护者本机的 `package.sh` 额外负责签名与体积校验,不入库;发布构建以 `scripts/make_app.sh` 为准。
 
-`make_app.sh` 生成 `.app` bundle 并在 `Info.plist` 声明文档类型(log/txt/out/err/json/csv),
+`make_app.sh` 生成 `.app` bundle 并在 `Info.plist` 声明文档类型(log/txt/out/err;csv/json 不是日志格式,不登记关联),
 随后 `lsregister` 刷新注册 —— Finder 右键日志文件即可在「打开方式」中看到 **日志查看器**。
 拖入窗口与 CLI(`logview 文件...`)同样支持多文件。
 
@@ -288,8 +290,8 @@ Linux:打包产物内含 `.desktop`(`Exec=logview %f`),`./install.sh` 安装后�
 
 近期已完成(0.3 – 0.4):
 
-- [x] macOS .app 打包与文件关联(`./scripts/make_app.sh`,Finder 右键打开;Release 提供 arm64 / x86_64 双架构包)
-- [x] Windows 便携版产物(`logview-windows.zip`,解压即用,经 argv 关联日志文件)
+- [x] macOS .app 打包与文件关联(`./scripts/make_app.sh`,Finder 右键打开;Release 提供 arm64 / x86_64 双架构 dmg)
+- [x] Windows 便携版产物(`logview.exe` 单文件,另附 `logview-windows.zip`,经 argv 关联日志文件)
 - [x] Linux 打包与桌面集成(`scripts/make_linux.sh`:便携包 + `.desktop` + 图标 + `install.sh`,可选 AppImage;Release 同时产出 tar.gz 与 AppImage)
 - [x] Windows 安装包(`logview-windows-x64.msi`):每用户安装到 `%LOCALAPPDATA%\LogViewer`,开始菜单快捷方式、卸载入口与「打开方式」注册;便携 zip 保留
 - [x] 命令源(本地 / SSH 执行命令,内置 adb / journalctl / docker / kubectl / tail 预设;输出落本机 spool,暂停与「跳到末尾」不丢日志)

@@ -4,6 +4,18 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-28
+
+### Changed
+
+- Release 产物按平台调整：macOS 主推 `.dmg`（打开后把「日志查看器」拖进「应用程序」，同名 `.zip` 保留备用）、Windows 直接提供裸 `logview.exe`（`logview-windows.zip` 保留）、Linux 增加裸二进制 `logview-linux-x86_64`。
+
+### Fixed
+
+- Linux 打包任务与 experimental binary 任务都用 `logview-linux` 作为产物名，`download-artifact` 合并时互相覆盖，导致 `logview-x86_64.AppImage` 自 0.4.1 起一直没进 Release；两个任务产物改名（`logview-linux-bin` / `logview-linux-pkg`）后便携包与 AppImage 均正常发布。
+
+## [0.5.0] - 2026-11-28
+
 ### Added
 
 - Linux 打包与桌面集成:新增 `scripts/make_linux.sh`,产出便携包(可执行文件 + `.desktop` + 256×256 图标 + `install.sh`)与可选 AppImage;`.desktop` 声明 `Exec=logview %f` 与常见日志 MIME 类型,安装后文件管理器「打开方式」直接可用;Release 新增 Linux 打包任务,同时上传 tar.gz 与 AppImage。
