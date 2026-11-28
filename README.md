@@ -4,6 +4,8 @@
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/zher52/logview?sort=semver)](https://github.com/zher52/logview/releases)
 
+**简体中文** · [English](README.en.md)
+
 Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome DevTools 控制台。
 
 **Rust + GPUI 自绘 UI · 无 WebView · 参考 Chrome DevTools 控制台风格 · 目标全平台(macOS / Windows / Linux)**
@@ -36,7 +38,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 - [x] **自动追加**:每标签独立线程轮询增量读取(默认 1s);粘底跟随,上滚自动暂停并出现「↓ N 条新日志」浮动按钮;**轮换/截断检测**(size < offset 时插入分隔行并从 0 继续跟随)
 - [x] **链接识别**:行内 URL、POSIX/Windows 绝对路径、相对日志路径(`xxx/yyy.log`)可点击 → 新标签页打开;SSH 标签内点击路径继承当前主机/凭据;URL 右键可「在浏览器打开」;整行 JSON 带 `{}` 徽标 → pretty 新标签打开
 - [x] **拖入打开**:把文件从 Finder/资源管理器拖进窗口即打开(支持一次拖入多个,拖入时窗口有覆盖提示)
-- [x] **系统级打开集成**:macOS 打包为 .app 后,可在 Finder 右键 .log/.txt 等文件 →「打开方式 → 日志查看器」,或双击关联文件;也支持 `open -a 日志查看器.app 文件`(Windows/Linux 以 argv 关联即可)
+- [x] **系统级打开集成**:macOS 打包为 .app 后,可在 Finder 右键 `.log/.out/.err/.txt` →「打开方式 → 日志查看器」,或双击关联文件;Windows msi 安装后写入「打开方式」注册(ProgID + `OpenWithProgids`,不静默抢占默认关联);Linux `install.sh` 安装 `.desktop` 后同样可在「打开方式」中选择。也支持 `open -a 日志查看器.app 文件` 与 CLI `logview 文件...`。csv/json 不是日志格式,三平台均不登记关联
 - [x] **代码/配置文件视图**:打开 `.json/.rs/.py/.js/.ts/.go/.c/.cpp/.java/.sh/.toml/.yaml/.md` 等文件时按代码格式逐行高亮(只读),工具栏可切换「编辑」并用 `⌘S` 保存(行号 + 语法着色,不做补全/LSP);超过 2 MiB 的文件按日志文件打开,不进代码视图。**Markdown**:只读态直接渲染预览(标题/列表/表格/引用/代码块/链接,围栏代码块按语言着色),点「编辑」显示源码;本地图片按文档所在目录解析并解码 `%20` 等转义,指向不存在文件的图片改写为 `⚠ 图片缺失:路径`;预览上限 512 KiB,超出回落源码着色
 - [x] **大文件友好**:虚拟滚动只渲染可见行;初始加载头部(默认 4MB),banner 提供「加载全部 / 跳到末尾(取尾部 2MB,行对齐)」。命令源通过本机临时缓存获得同样的历史、暂停与跳转语义
 - [x] **界面主题**:自动跟随系统亮暗模式并实时切换;整体视觉基于 antd v5 设计令牌(主色/中性色阶/语义色/圆角/间距体系)构建
@@ -69,7 +71,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 > 从浏览器下载的 `.app` 首次打开会被 Gatekeeper 拦下，属预期行为：右键 →「打开」→ 再点「打开」，
 > 或到「系统设置 → 隐私与安全性」底部点「仍要打开」；命令行等效：
 > `xattr -dr com.apple.quarantine /Applications/日志查看器.app`。
-> 不放心可核对 Release 页面每个资产下显示的 sha256 摘要，或按下面的步骤从源码构建。
+> 不放心可下载 Release 页的 `SHA256SUMS.txt`（覆盖全部资产），执行 `shasum -a 256 -c SHA256SUMS.txt` 批量核对；也可按下面的步骤从源码构建。
 
 macOS 推荐用 dmg 安装（拖入「应用程序」即可，不会残留挂载点）；Windows 提供 msi 安装包（每用户安装，含开始菜单、卸载与「打开方式」注册）和单文件 `logview.exe`（另附 zip）；
 Linux 便携包、AppImage 与裸二进制均可直接取用。
@@ -164,7 +166,7 @@ URL 源的凭据分两档:**保存凭据**(写入钥匙串)与**仅记录历史*
 
 | 项 | 说明 |
 |---|---|
-| 高亮模式 | 全部行可见,匹配处高亮底色(醒目琥珀色,文本自动取对比色并加粗);显示匹配计数;`▲`/`▼`/Enter 循环跳转 |
+| 高亮模式 | 全部行可见,匹配处高亮底色(默认節蓝,可在「颜色管理」调整,文字自动取对比色并加粗);显示匹配计数;`▲`/`▼`/Enter 循环跳转 |
 | 过滤模式 | 只显示匹配行(与级别筛选取交集);搜索框显示 `可见/总数` |
 | `Aa` | 区分大小写 |
 | `.*` | 正则模式(非法正则显示红字提示,不影响现有视图) |
@@ -250,7 +252,7 @@ Tail Worker 线程 × 每标签(轮询 size → 分块增量读,1MB/块,每周�
 ```bash
 cargo build                      # 调试构建(依赖以 opt-level=2 编译,UI 流畅)
 cargo clippy --all-targets       # lint
-cargo test --locked              # 单元测试
+cargo test --locked              # 100 项单元测试 + 2 项打包校验
 cargo run -- sample/app.log      # 运行并打开示例日志
 cargo run -- sample/ansi.log     # 查看行内 ANSI 颜色示例
 ```
@@ -268,6 +270,9 @@ cargo run -- sample/ansi.log     # 查看行内 ANSI 颜色示例
 cargo build --release            # 裸二进制 target/release/logview
 ./scripts/make_app.sh            # (macOS)生成 日志查看器.app 并注册文件类型(版本号读 Cargo.toml)
 ./scripts/make_dmg.sh            # (macOS)把 .app 打成 dmg(内含拖入「应用程序」的快捷方式)
+./scripts/make_linux.sh          # (Linux)便携包 tar.gz + .desktop + 图标 + install.sh,可加 --appimage
+pwsh ./scripts/make_msi.ps1      # (Windows,需 WiX 3)产出 target/logview-<version>-x64.msi
+pwsh ./scripts/test_msi.ps1      # (Windows)msi 静默安装 → 校验关联 → 卸载的冒烟测试
 
 # 交叉构建另一种架构(产物同样在 target/日志查看器.app)
 TARGET=aarch64-apple-darwin ./scripts/make_app.sh   # Apple Silicon
@@ -288,7 +293,7 @@ Linux:打包产物内含 `.desktop`(`Exec=logview %f`),`./install.sh` 安装后�
 
 ### Roadmap
 
-近期已完成(0.3 – 0.4):
+近期已完成(0.3 – 0.5):
 
 - [x] macOS .app 打包与文件关联(`./scripts/make_app.sh`,Finder 右键打开;Release 提供 arm64 / x86_64 双架构 dmg)
 - [x] Windows 便携版产物(`logview.exe` 单文件,另附 `logview-windows.zip`,经 argv 关联日志文件)
@@ -326,8 +331,8 @@ Linux:打包产物内含 `.desktop`(`Exec=logview %f`),`./install.sh` 安装后�
 | 平台 | 状态 |
 |---|---|
 | macOS | 主要开发与验证平台;`.app` 打包与文件类型关联可用;Release 同时提供 arm64 与 x86_64 两个包 |
-| Windows | CI 构建与 msi 打包;安装器待实机验收(每用户安装,无需管理员) |
-| Linux (X11 / Wayland) | CI 构建与打包;Release 提供带 `.desktop` 的便携包与 AppImage;桌面环境交互待验证 |
+| Windows | CI 构建、msi 打包与静默安装冒烟测试(安装 / 关联 / 卸载);安装器尚未在真机桌面验收,每用户安装、无需管理员 |
+| Linux (X11 / Wayland) | CI 构建与打包;Release 提供带 `.desktop` 的便携包、AppImage 与裸二进制;桌面环境交互待验证 |
 
 Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.github/workflows/ci.yml` 与 `release.yml` 的 Linux 打包任务)。
 
