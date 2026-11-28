@@ -35,7 +35,10 @@
 
     <DirectoryRef Id="INSTALLFOLDER">
       <Component Id="MainExecutable" Guid="3C2A6E5B-9D14-4F7A-8B21-6E5D4C3A2F10" Win64="yes">
-        <File Id="LogviewExe" Source="$(var.SourceDir)\target\release\logview.exe" KeyPath="yes" />
+        <File Id="LogviewExe" Source="$(var.SourceDir)\target\release\logview.exe" />
+        <!-- 每用户安装要求 HKCU 键作为 KeyPath(ICE38),文件本身不能当 KeyPath -->
+        <RegistryValue Root="HKCU" Key="Software\zher52\LogViewer" Type="string"
+                       Name="InstallDir" Value="[INSTALLFOLDER]" KeyPath="yes" />
         <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
       </Component>
 
