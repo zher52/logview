@@ -10,6 +10,7 @@
   <Product Id="*"
            Name="日志查看器 (Log Viewer)"
            Language="1033"
+           Codepage="936"
            Version="$(var.Version)"
            Manufacturer="zher52"
            UpgradeCode="0B7E4C1A-5D2F-4E83-9C6B-1F0A8D3B7E52">
