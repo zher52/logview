@@ -1024,4 +1024,52 @@ mod tests {
         assert_eq!(fp.len(), "SHA256:".len() + 43);
         assert_eq!(host_key_algo(&[0, 1]), "未知算法");
     }
+
+    /// 真机/容器联调,默认跳过:
+    /// `LOGVIEW_SSH_TEST='user:pass@host:port' cargo test --locked live_reuse -- --ignored --nocapture`
+    #[test]
+    #[ignore = "需要 LOGVIEW_SSH_TEST 指向可登录的 SSH 服务器"]
+    fn live_reuse_against_real_server() {
+        let spec = std::env::var("LOGVIEW_SSH_TEST").expect("缺少 LOGVIEW_SSH_TEST");
+        let (cred, addr) = spec.split_once('@').expect("格式 user:pass@host:port");
+        let (user, pass) = cred.split_once(':').expect("格式 user:pass@host:port");
+        let (host, port) = match addr.rsplit_once(':') {
+            Some((h, p)) => (h.to_string(), p.parse::<u16>().expect("端口")),
+            None => (addr.to_string(), 22),
+        };
+        let target = SshTarget::new(host, port, user, SshAuth::Password(pass.into()));
+        let mut ask = |_: &HostKeyInfo| HostKeyDecision::Accept { remember: false };
+        let path = "/home/tester/test.log";
+
+        let a = acquire(&target, &mut ask).expect("首次连接");
+        let total = a.stat(path).expect("stat");
+        assert!(total > 0, "远端文件应有内容");
+        let (data, _) = a.read_at(path, 0, 4096).expect("read_at");
+        let text = String::from_utf8_lossy(&data);
+        assert!(text.contains("line3 ERROR failed"), "{text}");
+        let generation = a.inner.state().next_generation;
+
+        // 同目标的第二个标签:应命中注册表,不重新握手
+        let b = acquire(&target, &mut ask).expect("复用连接");
+        assert!(Arc::ptr_eq(&a.inner, &b.inner), "同一目标应复用同一会话");
+        assert_eq!(
+            generation,
+            b.inner.state().next_generation,
+            "复用时不应重新握手"
+        );
+        let cmd = b.capture("echo reuse-ok").expect("命令通道");
+        assert!(cmd.contains("reuse-ok"), "{cmd}");
+
+        // 连接被判定失效后，下一次操作应按需重连，且所有标签共用这次重连
+        let before = b.inner.state().next_generation;
+        b.inner.mark_dead();
+        assert!(b.stat(path).is_ok(), "标记失效后应自动重连");
+        assert!(
+            b.inner.state().next_generation > before,
+            "重连后连接代次应递增"
+        );
+        let (again, _) = b.read_at(path, 0, 4096).expect("重连后读取");
+        assert!(String::from_utf8_lossy(&again).contains("line1 INFO boot"));
+        close_all();
+    }
 }
