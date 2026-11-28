@@ -177,7 +177,7 @@ sizes, line-number and timestamp toggles, recents and their limit/purge policy, 
 | Platform | Status |
 |---|---|
 | macOS | Primary development platform; `.app` bundling and file association work |
-| Windows | Build check in CI; interaction and installer are not fully verified |
+| Windows | CI build and msi packaging; installer awaits real-device verification (per-user, no admin) |
 | Linux (X11 / Wayland) | CI build and packaging; releases ship a `.desktop` tarball, an AppImage and a raw binary; desktop interaction is not fully verified |
 
 ## Security
@@ -252,11 +252,13 @@ cargo build --release            # target/release/logview
 ```
 
 The bundle declares log/txt/out/err document types (csv/json are not log formats and are left
-unassociated), so Finder’s **Open With** works. Releases
-ship `.dmg` (plus a `.zip` fallback) per architecture. Windows releases are a single portable
-`logview.exe` (plus a `.zip`). Linux artifacts are built by `scripts/make_linux.sh`: a portable
-tarball with `logview.desktop` (`Exec=logview %f`), a 256×256 icon and `install.sh`, plus an
-AppImage; the raw `logview-linux-x86_64` binary is published as well.
+unassociated), so Finder’s **Open With** works. Releases ship `.dmg` (plus a `.zip` fallback) per
+architecture. Windows releases ship a per-user msi (`logview-windows-x64.msi`; installs into
+`%LOCALAPPDATA%\LogViewer`, adds a Start-menu shortcut and registers a ProgID plus `OpenWithProgids`
+entries, with no silent default-association takeover) and a portable `logview.exe` (plus a `.zip`).
+Linux artifacts are built by `scripts/make_linux.sh`: a portable tarball with `logview.desktop`
+(`Exec=logview %f`), a 256×256 icon and `install.sh`, plus an AppImage; the raw
+`logview-linux-x86_64` binary is published as well.
 
 ```bash
 tar -xzf logview-linux-x86_64.tar.gz && cd logview-linux-x86_64

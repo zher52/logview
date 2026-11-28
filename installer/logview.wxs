@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WiX Toolset 3 安装包定义(每用户安装,无需管理员权限):
+  - 安装到 %LOCALAPPDATA%\LogViewer
+  - 开始菜单快捷方式(卸载时移除)
+  - 注册 ProgID 与「打开方式」候选(.log/.out/.err/.txt/.json/.csv)
+  构建:scripts/make_msi.ps1;CI 在 windows-latest 上执行。
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="日志查看器 (Log Viewer)"
+           Language="1033"
+           Codepage="936"
+           Version="$(var.Version)"
+           Manufacturer="zher52"
+           UpgradeCode="0B7E4C1A-5D2F-4E83-9C6B-1F0A8D3B7E52">
+
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perUser" Platform="x64" SummaryCodepage="936" />
+    <MajorUpgrade DowngradeErrorMessage="已安装更高版本的日志查看器,请先卸载后再安装。" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="$(var.SourceDir)\assets\windows\logview.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/zher52/logview" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="INSTALLFOLDER" Name="LogViewer" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="AppMenuFolder" Name="日志查看器" />
+      </Directory>
+    </Directory>
+
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="MainExecutable" Guid="3C2A6E5B-9D14-4F7A-8B21-6E5D4C3A2F10" Win64="yes">
+        <File Id="LogviewExe" Source="$(var.SourceDir)\target\release\logview.exe" />
+        <!-- 每用户安装要求 HKCU 键作为 KeyPath(ICE38),文件本身不能当 KeyPath -->
+        <RegistryValue Root="HKCU" Key="Software\zher52\LogViewer" Type="string"
+                       Name="InstallDir" Value="[INSTALLFOLDER]" KeyPath="yes" />
+        <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
+      </Component>
+
+      <!-- 只做「打开方式」候选,不静默抢占默认关联(Win10+ 的 UserChoice 也不允许静默修改) -->
+      <Component Id="FileAssociations" Guid="7F4D2B9C-1E63-4A58-9C7D-2B8A5E4F1D96" Win64="yes">
+        <RegistryValue Root="HKCU" Key="Software\Classes\LogViewer.Log" Type="string"
+                       Value="日志文件" KeyPath="yes" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\LogViewer.Log\DefaultIcon" Type="string"
+                       Value="[INSTALLFOLDER]logview.exe,0" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\LogViewer.Log\shell\open\command" Type="string"
+                       Value="&quot;[INSTALLFOLDER]logview.exe&quot; &quot;%1&quot;" />
+
+        <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe" Type="string"
+                       Name="FriendlyAppName" Value="日志查看器" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe\shell\open\command"
+                       Type="string" Value="&quot;[INSTALLFOLDER]logview.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe\SupportedTypes"
+                       Type="string" Name=".log" Value="" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe\SupportedTypes"
+                       Type="string" Name=".out" Value="" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe\SupportedTypes"
+                       Type="string" Name=".err" Value="" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe\SupportedTypes"
+                       Type="string" Name=".txt" Value="" />
+
+        <RegistryValue Root="HKCU" Key="Software\Classes\.log\OpenWithProgids" Type="string"
+                       Name="LogViewer.Log" Value="" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\.out\OpenWithProgids" Type="string"
+                       Name="LogViewer.Log" Value="" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\.err\OpenWithProgids" Type="string"
+                       Name="LogViewer.Log" Value="" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\.txt\OpenWithProgids" Type="string"
+                       Name="LogViewer.Log" Value="" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="AppMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="A1E9C7D3-5B42-4F86-8D19-C3F7B2A6E504" Win64="yes">
+        <Shortcut Id="AppShortcut" Name="日志查看器" Description="查看本地 / SSH / HTTP 日志"
+                  Target="[INSTALLFOLDER]logview.exe" WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\zher52\LogViewer" Type="integer"
+                       Name="Installed" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="Main" Title="日志查看器" Level="1">
+      <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="FileAssociations" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Product>
+</Wix>

@@ -20,13 +20,14 @@
 
 - Linux 打包与桌面集成:新增 `scripts/make_linux.sh`,产出便携包(可执行文件 + `.desktop` + 256×256 图标 + `install.sh`)与可选 AppImage;`.desktop` 声明 `Exec=logview %f` 与常见日志 MIME 类型,安装后文件管理器「打开方式」直接可用;Release 新增 Linux 打包任务,同时上传 tar.gz 与 AppImage。
 - 新增 `tests/packaging.rs`,对 `.desktop` 关键字段、图标尺寸与打包/安装脚本做静态校验,避免打包脚本与资源脱节。
+- Windows 安装包:新增 `installer/logview.wxs` 与 `scripts/make_msi.ps1`,产出 `logview-windows-x64.msi`(每用户安装到 `%LOCALAPPDATA%\LogViewer`,含开始菜单快捷方式、卸载入口与「打开方式」ProgID 注册,不静默抢占默认关联);Release 新增 `windows-msi` 任务,便携 zip 保留。
 - 日志行支持行内 ANSI SGR 颜色：基础 16 色、256 色与 24 位真彩色，以及粗体、暗淡、斜体、下划线、删除线和反显；控制序列在入库时剥离，检索、复制与链接识别按纯文本工作。
 - 设置 → 外观与显示新增「无级别跟随上一条已知级别」(默认开启):无级别续行(异常堆栈等多行输出)沿用上一条有级别行的级别参与着色、计数与筛选。
 - 设置 → 外观与显示新增「多行记录默认折叠」与「多行记录折叠行数」(默认 3):两项均依赖上一项;折叠开关控制无级别续行的初始状态(开启=默认收起,关闭=默认展开)。超过保留行数时只显示前 N 行并在末行追加「…」,折叠图标固定在该行行首,点图标切换展开/收起,点日志行仍走原有选中事件。
 
 ### Fixed
 
-- 发布任务的 `needs` 补齐为 `[macos, binary, linux]`,并仅在 macOS 产物成功时发布:此前 `binary` 实际未加入依赖,Windows/Linux 产物仍可能在发布之后才上传而被漏掉。
+- 发布任务的 `needs` 补齐为 `[macos, binary, linux, windows-msi]`,并仅在 macOS 产物成功时发布:此前 `binary` 实际未加入依赖,Windows/Linux 产物仍可能在发布之后才上传而被漏掉。
 - 发布任务此前只等 macOS 打包结束就开始收集产物，Windows 包常因上传较晚被漏掉：改为同时等待 `binary` 矩阵结束（实验性任务失败仍不阻塞发布）。
 - Windows 包的 zip 内曾带 `target/release/` 多层目录，改为把 `logview.exe` 放在压缩包根目录。
 

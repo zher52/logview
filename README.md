@@ -60,7 +60,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 |---|---|---|
 | macOS Apple Silicon（M 系列） | `logview-macos-arm64.dmg` | 打开 dmg，把「日志查看器」拖进「应用程序」；同名 `.zip` 为免挂载的备用包 |
 | macOS Intel | `logview-macos-x86_64.dmg` | 同上，适用于 2020 年及更早的 Intel Mac |
-| Windows | `logview.exe`（实验性） | 单文件直接运行，未做安装器；另提供 `logview-windows.zip` |
+| Windows | `logview-windows-x64.msi` / `logview.exe`（实验性） | msi 每用户安装（开始菜单 + 「打开方式」）；exe 为单文件便携版，另附 `logview-windows.zip` |
 | Linux x86_64 | `logview-linux-x86_64.tar.gz` / `logview-x86_64.AppImage` / `logview-linux-x86_64`（实验性） | 便携包含 `.desktop`、图标与 `install.sh`；AppImage 双击即用；裸二进制适合脚本或容器 |
 
 > 架构不对会直接打不开（Apple Silicon 上跑 x86_64 包需要 Rosetta）：用 `uname -m` 确认，M 系列通常为 `arm64`。
@@ -71,7 +71,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 > `xattr -dr com.apple.quarantine /Applications/日志查看器.app`。
 > 不放心可核对 Release 页面每个资产下显示的 sha256 摘要，或按下面的步骤从源码构建。
 
-macOS 推荐用 dmg 安装（拖入「应用程序」即可，不会残留挂载点）；Windows 提供单文件 `logview.exe`（另附 zip）；
+macOS 推荐用 dmg 安装（拖入「应用程序」即可，不会残留挂载点）；Windows 提供 msi 安装包（每用户安装，含开始菜单、卸载与「打开方式」注册）和单文件 `logview.exe`（另附 zip）；
 Linux 便携包、AppImage 与裸二进制均可直接取用。
 功能与 macOS 版本一致（见[平台支持](#平台支持)），也可以直接按下方源码构建。
 
@@ -283,9 +283,8 @@ TARGET=x86_64-apple-darwin  ./scripts/make_app.sh   # Intel
 > 发布产物是 **ad-hoc 签名、未经公证** 的（无付费 Apple 开发者账号）：`make_app.sh` 会优先找
 > Apple Development 证书，找不到就用 ad-hoc 签名；首次打开需右键「打开」或到系统设置放行，详见[下载](#下载)。
 
-Windows:文件右键「打开方式 → 选择其他应用 → logview.exe(始终)」,经 argv 传入,程序已支持。
-Linux:打包产物内含 `.desktop`(`Exec=logview %f`),`./install.sh` 安装后即可在「打开方式」看到「日志查看器」;
-AppImage 由内置 `AppRun` 直接启动,无需安装。
+Windows:msi 安装后右键日志文件 →「打开方式」即可看到「日志查看器」(写入 `HKCU\Software\Classes` 的 ProgID 与 `OpenWithProgids`,不静默抢占默认关联);便携版仍可用「选择其他应用 → logview.exe」。
+Linux:打包产物内含 `.desktop`(`Exec=logview %f`),`./install.sh` 安装后即可在「打开方式」看到「日志查看器」;AppImage 由内置 `AppRun` 直接启动,无需安装。
 
 ### Roadmap
 
@@ -294,6 +293,7 @@ AppImage 由内置 `AppRun` 直接启动,无需安装。
 - [x] macOS .app 打包与文件关联(`./scripts/make_app.sh`,Finder 右键打开;Release 提供 arm64 / x86_64 双架构 dmg)
 - [x] Windows 便携版产物(`logview.exe` 单文件,另附 `logview-windows.zip`,经 argv 关联日志文件)
 - [x] Linux 打包与桌面集成(`scripts/make_linux.sh`:便携包 + `.desktop` + 图标 + `install.sh`,可选 AppImage;Release 同时产出 tar.gz 与 AppImage)
+- [x] Windows 安装包(`logview-windows-x64.msi`):每用户安装到 `%LOCALAPPDATA%\LogViewer`,开始菜单快捷方式、卸载入口与「打开方式」注册;便携 zip 保留
 - [x] 命令源(本地 / SSH 执行命令,内置 adb / journalctl / docker / kubectl / tail 预设;输出落本机 spool,暂停与「跳到末尾」不丢日志)
 - [x] 「关于」页与检查更新(版本 + 构建提交 + 许可证 + 开源组件清单;检查更新只跳下载页,不上传本地数据)
 - [x] 代码 / 配置逐行高亮与 Markdown 预览(工具栏「编辑」+ `⌘S` 保存;本地图片按文档目录解析)
@@ -304,7 +304,6 @@ AppImage 由内置 `AppRun` 直接启动,无需安装。
 
 计划中:
 
-- [ ] Windows 安装包(msi/MSIX,含文件关联与卸载;当前仅提供便携 exe)
 - [ ] SSH 已连接实例复用(同一主机的多标签共享会话,路径链接免重连)
 - [ ] 多文件合并视图 / 时间轴(跨标签按时间排序、统一检索)
 - [ ] 命令预设图形化编辑(目前直接改设置文件里的 `command_presets`)
@@ -327,7 +326,7 @@ AppImage 由内置 `AppRun` 直接启动,无需安装。
 | 平台 | 状态 |
 |---|---|
 | macOS | 主要开发与验证平台;`.app` 打包与文件类型关联可用;Release 同时提供 arm64 与 x86_64 两个包 |
-| Windows | CI 构建与 Release 产物可用;交互与安装器未充分验证 |
+| Windows | CI 构建与 msi 打包;安装器待实机验收(每用户安装,无需管理员) |
 | Linux (X11 / Wayland) | CI 构建与打包;Release 提供带 `.desktop` 的便携包与 AppImage;桌面环境交互待验证 |
 
 Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.github/workflows/ci.yml` 与 `release.yml` 的 Linux 打包任务)。
