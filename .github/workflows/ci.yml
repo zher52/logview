@@ -82,3 +82,26 @@ jobs:
           sudo apt-get install -y desktop-file-utils
           desktop-file-validate assets/linux/logview.desktop
           SKIP_BUILD=1 BIN=target/debug/logview ./scripts/make_linux.sh --no-appimage
+
+  # Windows msi:构建后在 runner 上静默安装 → 校验注册表/快捷方式 → 卸载 → 校验清理
+  windows-msi:
+    name: Windows msi (实验性)
+    continue-on-error: true
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: 安装 WiX Toolset
+        run: choco install wixtoolset --no-progress -y
+
+      - name: 生成 msi
+        shell: pwsh
+        run: ./scripts/make_msi.ps1
+
+      - name: 冒烟测试 msi
+        shell: pwsh
+        run: ./scripts/test_msi.ps1

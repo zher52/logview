@@ -38,7 +38,7 @@ cargo clippy --all-targets --locked
 ./sample/gen_log.sh sample/app.log 1   # 演示自动追加(会写入受控的示例文件)
 ```
 
-- `dev.sh` / `package.sh` 是维护者本机脚本，**不入库**（已在 `.gitignore`）；发布构建用 `scripts/make_app.sh`，支持 `TARGET=aarch64-apple-darwin|x86_64-apple-darwin` 交叉构建（产物固定在 `target/日志查看器.app`），再用 `scripts/make_dmg.sh` 打成 `logview-macos-<arch>.dmg`。Linux 用 `scripts/make_linux.sh`（需在 Linux 上执行，产出 `target/logview-linux-<arch>.tar.gz` 与可选 AppImage；`SKIP_BUILD=1` 可只做打包自检），桌面资源在 `assets/linux/`。Windows 安装包用 `scripts/make_msi.ps1`（需 WiX Toolset 3，源在 `installer/logview.wxs`，产物 `target/logview-<version>-x64.msi`）。
+- `dev.sh` / `package.sh` 是维护者本机脚本，**不入库**（已在 `.gitignore`）；发布构建用 `scripts/make_app.sh`，支持 `TARGET=aarch64-apple-darwin|x86_64-apple-darwin` 交叉构建（产物固定在 `target/日志查看器.app`），再用 `scripts/make_dmg.sh` 打成 `logview-macos-<arch>.dmg`。Linux 用 `scripts/make_linux.sh`（需在 Linux 上执行，产出 `target/logview-linux-<arch>.tar.gz` 与可选 AppImage；`SKIP_BUILD=1` 可只做打包自检），桌面资源在 `assets/linux/`。Windows 安装包用 `scripts/make_msi.ps1`（需 WiX Toolset 3，源在 `installer/logview.wxs`，产物 `target/logview-<version>-x64.msi`）；`scripts/test_msi.ps1` 在 Windows 上做静默安装/关联/卸载冒烟测试，CI 与 release 的 msi 任务都会跑。
 - 运行 `gen_log.sh` 后提交前请还原：`git checkout -- sample/app.log`。
 - CI：`.github/workflows/ci.yml`（macOS 阻塞；Windows/Linux 实验性；clippy 暂不阻塞），`audit.yml` 每周依赖审计，`release.yml` 由 `v*` tag 触发。新增逻辑必须配单测。
 

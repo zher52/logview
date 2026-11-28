@@ -153,6 +153,9 @@ jobs:
       - name: 生成 msi
         shell: pwsh
         run: ./scripts/make_msi.ps1
+      - name: 冒烟测试 msi
+        shell: pwsh
+        run: ./scripts/test_msi.ps1
       - uses: actions/upload-artifact@v7
         with:
           name: logview-windows-msi
