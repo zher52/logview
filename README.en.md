@@ -27,7 +27,8 @@ Auto-follow (scrolling up pauses it; returning to the bottom resumes — recorde
 
 - [x] **Four log sources**
   - Local files: `stat` polling + `seek` incremental reads
-  - SSH: SFTP block reads; password / key file / pasted key / system agent
+  - SSH: SFTP block reads; password / key file / pasted key / system agent; tabs for the same host
+    and credentials share one session (closed 30 s after the last tab closes, reconnected on demand)
   - HTTP URL: incremental `Range` requests with built-in SSRF protection (see [Security](#security))
   - Commands: run locally or over SSH, with stdout/stderr merged into the tab; built-in presets for
     `adb logcat` (all / package / tag), `tail -F`, `journalctl -f`, `docker logs -f` and
@@ -364,6 +365,7 @@ Tail worker thread per tab (poll size → incremental reads, 1 MB chunks, ≤8 M
 | `command.rs` | Command presets, argv expansion and built-in presets |
 | `source.rs` | Source open/meta/read_at, command spawn (local / SSH exec), SSH, HTTP client with pinned IP |
 | `ssh_config.rs` | Import hosts from the system ssh config (skipping patterns and `Match`) |
+| `session.rs` | SSH session layer: shared connections, idle auto-close, non-blocking SFTP/channel I/O, reconnect, host-key (TOFU) checks |
 | `secrets.rs` | OS keychain storage, in-memory fallback |
 | `store.rs` | `settings.json` read/write and legacy plaintext migration |
 | `tail.rs` | Worker protocol, file/stream loops, initial/tail/full loads, rotation |
@@ -379,7 +381,7 @@ sets) and injects `GIT_HASH` from `git rev-parse --short=8 HEAD` (`unknown` with
 ```bash
 cargo build                      # debug build (dependencies at opt-level=2)
 cargo clippy --all-targets       # lint
-cargo test --locked              # 100 unit tests + 2 packaging checks
+cargo test --locked              # 107 unit tests + 2 packaging checks (1 live SSH test ignored by default)
 cargo run -- sample/app.log      # run with the sample log
 cargo run -- sample/ansi.log     # inspect inline ANSI colours
 ```
@@ -442,12 +444,12 @@ Recently completed (0.3 – 0.5):
 - [x] Chinese / English / Russian UI (semantic IDs + `locales/*.toml`, compile-time key parity)
 - [x] Long-line wrapping (on by default, toolbar toggle; off renders single lines)
 - [x] SSH host-key verification and TOFU confirmation for unknown hosts (mismatches are rejected)
+- [x] Reuse of connected SSH sessions (tabs on the same host with the same credentials share one
+  session, so path links open without reconnecting; the connection closes 30 s after the last tab)
 - [x] HTTP authentication (Basic / Bearer / API key / custom headers)
 
 Planned:
 
-- [ ] Reuse connected SSH sessions (one session shared by tabs on the same host, so path links open
-  without reconnecting)
 - [ ] Merged multi-file view / timeline (sort across tabs by time, unified search)
 - [ ] Graphical command-preset editor (currently edit `command_presets` in the settings file)
 - [ ] Automatic updates (needs code signing and Apple notarisation, which are not available yet;

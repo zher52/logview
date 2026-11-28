@@ -434,6 +434,8 @@
 "error.command.spawn" = "无法启动命令 {prog}:{e}"
 "error.ssh.channel" = "SSH 通道创建失败:{e}"
 "error.ssh.stderr_merge" = "SSH stderr 合并失败:{e}"
+"error.ssh.timeout" = "SSH 操作超时({secs} 秒无响应)"
+"error.ssh.disconnected" = "SSH 会话已断开,正在等待自动重连"
 "error.command.remote_value" = "远端取值命令执行失败:{e}"
 "error.command.remote_value_read" = "远端取值命令读取失败:{e}"
 "error.command.remote_run" = "远端命令执行失败:{e}"

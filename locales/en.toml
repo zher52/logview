@@ -434,6 +434,8 @@
 "error.command.spawn" = "Failed to start command {prog}: {e}"
 "error.ssh.channel" = "SSH channel failed: {e}"
 "error.ssh.stderr_merge" = "SSH stderr merge failed: {e}"
+"error.ssh.timeout" = "SSH operation timed out (no response for {secs}s)"
+"error.ssh.disconnected" = "SSH session lost; waiting to reconnect automatically"
 "error.command.remote_value" = "Remote value command failed: {e}"
 "error.command.remote_value_read" = "Failed to read remote value command output: {e}"
 "error.command.remote_run" = "Remote command execution failed: {e}"
