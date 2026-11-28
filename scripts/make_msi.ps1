@@ -38,7 +38,7 @@ Write-Host "==> 编译 WiX 源"
 if ($LASTEXITCODE -ne 0) { throw "candle 失败(退出码 $LASTEXITCODE)" }
 
 Write-Host "==> 链接 msi"
-& $light -nologo -arch x64 -out "target\logview-$Version-x64.msi" "$obj\logview.wixobj"
+& $light -nologo -out "target\logview-$Version-x64.msi" "$obj\logview.wixobj"
 if ($LASTEXITCODE -ne 0) { throw "light 失败(退出码 $LASTEXITCODE)" }
 
 Write-Host "==> 完成: target\logview-$Version-x64.msi"
