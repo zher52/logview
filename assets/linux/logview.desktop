@@ -16,6 +16,6 @@ Terminal=false
 Categories=Utility;Development;
 Keywords=log;tail;viewer;ssh;http;
 Keywords[zh_CN]=日志;查看;追加;检索;SSH;
-MimeType=text/plain;text/x-log;text/csv;application/json;
+MimeType=text/plain;text/x-log;
 StartupNotify=true
 StartupWMClass=logview

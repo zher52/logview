@@ -251,7 +251,8 @@ cargo build --release            # target/release/logview
 ./scripts/make_dmg.sh            # (macOS) wraps the .app into a dmg with an Applications shortcut
 ```
 
-The bundle declares log/txt/out/err/json/csv document types, so Finder’s **Open With** works. Releases
+The bundle declares log/txt/out/err document types (csv/json are not log formats and are left
+unassociated), so Finder’s **Open With** works. Releases
 ship `.dmg` (plus a `.zip` fallback) per architecture. Windows releases are a single portable
 `logview.exe` (plus a `.zip`). Linux artifacts are built by `scripts/make_linux.sh`: a portable
 tarball with `logview.desktop` (`Exec=logview %f`), a 256×256 icon and `install.sh`, plus an

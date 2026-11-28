@@ -276,7 +276,7 @@ TARGET=x86_64-apple-darwin  ./scripts/make_app.sh   # Intel
 
 > 维护者本机的 `package.sh` 额外负责签名与体积校验,不入库;发布构建以 `scripts/make_app.sh` 为准。
 
-`make_app.sh` 生成 `.app` bundle 并在 `Info.plist` 声明文档类型(log/txt/out/err/json/csv),
+`make_app.sh` 生成 `.app` bundle 并在 `Info.plist` 声明文档类型(log/txt/out/err;csv/json 不是日志格式,不登记关联),
 随后 `lsregister` 刷新注册 —— Finder 右键日志文件即可在「打开方式」中看到 **日志查看器**。
 拖入窗口与 CLI(`logview 文件...`)同样支持多文件。
 
