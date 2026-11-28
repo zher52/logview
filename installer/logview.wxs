@@ -15,7 +15,7 @@
            Manufacturer="zher52"
            UpgradeCode="0B7E4C1A-5D2F-4E83-9C6B-1F0A8D3B7E52">
 
-    <Package InstallerVersion="500" Compressed="yes" InstallScope="perUser" Platform="x64" />
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perUser" Platform="x64" SummaryCodepage="936" />
     <MajorUpgrade DowngradeErrorMessage="已安装更高版本的日志查看器,请先卸载后再安装。" />
     <MediaTemplate EmbedCab="yes" />
 
