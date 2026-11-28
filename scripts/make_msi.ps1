@@ -34,7 +34,7 @@ $obj = "target\msi"
 New-Item -ItemType Directory -Force -Path $obj | Out-Null
 
 Write-Host "==> 编译 WiX 源"
-& $candle -nologo -arch x64 -dVersion=$Version "-dSourceDir=$root" -out "$obj\logview.wixobj" "installer\logview.wxs"
+& $candle -nologo -arch x64 "-dVersion=$Version" "-dSourceDir=$root" -out "$obj\logview.wixobj" "installer\logview.wxs"
 if ($LASTEXITCODE -ne 0) { throw "candle 失败(退出码 $LASTEXITCODE)" }
 
 Write-Host "==> 链接 msi"
