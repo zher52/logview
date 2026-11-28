@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-28
+
+### Added
+
+- Windows msi 安装包 `logview-windows-x64.msi`：每用户安装到 `%LOCALAPPDATA%\LogViewer`，带开始菜单快捷方式、卸载入口与「打开方式」注册（ProgID + `OpenWithProgids`，不静默抢占默认关联）；便携 `logview.exe` 与 zip 继续保留。
+- Release 附带 `SHA256SUMS.txt`，覆盖全部产物，可 `shasum -a 256 -c SHA256SUMS.txt` 批量校验。
+
+### Changed
+
+- 文件关联只登记常用日志后缀 `.log/.out/.err/.txt`：macOS `Info.plist` 去掉 `json/csv` 与过宽的 `public.data`，Linux `.desktop` 去掉 `text/csv`、`application/json`，Windows msi 去掉对应注册项；csv/json 仍可在应用内打开，只是不进系统关联。
+- msi 的产品名与摘要改用代码页 936，中文不再被写成 `0x7F` 占位（此前摘要里产品名为空）。
+
+### Fixed
+
+- msi 构建此前从未成功：`-dVersion` 未加引号、`light` 误用 `-arch`、缺 `Codepage`、每用户安装缺 HKCU KeyPath（ICE38）四处问题逐个修正。
+
 ## [0.5.1] - 2026-11-28
 
 ### Changed

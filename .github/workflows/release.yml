@@ -170,6 +170,11 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      - name: 生成 SHA256SUMS.txt
+        run: |
+          cd artifacts
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - name: 附加产物
         uses: softprops/action-gh-release@v3
         with:
