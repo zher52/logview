@@ -63,10 +63,6 @@
                        Type="string" Name=".err" Value="" />
         <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe\SupportedTypes"
                        Type="string" Name=".txt" Value="" />
-        <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe\SupportedTypes"
-                       Type="string" Name=".json" Value="" />
-        <RegistryValue Root="HKCU" Key="Software\Classes\Applications\logview.exe\SupportedTypes"
-                       Type="string" Name=".csv" Value="" />
 
         <RegistryValue Root="HKCU" Key="Software\Classes\.log\OpenWithProgids" Type="string"
                        Name="LogViewer.Log" Value="" />
@@ -75,10 +71,6 @@
         <RegistryValue Root="HKCU" Key="Software\Classes\.err\OpenWithProgids" Type="string"
                        Name="LogViewer.Log" Value="" />
         <RegistryValue Root="HKCU" Key="Software\Classes\.txt\OpenWithProgids" Type="string"
-                       Name="LogViewer.Log" Value="" />
-        <RegistryValue Root="HKCU" Key="Software\Classes\.json\OpenWithProgids" Type="string"
-                       Name="LogViewer.Log" Value="" />
-        <RegistryValue Root="HKCU" Key="Software\Classes\.csv\OpenWithProgids" Type="string"
                        Name="LogViewer.Log" Value="" />
       </Component>
     </DirectoryRef>
