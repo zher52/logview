@@ -37,12 +37,18 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
         run: ./scripts/make_app.sh
-      - name: 压缩
+      - name: 生成安装镜像 dmg
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: ./scripts/make_dmg.sh
+      - name: 压缩 zip(备用)
         run: ditto -c -k --keepParent "target/日志查看器.app" "logview-macos-${{ matrix.arch }}.zip"
       - uses: actions/upload-artifact@v7
         with:
           name: logview-macos-${{ matrix.arch }}
-          path: logview-macos-${{ matrix.arch }}.zip
+          path: |
+            logview-macos-${{ matrix.arch }}.dmg
+            logview-macos-${{ matrix.arch }}.zip
           if-no-files-found: error
 
   # Windows / Linux 尚未充分验证,失败不阻塞 macOS 产物
@@ -55,10 +61,14 @@ jobs:
         include:
           - os: windows-latest
             name: logview-windows
-            file: logview.exe
+            # 裸 exe 直接分发,zip 保留给需要打包传输的场景
+            outputs: |
+              logview.exe
+              logview-windows.zip
           - os: ubuntu-latest
-            name: logview-linux
-            file: logview
+            name: logview-linux-bin
+            # 裸二进制;带 .desktop 的便携包与 AppImage 由下面的 linux 任务产出
+            outputs: logview-linux-x86_64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -78,15 +88,16 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            # zip 里只放 exe 本身,避免解压出 target/release/ 多层目录
-            cd target/release && 7z a "../../${{ matrix.name }}.zip" "${{ matrix.file }}"
+            # 裸 exe 放到根目录直接发布;zip 里只放 exe 本身,避免解压出 target/release/ 多层目录
+            cp target/release/logview.exe logview.exe
+            cd target/release && 7z a "../../logview-windows.zip" logview.exe
           else
-            tar -czf "${{ matrix.name }}.tar.gz" -C target/release "${{ matrix.file }}"
+            cp target/release/logview logview-linux-x86_64
           fi
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
-          path: ${{ matrix.name }}.*
+          path: ${{ matrix.outputs }}
           if-no-files-found: ignore
 
   # Linux:便携包(tar.gz)+ AppImage,内含 .desktop 与图标,可注册文件关联
@@ -118,9 +129,11 @@ jobs:
           APPIMAGETOOL: /tmp/appimagetool
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: ./scripts/make_linux.sh
+      # 不要与 binary 矩阵的 Linux 产物同名:同名产物在下载合并时会互相覆盖,
+      # 之前 AppImage 就是这样没进 Release 的
       - uses: actions/upload-artifact@v7
         with:
-          name: logview-linux
+          name: logview-linux-pkg
           path: |
             target/logview-linux-*.tar.gz
             target/logview-*.AppImage
