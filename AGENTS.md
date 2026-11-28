@@ -152,7 +152,7 @@ UI 主线程 + 每个标签一个 worker。只通过两条 channel 通信，**�
 - 内网/环回 HTTP 地址被 SSRF 策略拒绝，属有意行为。
 - 命令源历史受 spool 上限（128MB）约束；超出后只保留最近一半，更早的内容请用命令参数获取（`journalctl -n`、`docker logs --tail`）。
 - SSH 未知主机采用 TOFU 确认（仅在无法读取 `known_hosts` 时静默放行，见 `SECURITY.md`）。
-- Windows / Linux 仅做 CI 构建与打包检查，交互未充分验证；Linux 的文件关联依赖 `assets/linux/logview.desktop` 与 `install.sh`（装到 `$PREFIX`），AppImage 由 `AppRun` 启动；Windows msi 为每用户安装并写入 `HKCU\Software\Classes` 的「打开方式」注册，只在 CI 构建、未实机验收。
+- Windows / Linux 的界面交互未在真机充分验证；Linux 的文件关联依赖 `assets/linux/logview.desktop` 与 `install.sh`（装到 `$PREFIX`），AppImage 由 `AppRun` 启动；Windows msi 为每用户安装并写入 `HKCU\Software\Classes` 的「打开方式」注册，CI 会做静默安装/关联/卸载冒烟测试，真机桌面交互仍未验收。
 - 界面支持中文 / English / Русский 切换（设置 → 界面语言）；工具栏、对话框、设置页、状态栏、命令预设与常见错误提示均已覆盖，未收录词条依次回退英文、中文。
 
 ## Git 约定

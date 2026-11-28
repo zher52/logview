@@ -65,8 +65,7 @@ Auto-follow (scrolling up pauses it; returning to the bottom resumes — recorde
 - [x] **System-level "Open With"**: the macOS `.app` declares `.log/.out/.err/.txt`, so Finder's
   "Open With → Log Viewer" and double-click both work; the Windows msi registers a ProgID plus
   `OpenWithProgids` (no silent default-association takeover); `install.sh` installs the Linux
-  `.desktop` entry. CLI `logview file...` and `open -a 日志查看器.app file` also work. `csv/json` are
-  not log formats and are not associated on any platform
+  `.desktop` entry. CLI `logview file...` and `open -a 日志查看器.app file` also work.
 - [x] **Code / config view**: opening `.json/.rs/.py/.js/.ts/.go/.c/.cpp/.java/.sh/.toml/.yaml/.md`
   etc. highlights it line by line (read-only); the toolbar can switch to editing and `⌘S` saves
   (line numbers + syntax colouring, no completion/LSP); files over 2 MiB open as logs instead.
@@ -404,9 +403,8 @@ pwsh ./scripts/make_msi.ps1      # (Windows, WiX 3 required) produces target/log
 pwsh ./scripts/test_msi.ps1      # (Windows) silent install → association checks → uninstall smoke test
 ```
 
-The bundle declares log/txt/out/err document types (csv/json are not log formats and are left
-unassociated), so Finder's **Open With** works. Releases ship `.dmg` (plus a `.zip` fallback) per
-architecture. Windows releases ship a per-user msi (`logview-windows-x64.msi`; installs into
+The bundle declares log/txt/out/err document types, so Finder's **Open With** works. Releases ship
+`.dmg` (plus a `.zip` fallback) per architecture. Windows releases ship a per-user msi (`logview-windows-x64.msi`; installs into
 `%LOCALAPPDATA%\LogViewer`, adds a Start-menu shortcut, uninstaller and ProgID plus `OpenWithProgids`
 entries, with no silent default-association takeover) and a portable `logview.exe` (plus a `.zip`); CI
 installs the msi silently on a Windows runner and checks the registrations before uninstalling it.
@@ -482,7 +480,7 @@ is possible and auto-follow is disabled.
 | Platform | Status |
 |---|---|
 | macOS | Primary development and verification platform; `.app` bundling and file associations work; releases provide arm64 and x86_64 dmg |
-| Windows | CI build, msi packaging and silent-install smoke test (install / associations / uninstall); the installer has not yet been verified on a real desktop, per-user and no admin required |
+| Windows | CI build, msi packaging and silent-install smoke test (install / associations / uninstall); real desktop interaction is not yet verified, per-user and no admin required |
 | Linux (X11 / Wayland) | CI build and packaging; releases ship the `.desktop` tarball, AppImage and a raw binary; desktop interaction is not fully verified |
 
 The Windows/Linux CI jobs are experimental and do not block merges (see `.github/workflows/ci.yml` and

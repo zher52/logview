@@ -13,7 +13,7 @@
 
 ### Changed
 
-- 文件关联只登记常用日志后缀 `.log/.out/.err/.txt`：macOS `Info.plist` 去掉 `json/csv` 与过宽的 `public.data`，Linux `.desktop` 去掉 `text/csv`、`application/json`，Windows msi 去掉对应注册项；csv/json 仍可在应用内打开，只是不进系统关联。
+- 文件关联统一为常用日志后缀 `.log/.out/.err/.txt`：macOS `Info.plist`、Linux `.desktop` 与 Windows msi 注册项保持一致，并移除过宽的 `public.data` 声明。
 - msi 的产品名与摘要改用代码页 936，中文不再被写成 `0x7F` 占位（此前摘要里产品名为空）。
 
 ### Fixed

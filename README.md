@@ -38,7 +38,7 @@ Rust + GPUI 原生桌面日志查看器（无 WebView），交互参考 Chrome D
 - [x] **自动追加**:每标签独立线程轮询增量读取(默认 1s);粘底跟随,上滚自动暂停并出现「↓ N 条新日志」浮动按钮;**轮换/截断检测**(size < offset 时插入分隔行并从 0 继续跟随)
 - [x] **链接识别**:行内 URL、POSIX/Windows 绝对路径、相对日志路径(`xxx/yyy.log`)可点击 → 新标签页打开;SSH 标签内点击路径继承当前主机/凭据;URL 右键可「在浏览器打开」;整行 JSON 带 `{}` 徽标 → pretty 新标签打开
 - [x] **拖入打开**:把文件从 Finder/资源管理器拖进窗口即打开(支持一次拖入多个,拖入时窗口有覆盖提示)
-- [x] **系统级打开集成**:macOS 打包为 .app 后,可在 Finder 右键 `.log/.out/.err/.txt` →「打开方式 → 日志查看器」,或双击关联文件;Windows msi 安装后写入「打开方式」注册(ProgID + `OpenWithProgids`,不静默抢占默认关联);Linux `install.sh` 安装 `.desktop` 后同样可在「打开方式」中选择。也支持 `open -a 日志查看器.app 文件` 与 CLI `logview 文件...`。csv/json 不是日志格式,三平台均不登记关联
+- [x] **系统级打开集成**:macOS 打包为 .app 后,可在 Finder 右键 `.log/.out/.err/.txt` →「打开方式 → 日志查看器」,或双击关联文件;Windows msi 安装后写入「打开方式」注册(ProgID + `OpenWithProgids`,不静默抢占默认关联);Linux `install.sh` 安装 `.desktop` 后同样可在「打开方式」中选择。也支持 `open -a 日志查看器.app 文件` 与 CLI `logview 文件...`。
 - [x] **代码/配置文件视图**:打开 `.json/.rs/.py/.js/.ts/.go/.c/.cpp/.java/.sh/.toml/.yaml/.md` 等文件时按代码格式逐行高亮(只读),工具栏可切换「编辑」并用 `⌘S` 保存(行号 + 语法着色,不做补全/LSP);超过 2 MiB 的文件按日志文件打开,不进代码视图。**Markdown**:只读态直接渲染预览(标题/列表/表格/引用/代码块/链接,围栏代码块按语言着色),点「编辑」显示源码;本地图片按文档所在目录解析并解码 `%20` 等转义,指向不存在文件的图片改写为 `⚠ 图片缺失:路径`;预览上限 512 KiB,超出回落源码着色
 - [x] **大文件友好**:虚拟滚动只渲染可见行;初始加载头部(默认 4MB),banner 提供「加载全部 / 跳到末尾(取尾部 2MB,行对齐)」。命令源通过本机临时缓存获得同样的历史、暂停与跳转语义
 - [x] **界面主题**:自动跟随系统亮暗模式并实时切换;整体视觉基于 antd v5 设计令牌(主色/中性色阶/语义色/圆角/间距体系)构建
@@ -281,7 +281,7 @@ TARGET=x86_64-apple-darwin  ./scripts/make_app.sh   # Intel
 
 > 维护者本机的 `package.sh` 额外负责签名与体积校验,不入库;发布构建以 `scripts/make_app.sh` 为准。
 
-`make_app.sh` 生成 `.app` bundle 并在 `Info.plist` 声明文档类型(log/txt/out/err;csv/json 不是日志格式,不登记关联),
+`make_app.sh` 生成 `.app` bundle 并在 `Info.plist` 声明文档类型(log/txt/out/err),
 随后 `lsregister` 刷新注册 —— Finder 右键日志文件即可在「打开方式」中看到 **日志查看器**。
 拖入窗口与 CLI(`logview 文件...`)同样支持多文件。
 
@@ -296,7 +296,7 @@ Linux:打包产物内含 `.desktop`(`Exec=logview %f`),`./install.sh` 安装后�
 近期已完成(0.3 – 0.5):
 
 - [x] macOS .app 打包与文件关联(`./scripts/make_app.sh`,Finder 右键打开;Release 提供 arm64 / x86_64 双架构 dmg)
-- [x] Windows 便携版产物(`logview.exe` 单文件,另附 `logview-windows.zip`,经 argv 关联日志文件)
+- [x] Windows 便携版产物(`logview.exe` 单文件,另附 `logview-windows.zip`)
 - [x] Linux 打包与桌面集成(`scripts/make_linux.sh`:便携包 + `.desktop` + 图标 + `install.sh`,可选 AppImage;Release 同时产出 tar.gz 与 AppImage)
 - [x] Windows 安装包(`logview-windows-x64.msi`):每用户安装到 `%LOCALAPPDATA%\LogViewer`,开始菜单快捷方式、卸载入口与「打开方式」注册;便携 zip 保留
 - [x] 命令源(本地 / SSH 执行命令,内置 adb / journalctl / docker / kubectl / tail 预设;输出落本机 spool,暂停与「跳到末尾」不丢日志)
@@ -331,7 +331,7 @@ Linux:打包产物内含 `.desktop`(`Exec=logview %f`),`./install.sh` 安装后�
 | 平台 | 状态 |
 |---|---|
 | macOS | 主要开发与验证平台;`.app` 打包与文件类型关联可用;Release 同时提供 arm64 与 x86_64 两个包 |
-| Windows | CI 构建、msi 打包与静默安装冒烟测试(安装 / 关联 / 卸载);安装器尚未在真机桌面验收,每用户安装、无需管理员 |
+| Windows | CI 构建、msi 打包与静默安装冒烟测试(安装 / 关联 / 卸载);真机桌面交互未验收,每用户安装、无需管理员 |
 | Linux (X11 / Wayland) | CI 构建与打包;Release 提供带 `.desktop` 的便携包、AppImage 与裸二进制;桌面环境交互待验证 |
 
 Windows / Linux 的 CI 任务是实验性的,失败不会阻塞合并(见 `.github/workflows/ci.yml` 与 `release.yml` 的 Linux 打包任务)。
